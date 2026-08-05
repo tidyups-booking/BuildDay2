@@ -1,7 +1,10 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { useCreateCompany } from "@workspace/api-client-react";
+import {
+  useCreateCompany,
+  useUpdateCompany,
+} from "@workspace/api-client-react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,18 +17,27 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Building2, ArrowRight } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { runOnboardingSubmit } from "@/lib/onboardingSubmit";
 
 const formSchema = z.object({
   name: z.string().min(2, "Company name must be at least 2 characters"),
+  notificationNumber: z
+    .string()
+    .refine((v) => v.trim() === "" || /^[+()\-.\s\d]{7,20}$/.test(v.trim()), {
+      message: "Enter a valid phone number, or leave it blank",
+    }),
 });
 
 export function OnboardingPage() {
   const [, setLocation] = useLocation();
   const createCompany = useCreateCompany();
+  const updateCompany = useUpdateCompany();
+  const { toast } = useToast();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: { name: "" },
+    defaultValues: { name: "", notificationNumber: "" },
   });
 
   function onSubmit(values: z.infer<typeof formSchema>) {
@@ -38,14 +50,38 @@ export function OnboardingPage() {
     } catch {
       timezone = undefined;
     }
-    createCompany.mutate(
-      { data: { name: values.name, ...(timezone ? { timezone } : {}) } },
-      {
-        onSuccess: () => {
+    // Create, then save the number via the existing update endpoint so
+    // brand-new companies have an outage-text number on file from day one.
+    // If the number save fails, stay here and say so — silently dropping the
+    // number the owner just typed would defeat the point of collecting it.
+    // Re-submitting is safe: company creation is idempotent server-side.
+    runOnboardingSubmit({
+      createCompany: () =>
+        createCompany.mutateAsync({
+          data: { name: values.name, ...(timezone ? { timezone } : {}) },
+        }),
+      saveNotificationNumber: (notificationNumber) =>
+        updateCompany.mutateAsync({ data: { notificationNumber } }),
+      notificationNumber: values.notificationNumber,
+    })
+      .then((result) => {
+        if (result.outcome === "done") {
           setLocation("/setup");
-        },
-      },
-    );
+        } else {
+          const error = result.error as any;
+          toast({
+            title: "Couldn't save your notification number",
+            description:
+              (error?.message ||
+                "Your workspace was created, but the number wasn't saved.") +
+              " Press Continue to try again, or clear the field to skip for now.",
+            variant: "destructive",
+          });
+        }
+      })
+      .catch(() => {
+        // Create failed — the mutation's own error state covers messaging.
+      });
   }
 
   return (
@@ -84,13 +120,44 @@ export function OnboardingPage() {
                 </FormItem>
               )}
             />
+            <FormField
+              control={form.control}
+              name="notificationNumber"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    Notification Number{" "}
+                    <span className="text-muted-foreground font-normal">
+                      (optional, recommended)
+                    </span>
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      type="tel"
+                      placeholder="e.g. 555-123-4567"
+                      className="h-12"
+                      {...field}
+                    />
+                  </FormControl>
+                  <p className="text-sm text-muted-foreground">
+                    We'll text this number if your phone connection ever breaks
+                    or recovers. You can change it later in Settings.
+                  </p>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <Button
               type="submit"
               className="w-full h-12 text-base gap-2"
-              disabled={createCompany.isPending}
+              disabled={createCompany.isPending || updateCompany.isPending}
             >
-              {createCompany.isPending ? "Creating..." : "Continue to Setup"}
-              {!createCompany.isPending && <ArrowRight className="w-4 h-4" />}
+              {createCompany.isPending || updateCompany.isPending
+                ? "Creating..."
+                : "Continue to Setup"}
+              {!(createCompany.isPending || updateCompany.isPending) && (
+                <ArrowRight className="w-4 h-4" />
+              )}
             </Button>
           </form>
         </Form>
