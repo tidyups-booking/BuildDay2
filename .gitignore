@@ -41,6 +41,14 @@ testem.log
 .DS_Store
 Thumbs.db
 
+# Environment variables and secrets - this repository is public, never commit these.
+# Real secrets belong in Replit Secrets, not in the repo.
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+
 .cursor/rules/nx-rules.mdc
 .github/instructions/nx.instructions.md
 
