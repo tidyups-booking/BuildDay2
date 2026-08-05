@@ -31,6 +31,19 @@ Role intent:
   them. Enforced in SQL on list endpoints, and with an assignment lookup on
   the per-booking update.
 
+# Redact content, not just scope
+
+Scoping a cleaner's list to assigned jobs is not enough: the serialized
+booking still carried quote pricing, quote lifecycle/URL, and Jobber state.
+Sensitive fields must be nulled at the API boundary
+(`redactBookingForCleaner`) — hiding them in the mobile/web UI is not a
+boundary because the authenticated response is directly readable.
+
+**Why:** completion review rejected UI-only hiding as a pricing disclosure.
+**How to apply:** any endpoint a cleaner can call that returns booking-shaped
+data must run the cleaner projection; contract keeps one Booking shape with
+those fields nullable.
+
 # Seat claiming
 
 An invited person is matched to their seat on first sign-in by **verified**

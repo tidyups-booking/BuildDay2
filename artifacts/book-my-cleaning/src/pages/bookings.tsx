@@ -87,7 +87,10 @@ type BookingStatus = "pending" | "confirmed" | "completed" | "canceled";
  */
 function BookingPrice({ booking }: { booking: Booking }) {
   const sent = booking.quoteSentTotals;
+  // Nullable only for cleaner logins, which never see this dashboard — but
+  // the contract says nullable, so handle it rather than crash.
   const current = booking.quoteTotals;
+  if (!current) return null;
 
   if (sent) {
     const changed = Math.abs(sent.total - current.total) >= 0.01;
@@ -683,7 +686,7 @@ function QuoteDialog({
           <LoadingSpinner className="my-8" />
         ) : (
           <div className="space-y-4">
-            {booking.quoteTotals.subtotal === 0 && (
+            {(booking.quoteTotals?.subtotal ?? 0) === 0 && (
               <div className="text-sm text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-lg p-3">
                 No price set yet. Close this and use{" "}
                 <strong>Edit &amp; reschedule</strong> to price the job, or type

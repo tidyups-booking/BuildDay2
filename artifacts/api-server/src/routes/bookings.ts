@@ -50,6 +50,7 @@ import {
   tryAttachRequestNote,
 } from "../lib/jobber";
 import { logger } from "../lib/logger";
+import { redactBookingForCleaner } from "../lib/bookingVisibility";
 
 const router: IRouter = Router();
 
@@ -157,11 +158,14 @@ router.get("/bookings", async (req, res): Promise<void> => {
 
   const crews = await loadCrews(bookings.map((b) => b.id));
 
-  res.json(
-    ListBookingsResponse.parse(
-      bookings.map((b) => serializeBooking(company, b, crews.get(b.id) ?? [])),
-    ),
-  );
+  // Pricing and Jobber state never leave the server for a crew login —
+  // hidden UI on the phone is not a boundary; this is.
+  const serialized = bookings.map((b) => {
+    const s = serializeBooking(company, b, crews.get(b.id) ?? []);
+    return caller.role === "cleaner" ? redactBookingForCleaner(s) : s;
+  });
+
+  res.json(ListBookingsResponse.parse(serialized));
 });
 
 router.put(
@@ -357,7 +361,14 @@ router.patch("/bookings/:id", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Booking not found" });
     return;
   }
-  res.json(UpdateBookingResponse.parse(serializeBooking(company, booking)));
+  const serialized = serializeBooking(company, booking);
+  res.json(
+    UpdateBookingResponse.parse(
+      caller.role === "cleaner"
+        ? redactBookingForCleaner(serialized)
+        : serialized,
+    ),
+  );
 });
 
 router.post(

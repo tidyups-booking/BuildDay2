@@ -761,7 +761,7 @@ export const SetBookingCrewResponse = zod.object({
   "quoteApprovedAt": zod.string().nullish(),
   "depositPaidAt": zod.string().nullish(),
   "depositPaidAmount": zod.number().nullish(),
-  "quoteTotals": zod.object({
+  "quoteTotals": zod.union([zod.object({
   "lineItems": zod.array(zod.object({
   "name": zod.string().min(1),
   "quantity": zod.number(),
@@ -777,7 +777,7 @@ export const SetBookingCrewResponse = zod.object({
   "total": zod.number(),
   "deposit": zod.number(),
   "depositEmail": zod.string().nullish()
-}),
+}),zod.null()]),
   "quoteSentTotals": zod.union([zod.object({
   "lineItems": zod.array(zod.object({
   "name": zod.string().min(1),
@@ -982,7 +982,7 @@ export const ListBookingsResponseItem = zod.object({
   "quoteApprovedAt": zod.string().nullish(),
   "depositPaidAt": zod.string().nullish(),
   "depositPaidAmount": zod.number().nullish(),
-  "quoteTotals": zod.object({
+  "quoteTotals": zod.union([zod.object({
   "lineItems": zod.array(zod.object({
   "name": zod.string().min(1),
   "quantity": zod.number(),
@@ -998,7 +998,7 @@ export const ListBookingsResponseItem = zod.object({
   "total": zod.number(),
   "deposit": zod.number(),
   "depositEmail": zod.string().nullish()
-}),
+}),zod.null()]),
   "quoteSentTotals": zod.union([zod.object({
   "lineItems": zod.array(zod.object({
   "name": zod.string().min(1),
@@ -1110,7 +1110,7 @@ export const CreateBookingResponse = zod.object({
   "quoteApprovedAt": zod.string().nullish(),
   "depositPaidAt": zod.string().nullish(),
   "depositPaidAmount": zod.number().nullish(),
-  "quoteTotals": zod.object({
+  "quoteTotals": zod.union([zod.object({
   "lineItems": zod.array(zod.object({
   "name": zod.string().min(1),
   "quantity": zod.number(),
@@ -1126,7 +1126,7 @@ export const CreateBookingResponse = zod.object({
   "total": zod.number(),
   "deposit": zod.number(),
   "depositEmail": zod.string().nullish()
-}),
+}),zod.null()]),
   "quoteSentTotals": zod.union([zod.object({
   "lineItems": zod.array(zod.object({
   "name": zod.string().min(1),
@@ -1386,7 +1386,7 @@ export const SendQuoteResponse = zod.object({
   "quoteApprovedAt": zod.string().nullish(),
   "depositPaidAt": zod.string().nullish(),
   "depositPaidAmount": zod.number().nullish(),
-  "quoteTotals": zod.object({
+  "quoteTotals": zod.union([zod.object({
   "lineItems": zod.array(zod.object({
   "name": zod.string().min(1),
   "quantity": zod.number(),
@@ -1402,7 +1402,7 @@ export const SendQuoteResponse = zod.object({
   "total": zod.number(),
   "deposit": zod.number(),
   "depositEmail": zod.string().nullish()
-}),
+}),zod.null()]),
   "quoteSentTotals": zod.union([zod.object({
   "lineItems": zod.array(zod.object({
   "name": zod.string().min(1),
@@ -1514,7 +1514,7 @@ export const UpdateBookingResponse = zod.object({
   "quoteApprovedAt": zod.string().nullish(),
   "depositPaidAt": zod.string().nullish(),
   "depositPaidAmount": zod.number().nullish(),
-  "quoteTotals": zod.object({
+  "quoteTotals": zod.union([zod.object({
   "lineItems": zod.array(zod.object({
   "name": zod.string().min(1),
   "quantity": zod.number(),
@@ -1530,7 +1530,7 @@ export const UpdateBookingResponse = zod.object({
   "total": zod.number(),
   "deposit": zod.number(),
   "depositEmail": zod.string().nullish()
-}),
+}),zod.null()]),
   "quoteSentTotals": zod.union([zod.object({
   "lineItems": zod.array(zod.object({
   "name": zod.string().min(1),
@@ -1600,7 +1600,7 @@ export const ConfirmBookingTimeResponse = zod.object({
   "quoteApprovedAt": zod.string().nullish(),
   "depositPaidAt": zod.string().nullish(),
   "depositPaidAmount": zod.number().nullish(),
-  "quoteTotals": zod.object({
+  "quoteTotals": zod.union([zod.object({
   "lineItems": zod.array(zod.object({
   "name": zod.string().min(1),
   "quantity": zod.number(),
@@ -1616,7 +1616,7 @@ export const ConfirmBookingTimeResponse = zod.object({
   "total": zod.number(),
   "deposit": zod.number(),
   "depositEmail": zod.string().nullish()
-}),
+}),zod.null()]),
   "quoteSentTotals": zod.union([zod.object({
   "lineItems": zod.array(zod.object({
   "name": zod.string().min(1),
@@ -1686,7 +1686,7 @@ export const SendRescheduleTextResponse = zod.object({
   "quoteApprovedAt": zod.string().nullish(),
   "depositPaidAt": zod.string().nullish(),
   "depositPaidAmount": zod.number().nullish(),
-  "quoteTotals": zod.object({
+  "quoteTotals": zod.union([zod.object({
   "lineItems": zod.array(zod.object({
   "name": zod.string().min(1),
   "quantity": zod.number(),
@@ -1702,7 +1702,7 @@ export const SendRescheduleTextResponse = zod.object({
   "total": zod.number(),
   "deposit": zod.number(),
   "depositEmail": zod.string().nullish()
-}),
+}),zod.null()]),
   "quoteSentTotals": zod.union([zod.object({
   "lineItems": zod.array(zod.object({
   "name": zod.string().min(1),
@@ -1772,7 +1772,7 @@ export const SyncBookingToJobberResponse = zod.object({
   "quoteApprovedAt": zod.string().nullish(),
   "depositPaidAt": zod.string().nullish(),
   "depositPaidAmount": zod.number().nullish(),
-  "quoteTotals": zod.object({
+  "quoteTotals": zod.union([zod.object({
   "lineItems": zod.array(zod.object({
   "name": zod.string().min(1),
   "quantity": zod.number(),
@@ -1788,7 +1788,7 @@ export const SyncBookingToJobberResponse = zod.object({
   "total": zod.number(),
   "deposit": zod.number(),
   "depositEmail": zod.string().nullish()
-}),
+}),zod.null()]),
   "quoteSentTotals": zod.union([zod.object({
   "lineItems": zod.array(zod.object({
   "name": zod.string().min(1),

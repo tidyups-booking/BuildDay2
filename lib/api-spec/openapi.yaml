@@ -1092,8 +1092,12 @@ components:
         depositPaidAt: { type: ["string", "null"] }
         depositPaidAmount: { type: ["number", "null"] }
         # Derived from those inputs and the company's rates, never stored, so a
-        # rate change can't leave a quote disagreeing with itself.
-        quoteTotals: { $ref: "#/components/schemas/QuoteTotals" }
+        # rate change can't leave a quote disagreeing with itself. Null for
+        # cleaner callers: pricing never leaves the server for a crew login.
+        quoteTotals:
+          oneOf:
+            - $ref: "#/components/schemas/QuoteTotals"
+            - type: "null"
         # What the customer was actually promised, frozen when the text went
         # out. Null until a quote has been sent.
         quoteSentTotals:

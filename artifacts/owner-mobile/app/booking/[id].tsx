@@ -1,5 +1,6 @@
 import React from "react";
 import {
+  ActivityIndicator,
   Linking,
   Platform,
   Pressable,
@@ -10,16 +11,22 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { useQueryClient } from "@tanstack/react-query";
 import {
+  getListBookingsQueryKey,
   useGetCompany,
+  useGetCurrentUser,
   useListBookings,
+  useUpdateBooking,
   type Booking,
 } from "@workspace/api-client-react";
 import { GradientRule } from "@/components/Brand";
 import { QuotePills, StatusBadge } from "@/components/Bookings";
 import { ErrorView, LoadingView } from "@/components/StateViews";
 import colors from "@/constants/colors";
+import { canSeeBusinessDetails } from "@/lib/roles";
 import {
   formatDayInTz,
   formatMoney,
@@ -130,6 +137,85 @@ function QuoteSection({ booking }: { booking: Booking }) {
   );
 }
 
+function CrewSection({
+  booking,
+  myTeamMemberId,
+}: {
+  booking: Booking;
+  myTeamMemberId: number | null | undefined;
+}) {
+  const crew = booking.crew ?? [];
+  return (
+    <View style={styles.card}>
+      <Text style={styles.cardTitle}>Crew</Text>
+      {crew.length === 0 ? (
+        <Text style={styles.mutedNote}>No one assigned to this job yet.</Text>
+      ) : (
+        crew.map((m) => (
+          <View key={m.id} style={styles.row}>
+            <View style={styles.rowIcon}>
+              <Feather name="user" size={15} color={c.mutedForeground} />
+            </View>
+            <Text style={styles.rowValue}>
+              {m.name}
+              {myTeamMemberId != null && m.id === myTeamMemberId
+                ? " (you)"
+                : ""}
+            </Text>
+          </View>
+        ))
+      )}
+    </View>
+  );
+}
+
+/** The one action a cleaner takes from the van: this job is done. */
+function MarkCompletedButton({ booking }: { booking: Booking }) {
+  const queryClient = useQueryClient();
+  const update = useUpdateBooking({
+    mutation: {
+      onSuccess: () => {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        queryClient.invalidateQueries({
+          queryKey: getListBookingsQueryKey(),
+        });
+      },
+    },
+  });
+
+  if (booking.status === "completed" || booking.status === "canceled") {
+    return null;
+  }
+
+  return (
+    <View style={{ gap: 6 }}>
+      <Pressable
+        testID="mark-completed-button"
+        disabled={update.isPending}
+        onPress={() =>
+          update.mutate({ id: booking.id, data: { status: "completed" } })
+        }
+        style={({ pressed }) => [
+          styles.completeButton,
+          (pressed || update.isPending) && { opacity: 0.7 },
+        ]}
+      >
+        {update.isPending ? (
+          <ActivityIndicator color={c.background} size="small" />
+        ) : (
+          <Feather name="check-circle" size={18} color={c.background} />
+        )}
+        <Text style={styles.completeButtonText}>Mark job completed</Text>
+      </Pressable>
+      {update.isError ? (
+        <Text style={styles.completeError}>
+          Couldn't update the job. Check your connection and try again.
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
 export default function BookingDetailScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -139,6 +225,10 @@ export default function BookingDetailScreen() {
   // back to UTC/device time.
   const company = useGetCompany();
   const bookings = useListBookings();
+  // A cleaner gets the job essentials — when, where, who — never the
+  // business's pricing or Jobber plumbing.
+  const me = useGetCurrentUser();
+  const isCleaner = !canSeeBusinessDetails(me.data?.role);
 
   const rawTimezone = company.data?.timezone;
   // Strict: an unusable timezone is an error state, never a device fallback.
@@ -148,7 +238,7 @@ export default function BookingDetailScreen() {
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
-  if (bookings.isLoading || company.isLoading) {
+  if (bookings.isLoading || company.isLoading || me.isLoading) {
     return (
       <View style={[styles.screen, { paddingTop: topPad }]}>
         <LoadingView />
@@ -156,8 +246,22 @@ export default function BookingDetailScreen() {
     );
   }
 
-  if (bookings.isError || company.isError || !timezone || !booking) {
-    const failedToLoad = bookings.isError || company.isError || !timezone;
+  // The role gates what's visible — never render with an unknown role, or a
+  // cleaner could briefly get the owner view (pricing, Jobber state).
+  if (
+    bookings.isError ||
+    company.isError ||
+    me.isError ||
+    !me.data ||
+    !timezone ||
+    !booking
+  ) {
+    const failedToLoad =
+      bookings.isError ||
+      company.isError ||
+      me.isError ||
+      !me.data ||
+      !timezone;
     return (
       <View style={[styles.screen, { paddingTop: topPad }]}>
         <ErrorView
@@ -165,6 +269,7 @@ export default function BookingDetailScreen() {
           onRetry={() => {
             bookings.refetch();
             company.refetch();
+            me.refetch();
           }}
         />
       </View>
@@ -245,24 +350,35 @@ export default function BookingDetailScreen() {
         ) : null}
       </View>
 
-      <QuoteSection booking={booking} />
+      <CrewSection
+        booking={booking}
+        myTeamMemberId={isCleaner ? me.data?.teamMemberId : null}
+      />
 
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Jobber</Text>
-        {booking.jobberSyncError ? (
-          <View style={styles.syncErrorWrap}>
-            <Feather name="alert-circle" size={15} color={c.destructive} />
-            <Text style={styles.syncErrorText}>{booking.jobberSyncError}</Text>
-          </View>
-        ) : booking.jobberSynced ? (
-          <View style={styles.syncOkWrap}>
-            <Feather name="check-circle" size={15} color={c.success} />
-            <Text style={styles.syncOkText}>Synced to Jobber</Text>
-          </View>
-        ) : (
-          <Text style={styles.mutedNote}>Not synced to Jobber.</Text>
-        )}
-      </View>
+      {isCleaner ? <MarkCompletedButton booking={booking} /> : null}
+
+      {isCleaner ? null : <QuoteSection booking={booking} />}
+
+      {isCleaner ? null : (
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Jobber</Text>
+          {booking.jobberSyncError ? (
+            <View style={styles.syncErrorWrap}>
+              <Feather name="alert-circle" size={15} color={c.destructive} />
+              <Text style={styles.syncErrorText}>
+                {booking.jobberSyncError}
+              </Text>
+            </View>
+          ) : booking.jobberSynced ? (
+            <View style={styles.syncOkWrap}>
+              <Feather name="check-circle" size={15} color={c.success} />
+              <Text style={styles.syncOkText}>Synced to Jobber</Text>
+            </View>
+          ) : (
+            <Text style={styles.mutedNote}>Not synced to Jobber.</Text>
+          )}
+        </View>
+      )}
     </ScrollView>
   );
 }
@@ -396,5 +512,25 @@ const styles = StyleSheet.create({
     fontFamily: "PlusJakartaSans_500Medium",
     fontSize: 13,
     color: c.success,
+  },
+  completeButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: c.brandPink,
+    borderRadius: colors.radius,
+    paddingVertical: 14,
+  },
+  completeButtonText: {
+    fontFamily: "PlusJakartaSans_700Bold",
+    fontSize: 15,
+    color: c.background,
+  },
+  completeError: {
+    fontFamily: "PlusJakartaSans_500Medium",
+    fontSize: 12,
+    color: c.destructive,
+    textAlign: "center",
   },
 });

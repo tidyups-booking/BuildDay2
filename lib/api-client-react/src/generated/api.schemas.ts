@@ -437,7 +437,7 @@ export interface Booking {
   depositPaidAt?: string | null;
   /** @nullable */
   depositPaidAmount?: number | null;
-  quoteTotals: QuoteTotals;
+  quoteTotals: QuoteTotals | null;
   quoteSentTotals?: QuoteTotals | null;
   needsTimeReview: boolean;
   /** @nullable */

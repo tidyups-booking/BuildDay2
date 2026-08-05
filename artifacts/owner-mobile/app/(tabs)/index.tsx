@@ -13,6 +13,7 @@ import { useClerk } from "@clerk/expo";
 import { Feather } from "@expo/vector-icons";
 import {
   useGetCompany,
+  useGetCurrentUser,
   useListBookings,
   type Booking,
 } from "@workspace/api-client-react";
@@ -25,6 +26,7 @@ import {
   OutageBanner,
 } from "@/components/StateViews";
 import colors from "@/constants/colors";
+import { canSeeBusinessDetails } from "@/lib/roles";
 import {
   dayKeyInTz,
   formatDayFromKey,
@@ -42,6 +44,10 @@ export default function JobsScreen() {
   // rendered in. Never fall back to UTC/device time — wait for it instead.
   const company = useGetCompany();
   const bookings = useListBookings();
+  // Cleaners see their schedule, not the business's money — pricing stays
+  // off their cards entirely.
+  const me = useGetCurrentUser();
+  const showBusinessDetails = canSeeBusinessDetails(me.data?.role);
 
   const rawTimezone = company.data?.timezone;
   // Strict: an unusable timezone is an error state, never a device fallback.
@@ -78,7 +84,7 @@ export default function JobsScreen() {
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
-  if (bookings.isLoading || company.isLoading) {
+  if (bookings.isLoading || company.isLoading || me.isLoading) {
     return (
       <View style={[styles.screen, { paddingTop: topPad }]}>
         <LoadingView />
@@ -86,7 +92,15 @@ export default function JobsScreen() {
     );
   }
 
-  if (bookings.isError || company.isError || !timezone) {
+  // The role gates what's visible — never render with an unknown role, or a
+  // cleaner could briefly get the owner view.
+  if (
+    bookings.isError ||
+    company.isError ||
+    me.isError ||
+    !me.data ||
+    !timezone
+  ) {
     return (
       <View style={[styles.screen, { paddingTop: topPad }]}>
         <ErrorView
@@ -94,6 +108,7 @@ export default function JobsScreen() {
           onRetry={() => {
             bookings.refetch();
             company.refetch();
+            me.refetch();
           }}
         />
       </View>
@@ -152,7 +167,12 @@ export default function JobsScreen() {
         />
       ) : (
         today.map((b) => (
-          <BookingCard key={b.id} booking={b} timezone={timezone} />
+          <BookingCard
+            key={b.id}
+            booking={b}
+            timezone={timezone}
+            showPricing={showBusinessDetails}
+          />
         ))
       )}
 
@@ -169,7 +189,12 @@ export default function JobsScreen() {
         />
       ) : (
         tomorrow.map((b) => (
-          <BookingCard key={b.id} booking={b} timezone={timezone} />
+          <BookingCard
+            key={b.id}
+            booking={b}
+            timezone={timezone}
+            showPricing={showBusinessDetails}
+          />
         ))
       )}
     </ScrollView>

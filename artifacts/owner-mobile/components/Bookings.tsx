@@ -104,12 +104,18 @@ export function bookingTotal(booking: Booking): number | null {
 export function BookingCard({
   booking,
   timezone,
+  showPricing = true,
 }: {
   booking: Booking;
   timezone: string;
+  /** Cleaners see their schedule, never the money. */
+  showPricing?: boolean;
 }) {
   const router = useRouter();
-  const total = bookingTotal(booking);
+  const total = showPricing ? bookingTotal(booking) : null;
+  // QuotePills carries quote/deposit/Jobber state — business plumbing a
+  // cleaner has no need (or right) to see.
+  const showPills = showPricing;
   return (
     <Pressable
       testID={`booking-card-${booking.id}`}
@@ -145,7 +151,7 @@ export function BookingCard({
             </Text>
           </View>
         ) : null}
-        <QuotePills booking={booking} />
+        {showPills ? <QuotePills booking={booking} /> : null}
       </View>
       <Feather name="chevron-right" size={18} color={c.mutedForeground} />
     </Pressable>
