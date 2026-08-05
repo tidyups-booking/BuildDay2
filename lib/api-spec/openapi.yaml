@@ -505,7 +505,7 @@ components:
         totalSteps: { type: integer }
     Company:
       type: object
-      required: [id, name, greeting, collectFields, customQuestions, jobberConnected, quoConnected, watchedNumbers, isLive, setupStatus, createdAt]
+      required: [id, name, greeting, collectFields, customQuestions, jobberConnected, jobberNeedsReauth, quoConnected, watchedNumbers, isLive, setupStatus, createdAt]
       properties:
         id: { type: integer }
         name: { type: string }
@@ -521,6 +521,7 @@ components:
         phoneNumber: { type: ["string", "null"] }
         jobberConnected: { type: boolean }
         jobberAccountName: { type: ["string", "null"] }
+        jobberNeedsReauth: { type: boolean }
         quoConnected: { type: boolean }
         quoWorkspaceName: { type: ["string", "null"] }
         quoKeyLast4: { type: ["string", "null"] }

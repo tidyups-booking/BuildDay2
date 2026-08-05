@@ -106,6 +106,12 @@ router.post("/bookings/:id/sync-jobber", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Booking not found" });
     return;
   }
+  if (company.jobberNeedsReauth) {
+    res.status(409).json({
+      error: "Jobber authorization has expired — reconnect Jobber to keep syncing.",
+    });
+    return;
+  }
   if (!company.jobberConnected || !company.jobberRefreshToken) {
     res.status(400).json({ error: "Connect Jobber before syncing bookings" });
     return;

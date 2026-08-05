@@ -22,6 +22,7 @@ export interface Company {
   jobberConnected: boolean;
   /** @nullable */
   jobberAccountName?: string | null;
+  jobberNeedsReauth: boolean;
   quoConnected: boolean;
   /** @nullable */
   quoWorkspaceName?: string | null;

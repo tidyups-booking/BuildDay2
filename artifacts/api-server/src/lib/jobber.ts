@@ -50,6 +50,17 @@ type TokenResponse = {
   expires_in?: number;
 };
 
+export class JobberTokenError extends Error {
+  constructor(
+    message: string,
+    /** True when the grant itself was rejected (revoked/expired), not a transient failure. */
+    public readonly grantRejected: boolean,
+  ) {
+    super(message);
+    this.name = "JobberTokenError";
+  }
+}
+
 async function requestToken(
   params: Record<string, string>,
 ): Promise<TokenResponse> {
@@ -60,7 +71,12 @@ async function requestToken(
   });
   const text = await res.text();
   if (!res.ok) {
-    throw new Error(`Jobber token endpoint returned ${res.status}: ${text}`);
+    // 400/401 means the grant is dead (revoked, expired, or already rotated),
+    // not a transient outage — the only fix is re-authorizing.
+    throw new JobberTokenError(
+      `Jobber token endpoint returned ${res.status}: ${text}`,
+      res.status === 400 || res.status === 401,
+    );
   }
   return JSON.parse(text) as TokenResponse;
 }
@@ -114,7 +130,27 @@ export async function getValidAccessToken(company: Company): Promise<string> {
   const stillValid = expiresAt - Date.now() > 60_000;
   if (stillValid) return accessToken;
 
-  const tokens = await refreshTokens(refreshToken);
+  let tokens: TokenResponse;
+  try {
+    tokens = await refreshTokens(refreshToken);
+  } catch (err) {
+    if (err instanceof JobberTokenError && err.grantRejected) {
+      // The tokens are known-dead. Flag the company so the UI switches from
+      // "Sync" to "Reconnect Jobber" instead of failing on every attempt.
+      await db
+        .update(companiesTable)
+        .set({ jobberNeedsReauth: true })
+        .where(eq(companiesTable.id, company.id));
+      logger.warn(
+        { companyId: company.id },
+        "Jobber refresh token rejected; company flagged for reconnect",
+      );
+      throw new Error(
+        "Jobber authorization has expired — reconnect Jobber to keep syncing.",
+      );
+    }
+    throw err;
+  }
   await db
     .update(companiesTable)
     .set({

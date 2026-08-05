@@ -10,6 +10,7 @@ import {
 } from "./middlewares/clerkProxyMiddleware";
 import router from "./routes";
 import quoWebhookRouter, { QUO_WEBHOOK_PATH } from "./routes/quoWebhook";
+import jobberWebhookRouter, { JOBBER_WEBHOOK_PATH } from "./routes/jobberWebhook";
 import { logger } from "./lib/logger";
 
 const app: Express = express();
@@ -44,6 +45,10 @@ app.use(cors({ credentials: true, origin: true }));
 // body-parser skips once an earlier parser has consumed the request.
 app.use(QUO_WEBHOOK_PATH, express.raw({ type: "application/json" }));
 app.use("/api", quoWebhookRouter);
+
+// Jobber also signs over the exact raw bytes (HMAC with the client secret).
+app.use(JOBBER_WEBHOOK_PATH, express.raw({ type: "application/json" }));
+app.use("/api", jobberWebhookRouter);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

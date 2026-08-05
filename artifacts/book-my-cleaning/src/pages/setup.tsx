@@ -66,8 +66,10 @@ export function SetupPage() {
       title: "Connect Jobber",
       description: "Link your Jobber account to sync your schedule.",
       icon: Zap,
-      isDone: company.setupStatus.jobberConnected,
-      isActive: company.setupStatus.accountCreated && !company.setupStatus.jobberConnected,
+      isDone: company.setupStatus.jobberConnected && !company.jobberNeedsReauth,
+      isActive:
+        company.setupStatus.accountCreated &&
+        (!company.setupStatus.jobberConnected || company.jobberNeedsReauth),
     },
     {
       id: "phone",
@@ -164,9 +166,10 @@ export function SetupPage() {
   );
 }
 
-function JobberStep({ company: _company }: { company: any }) {
+function JobberStep({ company }: { company: any }) {
   const connect = useConnectJobber();
   const { toast } = useToast();
+  const needsReauth = Boolean(company?.jobberNeedsReauth);
 
   const handleConnect = () => {
     connect.mutate(undefined, {
@@ -186,12 +189,23 @@ function JobberStep({ company: _company }: { company: any }) {
 
   return (
     <div className="space-y-4">
-      <div className="bg-brand-purple/10 border border-brand-purple/20 rounded-xl p-4 flex gap-3 text-sm text-muted-foreground">
-        <Zap className="w-5 h-5 text-brand-purple shrink-0" />
-        <p>You'll be sent to Jobber to sign in and approve access. Once connected, bookings can be pushed into Jobber as real clients and work requests.</p>
-      </div>
+      {needsReauth ? (
+        <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 flex gap-3 text-sm text-muted-foreground">
+          <Zap className="w-5 h-5 text-amber-400 shrink-0" />
+          <p>Your Jobber connection has expired or was disconnected from Jobber's side. Reconnect to keep syncing bookings into Jobber.</p>
+        </div>
+      ) : (
+        <div className="bg-brand-purple/10 border border-brand-purple/20 rounded-xl p-4 flex gap-3 text-sm text-muted-foreground">
+          <Zap className="w-5 h-5 text-brand-purple shrink-0" />
+          <p>You'll be sent to Jobber to sign in and approve access. Once connected, bookings can be pushed into Jobber as real clients and work requests.</p>
+        </div>
+      )}
       <Button onClick={handleConnect} disabled={connect.isPending} className="w-full sm:w-auto">
-        {connect.isPending ? "Redirecting to Jobber..." : "Connect Jobber Account"}
+        {connect.isPending
+          ? "Redirecting to Jobber..."
+          : needsReauth
+            ? "Reconnect Jobber"
+            : "Connect Jobber Account"}
       </Button>
     </div>
   );

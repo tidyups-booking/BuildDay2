@@ -1,6 +1,7 @@
 import { AppLayout } from "@/components/layout/AppLayout";
 import { PageHeader, LoadingSpinner } from "@/components/ui/shared";
-import { useListBookings, useUpdateBooking, useSyncBookingToJobber, getListBookingsQueryKey, Booking } from "@workspace/api-client-react";
+import { useListBookings, useUpdateBooking, useSyncBookingToJobber, useGetCompany, getListBookingsQueryKey, Booking } from "@workspace/api-client-react";
+import { Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
@@ -11,6 +12,8 @@ import { useToast } from "@/hooks/use-toast";
 
 export function BookingsPage() {
   const { data: bookings, isLoading } = useListBookings();
+  const { data: company } = useGetCompany();
+  const jobberNeedsReauth = Boolean(company?.jobberNeedsReauth);
   const updateBooking = useUpdateBooking();
   const syncJobber = useSyncBookingToJobber();
   const queryClient = useQueryClient();
@@ -107,7 +110,18 @@ export function BookingsPage() {
                 </div>
               </div>
 
-              {!booking.jobberSynced ? (
+              {!booking.jobberSynced && jobberNeedsReauth ? (
+                <div className="mt-5 pt-4 border-t border-border">
+                  <Link href="/setup">
+                    <Button
+                      variant="outline"
+                      className="w-full gap-2 text-amber-400 border-amber-800 hover:bg-amber-950 hover:text-amber-300"
+                    >
+                      <RefreshCw className="w-4 h-4" /> Reconnect Jobber to sync
+                    </Button>
+                  </Link>
+                </div>
+              ) : !booking.jobberSynced ? (
                 <div className="mt-5 pt-4 border-t border-border">
                   <Button 
                     variant="outline" 

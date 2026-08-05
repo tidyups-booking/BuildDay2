@@ -40,6 +40,10 @@ export const companiesTable = pgTable("companies", {
     withTimezone: true,
   }),
   jobberOauth: jsonb("jobber_oauth").$type<JobberOauthState | null>(),
+  // Set when we learn the stored tokens are dead (refresh rejected, or Jobber
+  // told us the app was disconnected) so the UI can prompt a reconnect instead
+  // of offering a sync that is guaranteed to fail.
+  jobberNeedsReauth: boolean("jobber_needs_reauth").notNull().default(false),
   // Quo integration — company brings their own Quo workspace key
   quoConnected: boolean("quo_connected").notNull().default(false),
   quoWorkspaceName: text("quo_workspace_name"),

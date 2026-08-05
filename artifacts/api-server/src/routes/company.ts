@@ -87,6 +87,7 @@ router.get("/company/jobber/callback", async (req, res): Promise<void> => {
         jobberRefreshToken: encryptJobberToken(tokens.refresh_token),
         jobberTokenExpiresAt: tokenExpiry(tokens.expires_in),
         jobberOauth: null,
+        jobberNeedsReauth: false,
       })
       .where(eq(companiesTable.id, company.id));
     await db.insert(activityTable).values({
@@ -242,6 +243,7 @@ router.post("/company/jobber/disconnect", async (req, res): Promise<void> => {
       jobberRefreshToken: null,
       jobberTokenExpiresAt: null,
       jobberOauth: null,
+      jobberNeedsReauth: false,
     })
     .where(eq(companiesTable.id, company.id))
     .returning();

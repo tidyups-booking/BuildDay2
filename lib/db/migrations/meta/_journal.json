@@ -15,6 +15,13 @@
       "when": 1785922100000,
       "tag": "0001_jobber_oauth_upgrades",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1785922200000,
+      "tag": "0002_jobber_needs_reauth",
+      "breakpoints": true
     }
   ]
 }

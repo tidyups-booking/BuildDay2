@@ -97,6 +97,7 @@ export async function serializeCompany(company: Company) {
     phoneNumber: watchedNumbers[0]?.phoneNumber || company.phoneNumber,
     jobberConnected: company.jobberConnected,
     jobberAccountName: company.jobberAccountName,
+    jobberNeedsReauth: company.jobberNeedsReauth,
     quoConnected: company.quoConnected,
     quoWorkspaceName: company.quoWorkspaceName,
     quoKeyLast4: company.quoKeyLast4,
