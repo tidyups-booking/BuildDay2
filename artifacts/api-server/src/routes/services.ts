@@ -17,22 +17,24 @@ import { getCompanyForUser } from "../lib/company";
 const router: IRouter = Router();
 
 router.use(requireAuth);
-// Dispatchers quote from the service list, so they may read it.
-router.use(requireRole("owner", "dispatcher"));
 
-router.get("/services", async (req, res): Promise<void> => {
-  const company = await getCompanyForUser(req.userId!);
-  if (!company) {
-    res.json(ListServicesResponse.parse([]));
-    return;
-  }
-  const services = await db
-    .select()
-    .from(servicesTable)
-    .where(eq(servicesTable.companyId, company.id))
-    .orderBy(servicesTable.id);
-  res.json(ListServicesResponse.parse(services));
-});
+router.get(
+  "/services",
+  requireRole("owner", "dispatcher"),
+  async (req, res): Promise<void> => {
+    const company = await getCompanyForUser(req.userId!);
+    if (!company) {
+      res.json(ListServicesResponse.parse([]));
+      return;
+    }
+    const services = await db
+      .select()
+      .from(servicesTable)
+      .where(eq(servicesTable.companyId, company.id))
+      .orderBy(servicesTable.id);
+    res.json(ListServicesResponse.parse(services));
+  },
+);
 
 router.post(
   "/services",

@@ -25,7 +25,13 @@ export async function getCaller(req: Request): Promise<Caller> {
  * middleware is reachable by any signed-in member of the company, which is
  * only ever correct for things the whole crew may see.
  *
- * Must be mounted after `requireAuth`.
+ * Must be mounted after `requireAuth`, and always PER ROUTE — never via
+ * `router.use()`. The API's routers are all mounted at `/`, so a request
+ * flows through every router until a route matches; a router-level guard
+ * therefore runs for OTHER routers' routes too and blocks roles they allow.
+ * (This exact bug once made an owner-only router 403 dispatchers and
+ * cleaners on every route mounted after it — authorization.test.ts pins the
+ * correct behavior.)
  */
 export function requireRole(...allowed: CallerRole[]): RequestHandler {
   return (req, res, next) => {
