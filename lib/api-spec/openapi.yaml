@@ -398,6 +398,48 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Booking"
+  # Public: no authentication. The token in the URL is the authorisation — the
+  # customer is reading a text on their phone, not signing in.
+  /quote/{token}:
+    get:
+      operationId: getPublicQuote
+      tags: [publicQuote]
+      summary: The customer's own view of their quote
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The quote
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicQuote"
+        "404":
+          description: No such quote
+  /quote/{token}/approve:
+    post:
+      operationId: approvePublicQuote
+      tags: [publicQuote]
+      summary: Customer accepts the quote
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Approved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicQuote"
+        "404":
+          description: No such quote
   /bookings/{id}/quote-preview:
     get:
       operationId: getQuotePreview
@@ -778,6 +820,9 @@ components:
         quoteNotes: { type: ["string", "null"] }
         quoteMessage: { type: ["string", "null"] }
         quoteSentAt: { type: ["string", "null"] }
+        # Where the customer views their quote. Null until a quote is sent.
+        quoteUrl: { type: ["string", "null"] }
+        quoteApprovedAt: { type: ["string", "null"] }
         # Derived from those inputs and the company's rates, never stored, so a
         # rate change can't leave a quote disagreeing with itself.
         quoteTotals: { $ref: "#/components/schemas/QuoteTotals" }
@@ -860,6 +905,27 @@ components:
         total: { type: number }
         deposit: { type: number }
         depositEmail: { type: ["string", "null"] }
+    # What a customer sees at their quote link. Deliberately narrow: this is
+    # served without authentication, so it carries only what belongs on the
+    # customer's own estimate and nothing else about the company or its jobs.
+    PublicQuote:
+      type: object
+      required: [companyName, customerName, service, scheduledForLabel, totals, approved]
+      properties:
+        companyName: { type: string }
+        customerName: { type: string }
+        customerAddress: { type: ["string", "null"] }
+        service: { type: string }
+        # The company's own description of this service, if they've written one.
+        serviceDescription: { type: ["string", "null"] }
+        # Preformatted in the company's timezone — the customer must see the
+        # same hour the dispatcher does, not their own device's timezone.
+        scheduledForLabel: { type: string }
+        totals: { $ref: "#/components/schemas/QuoteTotals" }
+        notes: { type: ["string", "null"] }
+        sentAtLabel: { type: ["string", "null"] }
+        approved: { type: boolean }
+        approvedAtLabel: { type: ["string", "null"] }
     QuotePreview:
       type: object
       required: [message, canSend]
@@ -896,6 +962,6 @@ components:
       required: [id, type, message, occurredAt]
       properties:
         id: { type: integer }
-        type: { type: string, enum: [call_answered, booking_created, jobber_synced, jobber_sync_failed, quote_sent, test_call, team_invited] }
+        type: { type: string, enum: [call_answered, booking_created, jobber_synced, jobber_sync_failed, quote_sent, quote_approved, test_call, team_invited] }
         message: { type: string }
         occurredAt: { type: string }

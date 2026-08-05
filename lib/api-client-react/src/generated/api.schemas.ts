@@ -355,6 +355,10 @@ export interface Booking {
   quoteMessage?: string | null;
   /** @nullable */
   quoteSentAt?: string | null;
+  /** @nullable */
+  quoteUrl?: string | null;
+  /** @nullable */
+  quoteApprovedAt?: string | null;
   quoteTotals: QuoteTotals;
   quoteSentTotals?: QuoteTotals | null;
   jobberSynced: boolean;
@@ -513,6 +517,25 @@ export interface BookingCreate {
   quoteNotes?: string | null;
 }
 
+export interface PublicQuote {
+  companyName: string;
+  customerName: string;
+  /** @nullable */
+  customerAddress?: string | null;
+  service: string;
+  /** @nullable */
+  serviceDescription?: string | null;
+  scheduledForLabel: string;
+  totals: QuoteTotals;
+  /** @nullable */
+  notes?: string | null;
+  /** @nullable */
+  sentAtLabel?: string | null;
+  approved: boolean;
+  /** @nullable */
+  approvedAtLabel?: string | null;
+}
+
 export interface QuotePreview {
   message: string;
   canSend: boolean;
@@ -554,6 +577,7 @@ export const ActivityItemType = {
   jobber_synced: 'jobber_synced',
   jobber_sync_failed: 'jobber_sync_failed',
   quote_sent: 'quote_sent',
+  quote_approved: 'quote_approved',
   test_call: 'test_call',
   team_invited: 'team_invited',
 } as const;

@@ -26,6 +26,7 @@ import { requireAuth } from "../middlewares/requireAuth";
 import { getCompanyForUser, companyQuoKey } from "../lib/company";
 import { listPhoneNumbers, sendMessage, toE164 } from "../lib/quo";
 import { buildQuoteMessage, computeQuoteTotals } from "../lib/quotes";
+import { ensureQuoteToken, quoteUrl } from "./publicQuote";
 import type { Company } from "@workspace/db";
 import {
   getValidAccessToken,
@@ -53,6 +54,10 @@ function serializeBooking(company: Company, b: Booking) {
     quoteTotals: computeQuoteTotals(company, b),
     // The frozen copy of whatever was actually texted, if anything was.
     quoteSentTotals: b.quoteSentTotals ?? null,
+    quoteApprovedAt: b.quoteApprovedAt ? b.quoteApprovedAt.toISOString() : null,
+    // Null until the quote has been previewed or sent, which is when the
+    // customer's link is minted.
+    quoteUrl: b.quoteToken ? quoteUrl(b.quoteToken) : null,
   };
 }
 
@@ -284,12 +289,15 @@ router.get("/bookings/:id/quote-preview", async (req, res): Promise<void> => {
 
   const sender = await resolveQuoteSender(company, booking);
   const reachable = toE164(booking.customerPhone) !== null;
+  // Minted here rather than at send time so the dispatcher sees the real link
+  // in the draft, and so the same link is reused if they send twice.
+  const token = await ensureQuoteToken(booking);
 
   res.json(
     GetQuotePreviewResponse.parse({
       // Always regenerated from the current price and time so edits show up,
       // even if an earlier version was already sent.
-      message: buildQuoteMessage(company, booking),
+      message: buildQuoteMessage(company, booking, quoteUrl(token)),
       canSend: "from" in sender && reachable,
       blockedReason:
         "blockedReason" in sender
@@ -339,6 +347,17 @@ router.post("/bookings/:id/send-quote", async (req, res): Promise<void> => {
     res.status(409).json({ error: sender.blockedReason });
     return;
   }
+  // Normally already minted by the preview, but a send that skipped the
+  // preview must not text a link that 404s.
+  const token = await ensureQuoteToken(booking);
+  const link = quoteUrl(token);
+  // The dispatcher can edit the draft freely, and an edit that trims the
+  // bottom off the message would otherwise send a quote the customer has no
+  // way to read or approve. Put the link back rather than silently shipping a
+  // dead end.
+  const content = parsed.data.message.includes(link)
+    ? parsed.data.message
+    : `${parsed.data.message.trimEnd()}\n\nView your estimate here:\n${link}`;
   const apiKey = companyQuoKey(company);
   if (!apiKey) {
     res.status(409).json({ error: "Connect your Quo account to text quotes." });
@@ -349,7 +368,7 @@ router.post("/bookings/:id/send-quote", async (req, res): Promise<void> => {
     await sendMessage(apiKey, {
       from: sender.from,
       to,
-      content: parsed.data.message,
+      content,
     });
   } catch (err) {
     logger.error({ err }, "Quote text failed to send");
@@ -370,7 +389,9 @@ router.post("/bookings/:id/send-quote", async (req, res): Promise<void> => {
     [updated] = await db
       .update(bookingsTable)
       .set({
-        quoteMessage: parsed.data.message,
+        // Store what actually went out, link repair included — the dispatcher
+        // reads this back to see what the customer was told.
+        quoteMessage: content,
         quoteSentAt: new Date(),
         // Freeze the price at the moment of the promise. Every other total is
         // recomputed from current settings, which is right for a draft but

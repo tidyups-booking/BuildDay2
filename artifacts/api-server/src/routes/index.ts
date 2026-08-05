@@ -7,12 +7,16 @@ import teamRouter from "./team";
 import callsRouter from "./calls";
 import bookingsRouter from "./bookings";
 import dashboardRouter from "./dashboard";
+import publicQuoteRouter from "./publicQuote";
 // Note: the Quo webhook receiver is mounted in app.ts ahead of the JSON body
 // parser so it can verify signatures against the raw request bytes.
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
+// Unauthenticated by design — the customer's quote link. Mounted ahead of the
+// dashboard routers purely for readability; each router applies its own auth.
+router.use(publicQuoteRouter);
 router.use(companyRouter);
 router.use(phoneRouter);
 router.use(servicesRouter);

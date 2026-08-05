@@ -41,6 +41,10 @@ export interface Booking {
   quoteMessage?: string | null;
   /** @nullable */
   quoteSentAt?: string | null;
+  /** @nullable */
+  quoteUrl?: string | null;
+  /** @nullable */
+  quoteApprovedAt?: string | null;
   quoteTotals: QuoteTotals;
   quoteSentTotals?: QuoteTotals | null;
   jobberSynced: boolean;

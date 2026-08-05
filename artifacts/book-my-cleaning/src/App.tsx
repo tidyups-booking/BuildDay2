@@ -17,6 +17,7 @@ import { CallsPage } from "@/pages/calls";
 import { BookingsPage } from "@/pages/bookings";
 import { TeamPage } from "@/pages/team";
 import { SettingsPage } from "@/pages/settings";
+import QuotePage from "@/pages/quote";
 
 const clerkPubKey = publishableKeyFromHost(
   window.location.hostname,
@@ -177,6 +178,9 @@ function ClerkProviderWithRoutes() {
             <Route path="/" component={HomeRedirect} />
             <Route path="/sign-in/*?" component={SignInPage} />
             <Route path="/sign-up/*?" component={SignUpPage} />
+            {/* Public: the customer following the link in their quote text has
+                no account and must never be bounced to a sign-in page. */}
+            <Route path="/quote/:token" component={QuotePage} />
             
             <Route path="/onboarding" component={() => (
               <Show when="signed-in" fallback={<Redirect to="/sign-in" />}>

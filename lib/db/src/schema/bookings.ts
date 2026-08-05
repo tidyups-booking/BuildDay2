@@ -64,6 +64,14 @@ export const bookingsTable = pgTable("bookings", {
   // can see what was promised rather than guessing from the amount alone.
   quoteMessage: text("quote_message"),
   quoteSentAt: timestamp("quote_sent_at", { withTimezone: true }),
+  // The customer's key to their own quote page. Unguessable rather than
+  // sequential: the page is necessarily public — someone reading a text on
+  // their phone is not going to sign in — so the token IS the authorisation.
+  // Unique so a collision fails loudly instead of handing one customer another
+  // customer's quote.
+  quoteToken: text("quote_token").unique(),
+  // Set when the customer taps Approve on that page.
+  quoteApprovedAt: timestamp("quote_approved_at", { withTimezone: true }),
   jobberSynced: boolean("jobber_synced").notNull().default(false),
   jobberJobId: text("jobber_job_id"),
   jobberClientId: text("jobber_client_id"),

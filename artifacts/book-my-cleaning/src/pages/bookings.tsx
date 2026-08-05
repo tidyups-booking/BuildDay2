@@ -50,6 +50,7 @@ import {
   MessageSquareText,
   Pencil,
   DollarSign,
+  ThumbsUp,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -231,11 +232,17 @@ export function BookingsPage() {
                   <h3 className="font-bold text-lg text-foreground">{booking.customerName}</h3>
                   <div className="flex items-center gap-2 mt-1 flex-wrap">
                     <BookingStatusBadge status={booking.status} />
-                    {booking.quoteSentAt && (
+                    {booking.quoteApprovedAt ? (
+                      // Approval supersedes "quote sent" — showing both just
+                      // adds noise to a row the dispatcher scans at a glance.
+                      <span className="flex items-center gap-1 text-xs font-medium text-green-400 bg-green-500/10 px-2 py-0.5 rounded-full border border-green-500/20">
+                        <ThumbsUp className="w-3 h-3" /> Quote approved
+                      </span>
+                    ) : booking.quoteSentAt ? (
                       <span className="flex items-center gap-1 text-xs font-medium text-brand-blue bg-brand-blue/10 px-2 py-0.5 rounded-full border border-brand-blue/20">
                         <MessageSquareText className="w-3 h-3" /> Quote sent
                       </span>
-                    )}
+                    ) : null}
                     {booking.jobberSynced && (
                       <span className="flex items-center gap-1 text-xs font-medium text-green-400 bg-green-500/10 px-2 py-0.5 rounded-full border border-green-500/20">
                         <CheckCircle2 className="w-3 h-3" /> Jobber
