@@ -117,7 +117,7 @@ export function MarketingPage() {
 
           <div className="relative">
             {/* Decorative hero UI mockup */}
-            <div className="relative rounded-3xl border border-white/10 bg-[#120e17] shadow-2xl p-2 z-10 transform lg:rotate-[-2deg] transition-transform hover:rotate-0 duration-500 overflow-hidden">
+            <div className="relative rounded-3xl border border-white/10 bg-[#120e17] shadow-2xl p-2 z-10 overflow-hidden">
               <div className="absolute inset-0 bg-gradient-to-tr from-brand-pink/5 to-brand-purple/5 opacity-50" />
               <div className="bg-[#0d0a0f] rounded-2xl border border-white/5 overflow-hidden relative">
                 {/* Floating Rating Badge */}
