@@ -33,5 +33,9 @@ export interface Booking {
   jobberClientId?: string | null;
   /** @nullable */
   jobberWebUri?: string | null;
+  /** @nullable */
+  jobberSyncError?: string | null;
+  /** @nullable */
+  jobberSyncErrorAt?: string | null;
   createdAt: string;
 }

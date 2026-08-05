@@ -46,6 +46,7 @@ function serializeBooking(b: Booking) {
     // Nullable: only set once a quote has actually gone out. Forgetting this
     // breaks every booking response, not just the one that was quoted.
     quoteSentAt: b.quoteSentAt ? b.quoteSentAt.toISOString() : null,
+    jobberSyncErrorAt: b.jobberSyncErrorAt ? b.jobberSyncErrorAt.toISOString() : null,
     createdAt: b.createdAt.toISOString(),
   };
 }
@@ -452,6 +453,8 @@ router.post("/bookings/:id/sync-jobber", async (req, res): Promise<void> => {
         jobberJobId: request.id,
         jobberClientId: client.id,
         jobberWebUri: request.jobberWebUri,
+        jobberSyncError: null,
+        jobberSyncErrorAt: null,
       })
       .where(eq(bookingsTable.id, existing.id))
       .returning();
@@ -465,6 +468,20 @@ router.post("/bookings/:id/sync-jobber", async (req, res): Promise<void> => {
     res.json(SyncBookingToJobberResponse.parse(serializeBooking(booking!)));
   } catch (err) {
     logger.error({ err }, "Jobber sync failed");
+    const errorMessage = err instanceof Error ? err.message : "Unknown error";
+    try {
+      await db
+        .update(bookingsTable)
+        .set({ jobberSyncError: errorMessage, jobberSyncErrorAt: new Date() })
+        .where(eq(bookingsTable.id, existing.id));
+      await db.insert(activityTable).values({
+        companyId: company.id,
+        type: "jobber_sync_failed",
+        message: `Jobber sync failed for ${existing.customerName}'s booking: ${errorMessage}`,
+      });
+    } catch (recordErr) {
+      logger.error({ err: recordErr }, "Failed to record Jobber sync failure");
+    }
     res.status(502).json({
       error:
         err instanceof Error

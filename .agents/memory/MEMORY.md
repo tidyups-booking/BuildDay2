@@ -7,4 +7,5 @@
 - [Migrations are required here](db-migrations-required.md) — API applies Drizzle migrations at startup, so `drizzle-kit push` alone ships nothing; always add a migration file + journal entry.
 - [API date serialization](api-date-serialization.md) — a new nullable timestamp column 500s the whole list endpoint once one row sets it; update the route serializer in the same change.
 - [Booking times use company timezone](company-timezone-display.md) — never render or parse booking times in browser-local time; dispatcher and customer must see the same hour.
+- [Activity type enum lives in OpenAPI](db-migrations-practice.md) — new activity `type` values must be added to the ActivityItem enum + codegen and given a dashboard icon, or the feed fails zod validation at runtime.
 - [Jobber OAuth PKCE flow](jobber-oauth.md) — real OAuth with PKCE; connect returns authorizeUrl, callback at /api/company/jobber/callback stores tokens; token refresh on every sync.

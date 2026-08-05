@@ -754,6 +754,8 @@ components:
         jobberJobId: { type: ["string", "null"] }
         jobberClientId: { type: ["string", "null"] }
         jobberWebUri: { type: ["string", "null"] }
+        jobberSyncError: { type: ["string", "null"] }
+        jobberSyncErrorAt: { type: ["string", "null"] }
         createdAt: { type: string }
     BookingUpdate:
       type: object
@@ -813,6 +815,6 @@ components:
       required: [id, type, message, occurredAt]
       properties:
         id: { type: integer }
-        type: { type: string, enum: [call_answered, booking_created, jobber_synced, quote_sent, test_call, team_invited] }
+        type: { type: string, enum: [call_answered, booking_created, jobber_synced, jobber_sync_failed, quote_sent, test_call, team_invited] }
         message: { type: string }
         occurredAt: { type: string }

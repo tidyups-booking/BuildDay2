@@ -45,6 +45,7 @@ import {
   MoreHorizontal,
   RefreshCw,
   ExternalLink,
+  AlertCircle,
   Plus,
   MessageSquareText,
   Pencil,
@@ -107,6 +108,8 @@ export function BookingsPage() {
           });
         },
         onError: (error: any) => {
+          // Refetch so the persisted sync error shows inline on the card.
+          queryClient.invalidateQueries({ queryKey: getListBookingsQueryKey() });
           toast({
             title: "Jobber sync failed",
             description: error?.message || "Could not create the job in Jobber. Try again.",
@@ -270,15 +273,32 @@ export function BookingsPage() {
                     </Button>
                   </Link>
                 ) : jobberConnected && !booking.jobberSynced ? (
-                  <Button
-                    variant="outline"
-                    className="w-full text-primary hover:text-primary hover:bg-primary/5 border-primary/20 gap-2"
-                    onClick={() => handleSync(booking.id)}
-                    disabled={syncJobber.isPending}
-                  >
-                    <RefreshCw className={`w-4 h-4 ${syncJobber.isPending ? "animate-spin" : ""}`} />
-                    {syncJobber.isPending ? "Syncing..." : "Sync to Jobber"}
-                  </Button>
+                  <div className="grid gap-2">
+                    {booking.jobberSyncError && (
+                      <div className="rounded-md border border-red-800 bg-red-950/50 px-3 py-2 text-xs text-red-400" data-testid={`text-sync-error-${booking.id}`}>
+                        <div className="flex items-start gap-2">
+                          <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                          <div>
+                            <span className="font-medium">Last sync failed:</span> {booking.jobberSyncError}
+                            {booking.jobberSyncErrorAt && (
+                              <span className="block text-red-400/70 mt-0.5">
+                                {formatDistanceToNow(new Date(booking.jobberSyncErrorAt), { addSuffix: true })}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    <Button
+                      variant="outline"
+                      className="w-full text-primary hover:text-primary hover:bg-primary/5 border-primary/20 gap-2"
+                      onClick={() => handleSync(booking.id)}
+                      disabled={syncJobber.isPending}
+                    >
+                      <RefreshCw className={`w-4 h-4 ${syncJobber.isPending ? "animate-spin" : ""}`} />
+                      {syncJobber.isPending ? "Syncing..." : "Sync to Jobber"}
+                    </Button>
+                  </div>
                 ) : booking.jobberSynced && booking.jobberWebUri ? (
                   <a href={booking.jobberWebUri} target="_blank" rel="noopener noreferrer">
                     <Button

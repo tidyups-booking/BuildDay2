@@ -37,6 +37,8 @@ export const bookingsTable = pgTable("bookings", {
   jobberJobId: text("jobber_job_id"),
   jobberClientId: text("jobber_client_id"),
   jobberWebUri: text("jobber_web_uri"),
+  jobberSyncError: text("jobber_sync_error"),
+  jobberSyncErrorAt: timestamp("jobber_sync_error_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

@@ -701,6 +701,8 @@ export const ListBookingsResponseItem = zod.object({
   "jobberJobId": zod.string().nullish(),
   "jobberClientId": zod.string().nullish(),
   "jobberWebUri": zod.string().nullish(),
+  "jobberSyncError": zod.string().nullish(),
+  "jobberSyncErrorAt": zod.string().nullish(),
   "createdAt": zod.string()
 })
 export const ListBookingsResponse = zod.array(ListBookingsResponseItem)
@@ -744,6 +746,8 @@ export const CreateBookingResponse = zod.object({
   "jobberJobId": zod.string().nullish(),
   "jobberClientId": zod.string().nullish(),
   "jobberWebUri": zod.string().nullish(),
+  "jobberSyncError": zod.string().nullish(),
+  "jobberSyncErrorAt": zod.string().nullish(),
   "createdAt": zod.string()
 })
 
@@ -795,6 +799,8 @@ export const SendQuoteResponse = zod.object({
   "jobberJobId": zod.string().nullish(),
   "jobberClientId": zod.string().nullish(),
   "jobberWebUri": zod.string().nullish(),
+  "jobberSyncError": zod.string().nullish(),
+  "jobberSyncErrorAt": zod.string().nullish(),
   "createdAt": zod.string()
 })
 
@@ -838,6 +844,8 @@ export const UpdateBookingResponse = zod.object({
   "jobberJobId": zod.string().nullish(),
   "jobberClientId": zod.string().nullish(),
   "jobberWebUri": zod.string().nullish(),
+  "jobberSyncError": zod.string().nullish(),
+  "jobberSyncErrorAt": zod.string().nullish(),
   "createdAt": zod.string()
 })
 
@@ -866,6 +874,8 @@ export const SyncBookingToJobberResponse = zod.object({
   "jobberJobId": zod.string().nullish(),
   "jobberClientId": zod.string().nullish(),
   "jobberWebUri": zod.string().nullish(),
+  "jobberSyncError": zod.string().nullish(),
+  "jobberSyncErrorAt": zod.string().nullish(),
   "createdAt": zod.string()
 })
 
@@ -889,7 +899,7 @@ export const GetDashboardSummaryResponse = zod.object({
  */
 export const GetRecentActivityResponseItem = zod.object({
   "id": zod.int(),
-  "type": zod.enum(['call_answered', 'booking_created', 'jobber_synced', 'quote_sent', 'test_call', 'team_invited']),
+  "type": zod.enum(['call_answered', 'booking_created', 'jobber_synced', 'jobber_sync_failed', 'quote_sent', 'test_call', 'team_invited']),
   "message": zod.string(),
   "occurredAt": zod.string()
 })

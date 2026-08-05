@@ -1,7 +1,7 @@
 import { useGetDashboardSummary, useGetRecentActivity, ActivityItem, useGetCompany } from "@workspace/api-client-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { PageHeader, LoadingSpinner } from "@/components/ui/shared";
-import { PhoneIncoming, CalendarCheck, Clock, TrendingUp, PhoneMissed, CheckCircle2, UserPlus, PhoneForwarded } from "lucide-react";
+import { PhoneIncoming, CalendarCheck, Clock, TrendingUp, PhoneMissed, CheckCircle2, UserPlus, PhoneForwarded, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
 
 export function DashboardPage() {
@@ -97,6 +97,8 @@ function ActivityIcon({ type }: { type: ActivityItem["type"] }) {
       return <div className="w-8 h-8 rounded-full bg-green-500/100/10 flex items-center justify-center shrink-0"><CalendarCheck className="w-4 h-4 text-green-400" /></div>;
     case "jobber_synced":
       return <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center shrink-0"><CheckCircle2 className="w-4 h-4 text-indigo-600" /></div>;
+    case "jobber_sync_failed":
+      return <div className="w-8 h-8 rounded-full bg-red-500/10 flex items-center justify-center shrink-0"><AlertCircle className="w-4 h-4 text-red-400" /></div>;
     case "team_invited":
       return <div className="w-8 h-8 rounded-full bg-brand-purple/10 flex items-center justify-center shrink-0"><UserPlus className="w-4 h-4 text-brand-purple" /></div>;
     case "test_call":

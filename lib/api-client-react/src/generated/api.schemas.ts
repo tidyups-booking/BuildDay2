@@ -280,6 +280,10 @@ export interface Booking {
   jobberClientId?: string | null;
   /** @nullable */
   jobberWebUri?: string | null;
+  /** @nullable */
+  jobberSyncError?: string | null;
+  /** @nullable */
+  jobberSyncErrorAt?: string | null;
   createdAt: string;
 }
 
@@ -381,6 +385,7 @@ export const ActivityItemType = {
   call_answered: 'call_answered',
   booking_created: 'booking_created',
   jobber_synced: 'jobber_synced',
+  jobber_sync_failed: 'jobber_sync_failed',
   quote_sent: 'quote_sent',
   test_call: 'test_call',
   team_invited: 'team_invited',
