@@ -16,3 +16,4 @@
 - [Owner-notify claim release](notify-claim-release.md) — notification sends return sent/skipped/failed; retry state must live apart from health flags or dashboards lie during outages.
 - [Clerk Expo mobile wiring](clerk-expo-mobile.md) — mobile uses bearer tokens via setAuthTokenGetter + custom auth screens; Clerk key must be injected in both dev script and build.js Metro env.
 - [waitForJob timeout is capped](waitforjob-timeout-cap.md) — the `timeout` arg is silently clamped to ~20s; long waits need real sleeps, not a bigger number.
+- [Pushing to GitHub](git-push-replit.md) — gitPush only sees `origin` (real remote is `subrepl-*`), and the GitHub connector grants API access, not push credentials.
