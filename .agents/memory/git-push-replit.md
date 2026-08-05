@@ -39,6 +39,22 @@ difference in the remote URL is indistinguishable from a permissions failure.
 there while other repos return 200 means the name is wrong, not the token. Listing
 `/user/repos` reveals near-miss names (hyphen placement, casing).
 
+## `origin` gets rewritten underneath you — always check where the push landed
+
+The workspace Git pane owns the `origin` remote and silently resets its URL to whatever
+repo the workspace is currently linked to. A `git remote set-url origin ...` from the
+shell can be reverted before the next `gitPush`, which then reports **success** while
+pushing somewhere else entirely.
+
+**Why:** `gitPush` honours `origin` at the moment it runs, and the pane rewrites it
+whenever the user links or creates a repo there. Success is reported against the remote
+actually used, not the one that was requested.
+
+**How to apply:** read the `remote` field in the `gitPush` result and compare it to the
+intended URL — never treat `success: true` alone as proof. Confirm the branch head on
+GitHub matches local HEAD. When the target must be specific, set the remote URL and call
+`gitPush` inside a single CodeExecution call so nothing can intervene between them.
+
 ## The GitHub connector does not grant push access
 
 Authorizing the GitHub **integration/connector** (the one from `searchIntegrations`)
