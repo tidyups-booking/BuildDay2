@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import {
   db,
   companiesTable,
@@ -7,6 +7,7 @@ import {
 } from "@workspace/db";
 import { listPhoneNumbers, QuoError } from "./quo";
 import { decryptQuoKey } from "./secretBox";
+import { notifyOwnerQuoKeyDead } from "./ownerNotify";
 
 export async function getCompanyForUser(
   userId: string,
@@ -145,15 +146,31 @@ export async function serializeCompany(company: Company) {
  * Persist whether Quo currently rejects this company's key. Only writes when
  * the flag actually changes, so hot paths (webhooks, dashboard) don't churn
  * the row on every call.
+ *
+ * The write is conditional on the row still holding the opposite value, so a
+ * healthy → needs-reauth transition is claimed exactly once even when the
+ * hourly health check and a webhook race. The caller that wins the claim
+ * notifies the owner directly (best-effort text with a reconnect link).
  */
 export async function setQuoNeedsReauth(
   company: Company,
   needsReauth: boolean,
 ): Promise<void> {
   if (company.quoNeedsReauth === needsReauth) return;
-  await db
+  const [claimed] = await db
     .update(companiesTable)
     .set({ quoNeedsReauth: needsReauth })
-    .where(eq(companiesTable.id, company.id));
+    .where(
+      and(
+        eq(companiesTable.id, company.id),
+        eq(companiesTable.quoNeedsReauth, !needsReauth),
+      ),
+    )
+    .returning({ id: companiesTable.id });
   company.quoNeedsReauth = needsReauth;
+  if (needsReauth && claimed) {
+    // Fired only on the claimed healthy → needs-reauth transition, so the
+    // owner gets one text per outage, not one per hourly check.
+    await notifyOwnerQuoKeyDead(company);
+  }
 }
