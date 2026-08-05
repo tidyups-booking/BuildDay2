@@ -10,8 +10,9 @@
  * All functions here are best-effort: they log failures and never throw, so a
  * notification hiccup can't break the health check or a webhook handler. They
  * do, however, report what happened so callers can react — most importantly
- * setQuoNeedsReauth, which releases its one-per-outage claim when a send
- * fails so the text is retried instead of silently lost.
+ * sendPendingQuoNotification, which keeps the company's quoNotifyPending
+ * marker set when a send fails or is skipped so the text is retried by the
+ * hourly health check instead of silently lost.
  */
 import type { Company } from "@workspace/db";
 import { listPhoneNumbers, sendMessage, toE164 } from "./quo";

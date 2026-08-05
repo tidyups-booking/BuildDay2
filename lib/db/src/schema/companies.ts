@@ -94,6 +94,12 @@ export const companiesTable = pgTable("companies", {
   // so the UI can warn the owner instead of failing silently. Cleared when a
   // key is (re)connected or a Quo call succeeds again.
   quoNeedsReauth: boolean("quo_needs_reauth").notNull().default(false),
+  // Owner text still owed for the last Quo connection transition: "dead"
+  // (outage text) or "restored" (back-online text), null when nothing is
+  // owed. Decoupled from quoNeedsReauth so the dashboard warning flips
+  // immediately even while a failed text is being retried by the hourly
+  // health check.
+  quoNotifyPending: text("quo_notify_pending"),
   receptionistConfigured: boolean("receptionist_configured")
     .notNull()
     .default(false),

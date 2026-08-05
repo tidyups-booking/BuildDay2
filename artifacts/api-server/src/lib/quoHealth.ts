@@ -10,7 +10,12 @@
 import { isNotNull, and, eq } from "drizzle-orm";
 import { db, companiesTable } from "@workspace/db";
 import { listPhoneNumbers } from "./quo";
-import { companyQuoKey, isQuoAuthError, setQuoNeedsReauth } from "./company";
+import {
+  companyQuoKey,
+  isQuoAuthError,
+  sendPendingQuoNotification,
+  setQuoNeedsReauth,
+} from "./company";
 import { logger } from "./logger";
 
 /** One hour: frequent enough to catch a dead key, gentle on Quo's API. */
@@ -38,26 +43,30 @@ export async function runQuoHealthCheck(): Promise<void> {
     if (!key) {
       // Key present but no longer decryptable — the owner must reconnect.
       await setQuoNeedsReauth(company, true);
-      continue;
-    }
-    try {
-      await listPhoneNumbers(key);
-      await setQuoNeedsReauth(company, false);
-    } catch (err) {
-      if (isQuoAuthError(err)) {
-        await setQuoNeedsReauth(company, true);
-        logger.warn(
-          { companyId: company.id },
-          "Quo health check: key rejected; company flagged for reauth",
-        );
-      } else {
-        // Transient failure — leave the flag as-is.
-        logger.warn(
-          { companyId: company.id, err },
-          "Quo health check: Quo unreachable; flag left unchanged",
-        );
+      // Fall through to the pending-notification retry below.
+    } else {
+      try {
+        await listPhoneNumbers(key);
+        await setQuoNeedsReauth(company, false);
+      } catch (err) {
+        if (isQuoAuthError(err)) {
+          await setQuoNeedsReauth(company, true);
+          logger.warn(
+            { companyId: company.id },
+            "Quo health check: key rejected; company flagged for reauth",
+          );
+        } else {
+          // Transient failure — leave the flag as-is.
+          logger.warn(
+            { companyId: company.id, err },
+            "Quo health check: Quo unreachable; flag left unchanged",
+          );
+        }
       }
     }
+    // Retry any owner text still owed from an earlier transition whose send
+    // failed or was skipped. No-op when nothing is pending.
+    await sendPendingQuoNotification(company);
   }
 }
 

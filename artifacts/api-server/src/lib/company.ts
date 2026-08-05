@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import {
   db,
   companiesTable,
@@ -151,25 +151,26 @@ export async function serializeCompany(company: Company) {
  *
  * The write is conditional on the row still holding the opposite value, so a
  * healthy → needs-reauth transition is claimed exactly once even when the
- * hourly health check and a webhook race. The caller that wins the claim
- * notifies the owner directly (best-effort text with a reconnect link).
+ * hourly health check and a webhook race. The same write records that a
+ * notification is owed (quoNotifyPending: "dead" or "restored"), and the
+ * winning caller immediately attempts to deliver it.
  *
- * If the winning caller's send *fails* (network blip, Quo 5xx…), the claim is
- * released by reverting the flag, so the next health check or webhook
- * re-claims the transition and retries the text — a transient send failure
- * never permanently swallows the one-per-outage notification. Sends that were
- * *skipped* for configuration reasons (no ring-through number, no platform
- * key) keep the claim: retrying can't succeed until the configuration is
- * fixed, and the flag must stay accurate for the dashboard.
+ * The flag itself never reverts because of a notification problem: the
+ * dashboard warning flips on the first detection of a dead key and stays put.
+ * If the text can't be sent right now, the pending marker survives and the
+ * hourly health check (via sendPendingQuoNotification) keeps retrying until
+ * it goes out — so the one-per-outage guarantee holds without ever lying
+ * about connection health.
  */
 export async function setQuoNeedsReauth(
   company: Company,
   needsReauth: boolean,
 ): Promise<void> {
   if (company.quoNeedsReauth === needsReauth) return;
+  const pending = needsReauth ? "dead" : "restored";
   const [claimed] = await db
     .update(companiesTable)
-    .set({ quoNeedsReauth: needsReauth })
+    .set({ quoNeedsReauth: needsReauth, quoNotifyPending: pending })
     .where(
       and(
         eq(companiesTable.id, company.id),
@@ -179,26 +180,67 @@ export async function setQuoNeedsReauth(
     .returning({ id: companiesTable.id });
   company.quoNeedsReauth = needsReauth;
   if (!claimed) return;
+  company.quoNotifyPending = pending;
   // Fired only on the claimed transition, so the owner gets one text per
   // outage (and one per recovery), not one per hourly check.
-  const outcome = needsReauth
-    ? await notifyOwnerQuoKeyDead(company)
-    : await notifyOwnerQuoRestored(company);
-  if (outcome !== "failed") return;
-  // The send itself errored — likely transient. Release the claim so the next
-  // health check or webhook re-runs this transition and retries the text.
-  await db
+  await sendPendingQuoNotification(company);
+}
+
+/**
+ * Deliver the owner text recorded in quoNotifyPending, if any.
+ *
+ * The marker is claimed with a conditional clear before sending, so
+ * concurrent retriers (hourly check overlapping a webhook) can't double-text
+ * the owner. If the send fails (transient) or is skipped (configuration gap:
+ * no platform key, no reachable number), the marker is restored — but only if
+ * nothing newer replaced it — so retries continue until the text actually
+ * goes out. Skips are also retried: they log a warning each attempt (which
+ * surfaces the gap to admins) and succeed automatically once the
+ * configuration is fixed.
+ */
+export async function sendPendingQuoNotification(
+  company: Company,
+): Promise<void> {
+  const pending = company.quoNotifyPending;
+  if (pending !== "dead" && pending !== "restored") return;
+  const [claimed] = await db
     .update(companiesTable)
-    .set({ quoNeedsReauth: !needsReauth })
+    .set({ quoNotifyPending: null })
     .where(
       and(
         eq(companiesTable.id, company.id),
-        eq(companiesTable.quoNeedsReauth, needsReauth),
+        eq(companiesTable.quoNotifyPending, pending),
       ),
-    );
-  company.quoNeedsReauth = !needsReauth;
+    )
+    .returning({ id: companiesTable.id });
+  company.quoNotifyPending = null;
+  if (!claimed) return;
+  const outcome =
+    pending === "dead"
+      ? await notifyOwnerQuoKeyDead(company)
+      : await notifyOwnerQuoRestored(company);
+  if (outcome === "sent") return;
+  // Not delivered — put the marker back so the next health check retries.
+  // Guarded twice: the slot must still be empty (a newer transition's owed
+  // text wins) AND the health flag must still match this notification ("dead"
+  // only while quoNeedsReauth is true, "restored" only while it's false).
+  // Without the flag guard, a stale failed send could re-arm an obsolete text
+  // after a newer opposite transition already sent and cleared its own.
+  const [restored] = await db
+    .update(companiesTable)
+    .set({ quoNotifyPending: pending })
+    .where(
+      and(
+        eq(companiesTable.id, company.id),
+        isNull(companiesTable.quoNotifyPending),
+        eq(companiesTable.quoNeedsReauth, pending === "dead"),
+      ),
+    )
+    .returning({ id: companiesTable.id });
+  if (!restored) return;
+  company.quoNotifyPending = pending;
   logger.warn(
-    { companyId: company.id, needsReauth },
-    "Owner notification send failed; released quoNeedsReauth claim so the text is retried on the next check",
+    { companyId: company.id, pending, outcome },
+    "Owner notification not delivered; quoNotifyPending kept so the text is retried on the next health check",
   );
 }
