@@ -299,10 +299,17 @@ export function toE164(raw: string, defaultCountryCode = "1"): string | null {
   if (/^\+[1-9]\d{1,14}$/.test(trimmed)) return trimmed;
 
   const digits = trimmed.replace(/\D/g, "");
-  if (digits.length === 10) return `+${defaultCountryCode}${digits}`;
-  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
-  if (digits.length >= 8 && digits.length <= 15) return `+${digits}`;
-  return null;
+  const candidate =
+    digits.length === 10
+      ? `+${defaultCountryCode}${digits}`
+      : digits.length === 11 && digits.startsWith("1")
+        ? `+${digits}`
+        : digits.length >= 8 && digits.length <= 15
+          ? `+${digits}`
+          : null;
+  // The assembled candidate must itself be valid E.164 — a leading zero
+  // (e.g. "00000000" → "+00000000") is not a dialable country code.
+  return candidate && /^\+[1-9]\d{1,14}$/.test(candidate) ? candidate : null;
 }
 
 export type QuoSentMessage = {

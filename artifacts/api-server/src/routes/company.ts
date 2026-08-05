@@ -32,6 +32,7 @@ import {
 } from "../lib/jobber";
 import { encryptJobberToken } from "../lib/secretBox";
 import { flagShiftedBookings } from "../lib/timezoneReview";
+import { normalizePhoneField } from "../lib/phoneField";
 import { logger } from "../lib/logger";
 import crypto from "node:crypto";
 import { publicBaseUrl } from "../lib/publicUrl";
@@ -202,6 +203,21 @@ router.patch("/company", async (req, res): Promise<void> => {
       .status(400)
       .json({ error: `Unknown time zone: ${parsed.data.timezone}` });
     return;
+  }
+  // Normalize phone numbers to E.164 before storing — a typo like "555-12"
+  // would otherwise sit silently until an outage text can't be delivered.
+  // Empty string is still allowed: it clears the number.
+  for (const field of ["notificationNumber", "ringThroughNumber"] as const) {
+    const label =
+      field === "notificationNumber"
+        ? "notification number"
+        : "ring-through number";
+    const result = normalizePhoneField(parsed.data[field], label);
+    if (!result.ok) {
+      res.status(400).json({ error: result.error });
+      return;
+    }
+    if (result.value !== undefined) parsed.data[field] = result.value;
   }
   const company = await getCompanyForUser(req.userId!);
   if (!company) {

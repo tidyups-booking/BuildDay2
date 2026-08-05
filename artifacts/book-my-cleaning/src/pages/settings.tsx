@@ -266,6 +266,14 @@ function ReceptionistSettings({ company }: { company: any }) {
           queryClient.invalidateQueries({ queryKey: getGetCompanyQueryKey() });
           toast({ title: "Saved", description: "AI configuration updated." });
         },
+        onError: (error: any) => {
+          toast({
+            title: "Couldn't save that",
+            description:
+              error?.message || "Please check the phone numbers and try again.",
+            variant: "destructive",
+          });
+        },
       },
     );
   };
