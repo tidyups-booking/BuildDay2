@@ -49,12 +49,44 @@ function setupPageUrl(): string {
  * hourly check.
  */
 export async function notifyOwnerQuoKeyDead(company: Company): Promise<void> {
+  await notifyOwner(company, {
+    what: "dead Quo key",
+    content:
+      `Heads up from Book My Cleaning: the Quo connection for ${company.name} stopped working, ` +
+      `so calls and texts aren't being handled. Reconnect here: ${setupPageUrl()}`,
+    successLog: "Owner notified that their Quo key stopped working",
+  });
+}
+
+/**
+ * Text the owner that their Quo connection is working again, closing the loop
+ * opened by notifyOwnerQuoKeyDead.
+ *
+ * Callers are responsible for only invoking this on an actual
+ * needs-reauth → healthy transition (setQuoNeedsReauth does this via its
+ * conditional update), so routine healthy → healthy checks stay silent.
+ */
+export async function notifyOwnerQuoRestored(company: Company): Promise<void> {
+  await notifyOwner(company, {
+    what: "restored Quo connection",
+    content:
+      `Good news from Book My Cleaning: the Quo connection for ${company.name} is back online. ` +
+      `Calls and texts are being handled again — no further action needed.`,
+    successLog: "Owner notified that their Quo connection is working again",
+  });
+}
+
+/** Shared best-effort delivery over the platform Quo workspace. */
+async function notifyOwner(
+  company: Company,
+  opts: { what: string; content: string; successLog: string },
+): Promise<void> {
   try {
     const apiKey = platformQuoKey();
     if (!apiKey) {
       logger.warn(
         { companyId: company.id },
-        "Quo key dead but QUO_API_KEY is not set; owner not notified",
+        `Wanted to notify owner (${opts.what}) but QUO_API_KEY is not set; owner not notified`,
       );
       return;
     }
@@ -64,7 +96,7 @@ export async function notifyOwnerQuoKeyDead(company: Company): Promise<void> {
     if (!to) {
       logger.warn(
         { companyId: company.id },
-        "Quo key dead but company has no usable ring-through number; owner not notified",
+        `Wanted to notify owner (${opts.what}) but company has no usable ring-through number; owner not notified`,
       );
       return;
     }
@@ -72,26 +104,17 @@ export async function notifyOwnerQuoKeyDead(company: Company): Promise<void> {
     if (!from) {
       logger.warn(
         { companyId: company.id },
-        "Quo key dead but the platform Quo workspace has no phone number; owner not notified",
+        `Wanted to notify owner (${opts.what}) but the platform Quo workspace has no phone number; owner not notified`,
       );
       return;
     }
-    await sendMessage(apiKey, {
-      from,
-      to,
-      content:
-        `Heads up from Book My Cleaning: the Quo connection for ${company.name} stopped working, ` +
-        `so calls and texts aren't being handled. Reconnect here: ${setupPageUrl()}`,
-    });
-    logger.info(
-      { companyId: company.id },
-      "Owner notified that their Quo key stopped working",
-    );
+    await sendMessage(apiKey, { from, to, content: opts.content });
+    logger.info({ companyId: company.id }, opts.successLog);
   } catch (err) {
     // Best-effort only — never let a notification failure break the caller.
     logger.error(
       { companyId: company.id, err },
-      "Failed to notify owner about dead Quo key",
+      `Failed to notify owner (${opts.what})`,
     );
   }
 }

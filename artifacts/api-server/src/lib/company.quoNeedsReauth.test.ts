@@ -67,9 +67,12 @@ vi.mock("./quo", () => ({
 vi.mock("./secretBox", () => ({ decryptQuoKey: vi.fn(() => null) }));
 
 const notifyOwnerQuoKeyDead = vi.fn(async () => {});
+const notifyOwnerQuoRestored = vi.fn(async () => {});
 vi.mock("./ownerNotify", () => ({
   notifyOwnerQuoKeyDead: (...args: unknown[]) =>
     notifyOwnerQuoKeyDead(...(args as [])),
+  notifyOwnerQuoRestored: (...args: unknown[]) =>
+    notifyOwnerQuoRestored(...(args as [])),
 }));
 
 import { setQuoNeedsReauth } from "./company";
@@ -87,6 +90,8 @@ beforeEach(() => {
   store = new Map([[1, { id: 1, quoNeedsReauth: false }]]);
   notifyOwnerQuoKeyDead.mockClear();
   notifyOwnerQuoKeyDead.mockImplementation(async () => {});
+  notifyOwnerQuoRestored.mockClear();
+  notifyOwnerQuoRestored.mockImplementation(async () => {});
 });
 
 describe("setQuoNeedsReauth", () => {
@@ -115,19 +120,31 @@ describe("setQuoNeedsReauth", () => {
 
   it("re-arms after the flag is cleared: a second outage notifies again", async () => {
     await setQuoNeedsReauth(snapshot(1), true);
-    // Key fixed — flag cleared (no notification for clearing).
+    // Key fixed — flag cleared (restored notification, not a dead-key one).
     await setQuoNeedsReauth(snapshot(1, true), false);
     expect(notifyOwnerQuoKeyDead).toHaveBeenCalledTimes(1);
+    expect(notifyOwnerQuoRestored).toHaveBeenCalledTimes(1);
     expect(store.get(1)!.quoNeedsReauth).toBe(false);
     // Key dies a second time.
     await setQuoNeedsReauth(snapshot(1), true);
     expect(notifyOwnerQuoKeyDead).toHaveBeenCalledTimes(2);
   });
 
-  it("never notifies when clearing the flag", async () => {
+  it("notifies the restored text exactly once when clearing the flag", async () => {
     store.get(1)!.quoNeedsReauth = true;
     await setQuoNeedsReauth(snapshot(1, true), false);
-    await setQuoNeedsReauth(snapshot(1, true), false);
+    // Repeated clears (in-memory short-circuit and stale-snapshot claim miss)
+    // stay silent.
+    await setQuoNeedsReauth(snapshot(1, false), false); // in-memory short-circuit
+    await setQuoNeedsReauth(snapshot(1, true), false); // stale snapshot, DB claim fails
+    expect(notifyOwnerQuoKeyDead).not.toHaveBeenCalled();
+    expect(notifyOwnerQuoRestored).toHaveBeenCalledTimes(1);
+  });
+
+  it("never notifies restored on routine healthy → healthy checks", async () => {
+    await setQuoNeedsReauth(snapshot(1, false), false);
+    await setQuoNeedsReauth(snapshot(1, false), false);
+    expect(notifyOwnerQuoRestored).not.toHaveBeenCalled();
     expect(notifyOwnerQuoKeyDead).not.toHaveBeenCalled();
   });
 });

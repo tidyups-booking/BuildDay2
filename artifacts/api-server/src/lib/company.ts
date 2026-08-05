@@ -7,7 +7,7 @@ import {
 } from "@workspace/db";
 import { listPhoneNumbers, QuoError } from "./quo";
 import { decryptQuoKey } from "./secretBox";
-import { notifyOwnerQuoKeyDead } from "./ownerNotify";
+import { notifyOwnerQuoKeyDead, notifyOwnerQuoRestored } from "./ownerNotify";
 
 export async function getCompanyForUser(
   userId: string,
@@ -168,9 +168,14 @@ export async function setQuoNeedsReauth(
     )
     .returning({ id: companiesTable.id });
   company.quoNeedsReauth = needsReauth;
-  if (needsReauth && claimed) {
+  if (!claimed) return;
+  if (needsReauth) {
     // Fired only on the claimed healthy → needs-reauth transition, so the
     // owner gets one text per outage, not one per hourly check.
     await notifyOwnerQuoKeyDead(company);
+  } else {
+    // Fired only on the claimed needs-reauth → healthy transition, so routine
+    // healthy → healthy checks never text the owner.
+    await notifyOwnerQuoRestored(company);
   }
 }
