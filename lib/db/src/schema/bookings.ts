@@ -72,6 +72,15 @@ export const bookingsTable = pgTable("bookings", {
   quoteToken: text("quote_token").unique(),
   // Set when the customer taps Approve on that page.
   quoteApprovedAt: timestamp("quote_approved_at", { withTimezone: true }),
+  // The Stripe Checkout session opened for this booking's deposit. Kept so a
+  // customer who wanders off mid-payment can be reconciled later without
+  // guessing which session was theirs.
+  depositCheckoutSessionId: text("deposit_checkout_session_id"),
+  // Set once Stripe confirms the deposit actually cleared — never on redirect
+  // alone, which the customer can fake by editing the URL.
+  depositPaidAt: timestamp("deposit_paid_at", { withTimezone: true }),
+  // What they actually paid, in case the company edits the deposit afterwards.
+  depositPaidAmount: doublePrecision("deposit_paid_amount"),
   jobberSynced: boolean("jobber_synced").notNull().default(false),
   jobberJobId: text("jobber_job_id"),
   jobberClientId: text("jobber_client_id"),

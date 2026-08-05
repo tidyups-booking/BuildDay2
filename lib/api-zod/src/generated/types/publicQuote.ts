@@ -24,4 +24,11 @@ export interface PublicQuote {
   approved: boolean;
   /** @nullable */
   approvedAtLabel?: string | null;
+  depositPaid?: boolean;
+  /** @nullable */
+  depositPaidAmount?: number | null;
+  /** @nullable */
+  depositPaidAtLabel?: string | null;
+  /** @nullable */
+  payableAmount?: number | null;
 }

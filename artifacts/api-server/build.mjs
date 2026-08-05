@@ -126,6 +126,13 @@ async function buildAll() {
       "puppeteer",
       "puppeteer-core",
       "electron",
+      // stripe-replit-sync reads its own .sql files with
+      // path.resolve(__dirname, "./migrations"). Bundled, that __dirname
+      // becomes our dist/ — where copyMigrations() puts the app's Drizzle
+      // migrations — so it would run the app's schema into the stripe schema
+      // and fail on "relation companies already exists". It must stay external
+      // so __dirname points at its own package.
+      "stripe-replit-sync",
     ],
     alias: zodAlias,
     sourcemap: "linked",

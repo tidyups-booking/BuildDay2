@@ -1,8 +1,11 @@
+import { useEffect, useRef } from "react";
 import { useRoute } from "wouter";
-import { CheckCircle2, Loader2, Sparkles } from "lucide-react";
+import { CheckCircle2, CreditCard, Loader2, Sparkles } from "lucide-react";
 import {
   useGetPublicQuote,
   useApprovePublicQuote,
+  usePayPublicQuote,
+  useRefreshPublicQuotePayment,
   getGetPublicQuoteQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -37,6 +40,39 @@ export default function QuotePage() {
       },
     },
   });
+
+  const pay = usePayPublicQuote({
+    mutation: {
+      onSuccess: (result) => {
+        // Hand the customer over to Stripe's hosted page — that's what gives
+        // them Apple Pay and Google Pay without us touching card details.
+        window.location.href = result.checkoutUrl;
+      },
+    },
+  });
+
+  const refreshPayment = useRefreshPublicQuotePayment({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({
+          queryKey: getGetPublicQuoteQueryKey(token),
+        });
+      },
+    },
+  });
+
+  // Coming back from Stripe, confirm the payment with the server before
+  // showing anything — ?paid=1 is just a URL the customer could type.
+  const checkedReturn = useRef(false);
+  const refreshMutate = refreshPayment.mutate;
+  useEffect(() => {
+    if (!token || checkedReturn.current) return;
+    if (!new URLSearchParams(window.location.search).has("paid")) return;
+    checkedReturn.current = true;
+    refreshMutate({ token });
+    // Drop the flag so a refresh doesn't re-run this.
+    window.history.replaceState({}, "", window.location.pathname);
+  }, [token, refreshMutate]);
 
   if (isLoading) {
     return (
@@ -171,21 +207,77 @@ export default function QuotePage() {
             </div>
           </div>
 
-          {t.deposit > 0 && (
-            <div className="mt-6 rounded-xl border border-brand-pink/25 bg-brand-pink/5 p-4">
-              <div className="flex justify-between items-baseline gap-4 flex-wrap">
-                <span className="font-semibold">Deposit to secure your spot</span>
-                <span className="font-bold text-lg tabular-nums text-brand-pink">
-                  {formatMoney(t.deposit)}
-                </span>
+          {quote.depositPaid ? (
+            <div className="mt-6 flex items-center gap-3 rounded-xl border border-green-500/25 bg-green-500/10 p-4">
+              <CheckCircle2 className="w-5 h-5 text-green-400 shrink-0" />
+              <div>
+                <div className="font-semibold text-green-300">
+                  Deposit paid
+                  {quote.depositPaidAmount != null
+                    ? ` — ${formatMoney(quote.depositPaidAmount)}`
+                    : ""}
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  {quote.depositPaidAtLabel
+                    ? `Received ${quote.depositPaidAtLabel}. `
+                    : ""}
+                  Your spot is secured.
+                </div>
               </div>
-              {t.depositEmail && (
-                <p className="text-sm text-muted-foreground mt-1">
-                  Send by e-transfer to{" "}
-                  <span className="text-foreground">{t.depositEmail}</span>
-                </p>
-              )}
             </div>
+          ) : (
+            t.deposit > 0 && (
+              <div className="mt-6 rounded-xl border border-brand-pink/25 bg-brand-pink/5 p-4">
+                <div className="flex justify-between items-baseline gap-4 flex-wrap">
+                  <span className="font-semibold">
+                    Deposit to secure your spot
+                  </span>
+                  <span className="font-bold text-lg tabular-nums text-brand-pink">
+                    {formatMoney(t.deposit)}
+                  </span>
+                </div>
+
+                {quote.payableAmount != null && (
+                  <>
+                    <Button
+                      className="w-full mt-3"
+                      disabled={pay.isPending || refreshPayment.isPending}
+                      onClick={() => pay.mutate({ token })}
+                    >
+                      {pay.isPending ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Opening secure checkout...
+                        </>
+                      ) : (
+                        <>
+                          <CreditCard className="w-4 h-4" />
+                          Pay {formatMoney(quote.payableAmount)} deposit
+                        </>
+                      )}
+                    </Button>
+                    {pay.isError && (
+                      <p className="text-sm text-destructive mt-2 text-center">
+                        We couldn't open the payment page. Please try again.
+                      </p>
+                    )}
+                    <p className="text-xs text-muted-foreground text-center mt-2">
+                      Card, Apple Pay or Google Pay. Processed securely by
+                      Stripe.
+                    </p>
+                  </>
+                )}
+
+                {/* Interac isn't available through Stripe in Canada, so the
+                    company's own e-transfer address stays on the page. */}
+                {t.depositEmail && (
+                  <p className="text-sm text-muted-foreground mt-3 pt-3 border-t border-brand-pink/15">
+                    Prefer e-transfer? Send to{" "}
+                    <span className="text-foreground">{t.depositEmail}</span>
+                  </p>
+                )}
+              </div>
+            )
           )}
 
           {quote.notes && (

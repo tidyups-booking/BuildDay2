@@ -35,6 +35,7 @@ import type {
   JobberConnectStart,
   JobberSkipInput,
   ListCallsParams,
+  PayPublicQuote200,
   PublicQuote,
   QuoNumber,
   QuoNumberSelection,
@@ -2028,6 +2029,148 @@ export const useApprovePublicQuote = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getApprovePublicQuoteMutationOptions(options));
+    }
+
+export const getPayPublicQuoteUrl = (token: string,) => {
+
+
+
+
+  return `/api/quote/${token}/pay`
+}
+
+/**
+ * @summary Start a Stripe Checkout session for the deposit
+ */
+export const payPublicQuote = async (token: string, options?: Parameters<typeof customFetch>[1]): Promise<PayPublicQuote200> => {
+
+  return customFetch<PayPublicQuote200>(getPayPublicQuoteUrl(token),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getPayPublicQuoteMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof payPublicQuote>>, TError,{token: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof payPublicQuote>>, TError,{token: string}, TContext> => {
+
+const mutationKey = ['payPublicQuote'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof payPublicQuote>>, {token: string}> = (props) => {
+          const {token} = props ?? {};
+
+          return  payPublicQuote(token,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PayPublicQuoteMutationResult = NonNullable<Awaited<ReturnType<typeof payPublicQuote>>>
+
+    export type PayPublicQuoteMutationError = ErrorType<void>
+
+    /**
+ * @summary Start a Stripe Checkout session for the deposit
+ */
+export const usePayPublicQuote = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof payPublicQuote>>, TError,{token: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof payPublicQuote>>,
+        TError,
+        {token: string},
+        TContext
+      > => {
+      return useMutation(getPayPublicQuoteMutationOptions(options));
+    }
+
+export const getRefreshPublicQuotePaymentUrl = (token: string,) => {
+
+
+
+
+  return `/api/quote/${token}/payment/refresh`
+}
+
+/**
+ * @summary Re-check payment status with Stripe after checkout
+ */
+export const refreshPublicQuotePayment = async (token: string, options?: Parameters<typeof customFetch>[1]): Promise<PublicQuote> => {
+
+  return customFetch<PublicQuote>(getRefreshPublicQuotePaymentUrl(token),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getRefreshPublicQuotePaymentMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof refreshPublicQuotePayment>>, TError,{token: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof refreshPublicQuotePayment>>, TError,{token: string}, TContext> => {
+
+const mutationKey = ['refreshPublicQuotePayment'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof refreshPublicQuotePayment>>, {token: string}> = (props) => {
+          const {token} = props ?? {};
+
+          return  refreshPublicQuotePayment(token,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RefreshPublicQuotePaymentMutationResult = NonNullable<Awaited<ReturnType<typeof refreshPublicQuotePayment>>>
+
+    export type RefreshPublicQuotePaymentMutationError = ErrorType<void>
+
+    /**
+ * @summary Re-check payment status with Stripe after checkout
+ */
+export const useRefreshPublicQuotePayment = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof refreshPublicQuotePayment>>, TError,{token: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof refreshPublicQuotePayment>>,
+        TError,
+        {token: string},
+        TContext
+      > => {
+      return useMutation(getRefreshPublicQuotePaymentMutationOptions(options));
     }
 
 export const getGetQuotePreviewUrl = (id: number,) => {

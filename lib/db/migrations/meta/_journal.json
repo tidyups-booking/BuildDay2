@@ -64,6 +64,13 @@
       "when": 1785922800000,
       "tag": "0008_quote_share_link",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1785922900000,
+      "tag": "0009_deposit_payment",
+      "breakpoints": true
     }
   ]
 }

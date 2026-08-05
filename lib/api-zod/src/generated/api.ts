@@ -822,6 +822,8 @@ export const ListBookingsResponseItem = zod.object({
   "quoteSentAt": zod.string().nullish(),
   "quoteUrl": zod.string().nullish(),
   "quoteApprovedAt": zod.string().nullish(),
+  "depositPaidAt": zod.string().nullish(),
+  "depositPaidAmount": zod.number().nullish(),
   "quoteTotals": zod.object({
   "lineItems": zod.array(zod.object({
   "name": zod.string().min(1),
@@ -941,6 +943,8 @@ export const CreateBookingResponse = zod.object({
   "quoteSentAt": zod.string().nullish(),
   "quoteUrl": zod.string().nullish(),
   "quoteApprovedAt": zod.string().nullish(),
+  "depositPaidAt": zod.string().nullish(),
+  "depositPaidAmount": zod.number().nullish(),
   "quoteTotals": zod.object({
   "lineItems": zod.array(zod.object({
   "name": zod.string().min(1),
@@ -1022,7 +1026,11 @@ export const GetPublicQuoteResponse = zod.object({
   "notes": zod.string().nullish(),
   "sentAtLabel": zod.string().nullish(),
   "approved": zod.boolean(),
-  "approvedAtLabel": zod.string().nullish()
+  "approvedAtLabel": zod.string().nullish(),
+  "depositPaid": zod.boolean().optional(),
+  "depositPaidAmount": zod.number().nullish(),
+  "depositPaidAtLabel": zod.string().nullish(),
+  "payableAmount": zod.number().nullish()
 })
 
 
@@ -1063,7 +1071,68 @@ export const ApprovePublicQuoteResponse = zod.object({
   "notes": zod.string().nullish(),
   "sentAtLabel": zod.string().nullish(),
   "approved": zod.boolean(),
-  "approvedAtLabel": zod.string().nullish()
+  "approvedAtLabel": zod.string().nullish(),
+  "depositPaid": zod.boolean().optional(),
+  "depositPaidAmount": zod.number().nullish(),
+  "depositPaidAtLabel": zod.string().nullish(),
+  "payableAmount": zod.number().nullish()
+})
+
+
+/**
+ * @summary Start a Stripe Checkout session for the deposit
+ */
+export const PayPublicQuoteParams = zod.object({
+  "token": zod.coerce.string()
+})
+
+export const PayPublicQuoteResponse = zod.object({
+  "checkoutUrl": zod.string()
+})
+
+
+/**
+ * @summary Re-check payment status with Stripe after checkout
+ */
+export const RefreshPublicQuotePaymentParams = zod.object({
+  "token": zod.coerce.string()
+})
+
+
+
+
+export const RefreshPublicQuotePaymentResponse = zod.object({
+  "companyName": zod.string(),
+  "customerName": zod.string(),
+  "customerAddress": zod.string().nullish(),
+  "service": zod.string(),
+  "serviceDescription": zod.string().nullish(),
+  "scheduledForLabel": zod.string(),
+  "totals": zod.object({
+  "lineItems": zod.array(zod.object({
+  "name": zod.string().min(1),
+  "quantity": zod.number(),
+  "unitPrice": zod.number()
+})),
+  "subtotal": zod.number(),
+  "taxLabel": zod.string(),
+  "taxRate": zod.number(),
+  "taxAmount": zod.number(),
+  "feesLabel": zod.string(),
+  "feesRate": zod.number(),
+  "feesAmount": zod.number(),
+  "total": zod.number(),
+  "deposit": zod.number(),
+  "depositEmail": zod.string().nullish()
+}),
+  "notes": zod.string().nullish(),
+  "sentAtLabel": zod.string().nullish(),
+  "approved": zod.boolean(),
+  "approvedAtLabel": zod.string().nullish(),
+  "depositPaid": zod.boolean().optional(),
+  "depositPaidAmount": zod.number().nullish(),
+  "depositPaidAtLabel": zod.string().nullish(),
+  "payableAmount": zod.number().nullish()
 })
 
 
@@ -1143,6 +1212,8 @@ export const SendQuoteResponse = zod.object({
   "quoteSentAt": zod.string().nullish(),
   "quoteUrl": zod.string().nullish(),
   "quoteApprovedAt": zod.string().nullish(),
+  "depositPaidAt": zod.string().nullish(),
+  "depositPaidAmount": zod.number().nullish(),
   "quoteTotals": zod.object({
   "lineItems": zod.array(zod.object({
   "name": zod.string().min(1),
@@ -1262,6 +1333,8 @@ export const UpdateBookingResponse = zod.object({
   "quoteSentAt": zod.string().nullish(),
   "quoteUrl": zod.string().nullish(),
   "quoteApprovedAt": zod.string().nullish(),
+  "depositPaidAt": zod.string().nullish(),
+  "depositPaidAmount": zod.number().nullish(),
   "quoteTotals": zod.object({
   "lineItems": zod.array(zod.object({
   "name": zod.string().min(1),
@@ -1339,6 +1412,8 @@ export const SyncBookingToJobberResponse = zod.object({
   "quoteSentAt": zod.string().nullish(),
   "quoteUrl": zod.string().nullish(),
   "quoteApprovedAt": zod.string().nullish(),
+  "depositPaidAt": zod.string().nullish(),
+  "depositPaidAmount": zod.number().nullish(),
   "quoteTotals": zod.object({
   "lineItems": zod.array(zod.object({
   "name": zod.string().min(1),
@@ -1402,7 +1477,7 @@ export const GetDashboardSummaryResponse = zod.object({
  */
 export const GetRecentActivityResponseItem = zod.object({
   "id": zod.int(),
-  "type": zod.enum(['call_answered', 'booking_created', 'jobber_synced', 'jobber_sync_failed', 'quote_sent', 'quote_approved', 'test_call', 'team_invited']),
+  "type": zod.enum(['call_answered', 'booking_created', 'jobber_synced', 'jobber_sync_failed', 'quote_sent', 'quote_approved', 'deposit_paid', 'test_call', 'team_invited']),
   "message": zod.string(),
   "occurredAt": zod.string()
 })

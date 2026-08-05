@@ -51,6 +51,7 @@ import {
   Pencil,
   DollarSign,
   ThumbsUp,
+  CreditCard,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -243,6 +244,11 @@ export function BookingsPage() {
                         <MessageSquareText className="w-3 h-3" /> Quote sent
                       </span>
                     ) : null}
+                    {booking.depositPaidAt && (
+                      <span className="flex items-center gap-1 text-xs font-medium text-brand-pink bg-brand-pink/10 px-2 py-0.5 rounded-full border border-brand-pink/20">
+                        <CreditCard className="w-3 h-3" /> Deposit paid
+                      </span>
+                    )}
                     {booking.jobberSynced && (
                       <span className="flex items-center gap-1 text-xs font-medium text-green-400 bg-green-500/10 px-2 py-0.5 rounded-full border border-green-500/20">
                         <CheckCircle2 className="w-3 h-3" /> Jobber

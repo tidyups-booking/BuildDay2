@@ -16,6 +16,7 @@ export const ActivityItemType = {
   jobber_sync_failed: 'jobber_sync_failed',
   quote_sent: 'quote_sent',
   quote_approved: 'quote_approved',
+  deposit_paid: 'deposit_paid',
   test_call: 'test_call',
   team_invited: 'team_invited',
 } as const;

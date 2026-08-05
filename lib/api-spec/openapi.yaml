@@ -440,6 +440,56 @@ paths:
                 $ref: "#/components/schemas/PublicQuote"
         "404":
           description: No such quote
+  /quote/{token}/pay:
+    post:
+      operationId: payPublicQuote
+      tags: [publicQuote]
+      summary: Start a Stripe Checkout session for the deposit
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Where to send the customer to pay
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [checkoutUrl]
+                properties:
+                  checkoutUrl:
+                    type: string
+        "400":
+          description: Nothing payable on this quote
+        "404":
+          description: No such quote
+        "409":
+          description: Already paid
+        "502":
+          description: Stripe could not be reached
+  /quote/{token}/payment/refresh:
+    post:
+      operationId: refreshPublicQuotePayment
+      tags: [publicQuote]
+      summary: Re-check payment status with Stripe after checkout
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The quote, with payment status brought up to date
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicQuote"
+        "404":
+          description: No such quote
   /bookings/{id}/quote-preview:
     get:
       operationId: getQuotePreview
@@ -823,6 +873,8 @@ components:
         # Where the customer views their quote. Null until a quote is sent.
         quoteUrl: { type: ["string", "null"] }
         quoteApprovedAt: { type: ["string", "null"] }
+        depositPaidAt: { type: ["string", "null"] }
+        depositPaidAmount: { type: ["number", "null"] }
         # Derived from those inputs and the company's rates, never stored, so a
         # rate change can't leave a quote disagreeing with itself.
         quoteTotals: { $ref: "#/components/schemas/QuoteTotals" }
@@ -926,6 +978,13 @@ components:
         sentAtLabel: { type: ["string", "null"] }
         approved: { type: boolean }
         approvedAtLabel: { type: ["string", "null"] }
+        # True only once Stripe confirms the money cleared — never on the
+        # redirect back from Checkout, which the customer controls.
+        depositPaid: { type: boolean }
+        depositPaidAmount: { type: ["number", "null"] }
+        depositPaidAtLabel: { type: ["string", "null"] }
+        # What's still chargeable online, or null when nothing is owed.
+        payableAmount: { type: ["number", "null"] }
     QuotePreview:
       type: object
       required: [message, canSend]
@@ -962,6 +1021,6 @@ components:
       required: [id, type, message, occurredAt]
       properties:
         id: { type: integer }
-        type: { type: string, enum: [call_answered, booking_created, jobber_synced, jobber_sync_failed, quote_sent, quote_approved, test_call, team_invited] }
+        type: { type: string, enum: [call_answered, booking_created, jobber_synced, jobber_sync_failed, quote_sent, quote_approved, deposit_paid, test_call, team_invited] }
         message: { type: string }
         occurredAt: { type: string }

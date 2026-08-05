@@ -58,6 +58,8 @@ function serializeBooking(company: Company, b: Booking) {
     // Null until the quote has been previewed or sent, which is when the
     // customer's link is minted.
     quoteUrl: b.quoteToken ? quoteUrl(b.quoteToken) : null,
+    depositPaidAt: b.depositPaidAt ? b.depositPaidAt.toISOString() : null,
+    depositPaidAmount: b.depositPaidAmount ?? null,
   };
 }
 

@@ -160,6 +160,12 @@ importers:
       '@replit/connectors-sdk':
         specifier: ^0.4.1
         version: 0.4.1
+      stripe:
+        specifier: ^22.4.0
+        version: 22.4.0(@types/node@25.9.5)
+      stripe-replit-sync:
+        specifier: ^1.0.0
+        version: 1.0.0(stripe@22.4.0(@types/node@25.9.5))
     devDependencies:
       prettier:
         specifier: ^3.9.6
@@ -2639,6 +2645,11 @@ packages:
     resolution: {integrity: sha512-WCtabS6t3c8SkpDBUlb1kjOs7l66xsGdKpIPZsg4wR+B3+u9UAum2odSsF9tnvxg80h4ZxLWMy4pRjOsFIqQpw==}
     engines: {node: '>=4.0.0'}
 
+  pg-node-migrations@0.0.8:
+    resolution: {integrity: sha512-44cMl9umOmCv0hzZyEcvjEq8Bm8u7mrzggZ06qXTJVSsMMB4j2OsjG+rSp+uzeKWyP2Vu0K9Ye2wKtjFUJwrdw==}
+    engines: {node: '>10.17.0'}
+    hasBin: true
+
   pg-pool@3.14.0:
     resolution: {integrity: sha512-gKtPkFdQPU3DksooVLi9LsjZxrsBUZIpa+7aVx+LV5pNh0KzP4Zleud2po+ConrxbuXGBJ6Hfer6hdgpIBpBaw==}
     peerDependencies:
@@ -2973,6 +2984,10 @@ packages:
     resolution: {integrity: sha512-UcjcJOWknrNkF6PLX83qcHM6KHgVKNkV62Y8a5uYDVv9ydGQVwAHMKqHdJje1VTWpljG0WYpCDhrCdAOYH4TWg==}
     engines: {node: '>= 10.x'}
 
+  sql-template-strings@2.2.2:
+    resolution: {integrity: sha512-UXhXR2869FQaD+GMly8jAMCRZ94nU5KcrFetZfWEMd+LVVG6y0ExgHAhatEcKZ/wk8YcKPdi+hiD2wm75lq3/Q==}
+    engines: {node: '>=4.0.0'}
+
   standardwebhooks@1.0.0:
     resolution: {integrity: sha512-BbHGOQK9olHPMvQNHWul6MYlrRTAOKn03rOe4A8O3CLWhNf4YHBqq2HJKKC+sfqpxiBY52pNeesD6jIiLDz8jg==}
 
@@ -2994,6 +3009,20 @@ packages:
   strip-json-comments@5.0.3:
     resolution: {integrity: sha512-1tB5mhVo7U+ETBKNf92xT4hrQa3pm0MZ0PQvuDnWgAAGHDsfp4lPSpiS6psrSiet87wyGPh9ft6wmhOMQ0hDiw==}
     engines: {node: '>=14.16'}
+
+  stripe-replit-sync@1.0.0:
+    resolution: {integrity: sha512-Bkbih3k+IX/GugN8bKWNpwDiI2xkSLOAR+P34W7pjaR8fXyVay/QqztbrvbHZcU1JlfXncmBhuODY5TYY6DXlw==}
+    peerDependencies:
+      stripe: '> 11'
+
+  stripe@22.4.0:
+    resolution: {integrity: sha512-LVJ+tcSYeqOSnXr3i+Kz2tZ7y0crLLdP2uwD/4wccrmEVyn0g/Heo0pF7as7rxS/sOjJzrb1lxgZY0Y0Dx1pSA==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      '@types/node': '>=18'
+    peerDependenciesMeta:
+      '@types/node':
+        optional: true
 
   svix@1.99.1:
     resolution: {integrity: sha512-JfpvbAg5iT5NagDAfOq3e6Ci6NbOMbMm6C3DnfDBB60m2JDK+Z2hXPE9XNAmutb53DCdPoih1V70IbklZnX09A==}
@@ -3193,6 +3222,18 @@ packages:
   wrappy@1.0.2:
     resolution: {integrity: sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ==}
 
+  ws@8.21.2:
+    resolution: {integrity: sha512-54dMVAo4WIe6SKy3vBgN+9bJZqqQ8IMRevAkOLQALhi49qkkQDQfWdAZ8KQlXiEabw88ARXXdUrlvtbKQX+aKw==}
+    engines: {node: '>=10.0.0'}
+    peerDependencies:
+      bufferutil: ^4.0.1
+      utf-8-validate: '>=5.0.2'
+    peerDependenciesMeta:
+      bufferutil:
+        optional: true
+      utf-8-validate:
+        optional: true
+
   xtend@4.0.2:
     resolution: {integrity: sha512-LKYU1iAXJXUgAXn9URjiu+MWhyUXHsvfp7mcuYm9dSUKK0/CjtrUwFAxD82/mCWbtLsGjFIad0wIsod4zrTAEQ==}
     engines: {node: '>=0.4'}
@@ -3204,6 +3245,9 @@ packages:
     resolution: {integrity: sha512-2AvhNX3mb8zd6Zy7INTtSpl1F15HW6Wnqj0srWlkKLcpYl/gMIMJiyuGq2KeI2YFxUPjdlB+3Lc10seMLtL4cA==}
     engines: {node: '>= 14.6'}
     hasBin: true
+
+  yesql@7.0.0:
+    resolution: {integrity: sha512-sosfr7agy4ibLM7BvXBkM6BpBmKMGuBO8DUYQEuey+QqaqrgW+2bsSg6D050ocBYIz0PuHxUyehyzEztZTU4pw==}
 
   yocto-queue@1.2.2:
     resolution: {integrity: sha512-4LCcse/U2MHZ63HAJVE+v71o7yOdIe4cZ70Wpf8D/IyjDKYQLV5GD46B+hSTjJsvV5PztjvHoU580EftxjDZFQ==}
@@ -5224,6 +5268,13 @@ snapshots:
 
   pg-int8@1.0.1: {}
 
+  pg-node-migrations@0.0.8:
+    dependencies:
+      pg: 8.22.0
+      sql-template-strings: 2.2.2
+    transitivePeerDependencies:
+      - pg-native
+
   pg-pool@3.14.0(pg@8.22.0):
     dependencies:
       pg: 8.22.0
@@ -5588,6 +5639,8 @@ snapshots:
 
   split2@4.2.0: {}
 
+  sql-template-strings@2.2.2: {}
+
   standardwebhooks@1.0.0:
     dependencies:
       '@stablelib/base64': 1.0.1
@@ -5602,6 +5655,22 @@ snapshots:
   strip-final-newline@4.0.0: {}
 
   strip-json-comments@5.0.3: {}
+
+  stripe-replit-sync@1.0.0(stripe@22.4.0(@types/node@25.9.5)):
+    dependencies:
+      pg: 8.22.0
+      pg-node-migrations: 0.0.8
+      stripe: 22.4.0(@types/node@25.9.5)
+      ws: 8.21.2
+      yesql: 7.0.0
+    transitivePeerDependencies:
+      - bufferutil
+      - pg-native
+      - utf-8-validate
+
+  stripe@22.4.0(@types/node@25.9.5):
+    optionalDependencies:
+      '@types/node': 25.9.5
 
   svix@1.99.1:
     dependencies:
@@ -5769,11 +5838,15 @@ snapshots:
 
   wrappy@1.0.2: {}
 
+  ws@8.21.2: {}
+
   xtend@4.0.2: {}
 
   yallist@3.1.1: {}
 
   yaml@2.9.0: {}
+
+  yesql@7.0.0: {}
 
   yocto-queue@1.2.2: {}
 

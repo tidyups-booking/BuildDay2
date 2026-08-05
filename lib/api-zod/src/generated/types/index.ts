@@ -29,6 +29,7 @@ export * from './healthStatus';
 export * from './jobberConnectStart';
 export * from './jobberSkipInput';
 export * from './listCallsParams';
+export * from './payPublicQuote200';
 export * from './publicQuote';
 export * from './quoNumber';
 export * from './quoNumberSelection';

@@ -11,7 +11,10 @@ import {
 import router from "./routes";
 import quoWebhookRouter, { QUO_WEBHOOK_PATH } from "./routes/quoWebhook";
 import jobberWebhookRouter, { JOBBER_WEBHOOK_PATH } from "./routes/jobberWebhook";
+import { WebhookHandlers } from "./lib/webhookHandlers";
 import { logger } from "./lib/logger";
+
+export const STRIPE_WEBHOOK_PATH = "/api/stripe/webhook";
 
 const app: Express = express();
 
@@ -49,6 +52,29 @@ app.use("/api", quoWebhookRouter);
 // Jobber also signs over the exact raw bytes (HMAC with the client secret).
 app.use(JOBBER_WEBHOOK_PATH, express.raw({ type: "application/json" }));
 app.use("/api", jobberWebhookRouter);
+
+// Stripe signs over the raw bytes too, so it must be registered before
+// express.json(). Scoped to this exact path for the same reason as the others:
+// a raw parser mounted on all of /api would leave every route with a Buffer.
+app.post(
+  STRIPE_WEBHOOK_PATH,
+  express.raw({ type: "application/json" }),
+  async (req, res) => {
+    const signature = req.headers["stripe-signature"];
+    if (!signature) {
+      res.status(400).json({ error: "Missing stripe-signature" });
+      return;
+    }
+    const sig = Array.isArray(signature) ? signature[0]! : signature;
+    try {
+      await WebhookHandlers.processWebhook(req.body as Buffer, sig);
+      res.status(200).json({ received: true });
+    } catch (err) {
+      logger.error({ err }, "Stripe webhook processing failed");
+      res.status(400).json({ error: "Webhook processing error" });
+    }
+  },
+);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

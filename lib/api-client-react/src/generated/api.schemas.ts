@@ -359,6 +359,10 @@ export interface Booking {
   quoteUrl?: string | null;
   /** @nullable */
   quoteApprovedAt?: string | null;
+  /** @nullable */
+  depositPaidAt?: string | null;
+  /** @nullable */
+  depositPaidAmount?: number | null;
   quoteTotals: QuoteTotals;
   quoteSentTotals?: QuoteTotals | null;
   jobberSynced: boolean;
@@ -534,6 +538,13 @@ export interface PublicQuote {
   approved: boolean;
   /** @nullable */
   approvedAtLabel?: string | null;
+  depositPaid?: boolean;
+  /** @nullable */
+  depositPaidAmount?: number | null;
+  /** @nullable */
+  depositPaidAtLabel?: string | null;
+  /** @nullable */
+  payableAmount?: number | null;
 }
 
 export interface QuotePreview {
@@ -578,6 +589,7 @@ export const ActivityItemType = {
   jobber_sync_failed: 'jobber_sync_failed',
   quote_sent: 'quote_sent',
   quote_approved: 'quote_approved',
+  deposit_paid: 'deposit_paid',
   test_call: 'test_call',
   team_invited: 'team_invited',
 } as const;
@@ -591,5 +603,9 @@ export interface ActivityItem {
 
 export type ListCallsParams = {
 status?: string;
+};
+
+export type PayPublicQuote200 = {
+  checkoutUrl: string;
 };
 

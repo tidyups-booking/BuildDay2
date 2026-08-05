@@ -45,6 +45,10 @@ export interface Booking {
   quoteUrl?: string | null;
   /** @nullable */
   quoteApprovedAt?: string | null;
+  /** @nullable */
+  depositPaidAt?: string | null;
+  /** @nullable */
+  depositPaidAmount?: number | null;
   quoteTotals: QuoteTotals;
   quoteSentTotals?: QuoteTotals | null;
   jobberSynced: boolean;

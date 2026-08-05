@@ -1,6 +1,8 @@
-import app from "./app";
+import { runMigrations as runStripeMigrations } from "stripe-replit-sync";
+import app, { STRIPE_WEBHOOK_PATH } from "./app";
 import { logger } from "./lib/logger";
 import { runMigrations } from "./lib/migrate";
+import { getStripeSync } from "./lib/stripeClient";
 
 const rawPort = process.env["PORT"];
 
@@ -20,6 +22,56 @@ if (Number.isNaN(port) || port <= 0) {
 // database is always in sync with the deployed code, including on first boot
 // or after a schema-changing deploy.
 await runMigrations();
+
+/**
+ * Set up the Stripe mirror: create the `stripe` schema, register the managed
+ * webhook, then backfill.
+ *
+ * Deliberately non-fatal. This server also runs the dispatcher dashboard, the
+ * call feed and the Quo webhooks; taking all of that down because Stripe had a
+ * bad minute would be a far worse outage than deposits being briefly
+ * uncollectable.
+ */
+async function initStripe(): Promise<void> {
+  const databaseUrl = process.env["DATABASE_URL"];
+  if (!databaseUrl) {
+    logger.warn("No DATABASE_URL; skipping Stripe setup");
+    return;
+  }
+
+  try {
+    // The target schema is not configurable — the library hardcodes "stripe".
+    await runStripeMigrations({ databaseUrl });
+
+    const stripeSync = await getStripeSync();
+
+    // Correct at runtime: in a deployment REPLIT_DOMAINS is the production
+    // host, and in the workspace it is the dev domain, so each environment
+    // registers a webhook pointing at itself.
+    const host = process.env["REPLIT_DOMAINS"]?.split(",")[0];
+    if (host) {
+      const result = await stripeSync.findOrCreateManagedWebhook(
+        `https://${host}${STRIPE_WEBHOOK_PATH}`,
+      );
+      logger.info({ url: result?.url }, "Stripe managed webhook configured");
+    } else {
+      logger.warn("No REPLIT_DOMAINS; skipping Stripe webhook registration");
+    }
+
+    // Backgrounded: a full backfill must not hold up the port opening.
+    stripeSync
+      .syncBackfill()
+      .then(() => logger.info("Stripe data synced"))
+      .catch((err) => logger.error({ err }, "Stripe backfill failed"));
+  } catch (err) {
+    logger.error(
+      { err },
+      "Stripe setup failed; deposit payments will be unavailable",
+    );
+  }
+}
+
+await initStripe();
 
 app.listen(port, (err) => {
   if (err) {
