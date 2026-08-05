@@ -9,7 +9,8 @@ description: Non-obvious behaviors of the Quo public API that shape how call and
 The `Authorization` header takes the **raw workspace API key with no `Bearer ` prefix**.
 Adding the prefix returns 401. The key is workspace-scoped (owner/admin generates it
 in workspace settings → API tab); there is no OAuth flow, so a multi-tenant product
-needs one pasted key per customer workspace.
+needs one pasted key per customer workspace, stored encrypted server-side and never
+echoed back. A cheap way to validate a pasted key is `GET /v1/phone-numbers`.
 
 ## You cannot list all calls for a number
 `GET /v1/calls` requires **both** `phoneNumberId` *and* `participants` (the other
