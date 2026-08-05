@@ -1,7 +1,10 @@
-import { useGetDashboardSummary, useGetRecentActivity, ActivityItem, useGetCompany } from "@workspace/api-client-react";
+import { useGetDashboardSummary, useGetRecentActivity, ActivityItem, useGetCompany, useUpdateCompany, getGetCompanyQueryKey } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { PageHeader, LoadingSpinner } from "@/components/ui/shared";
-import { PhoneIncoming, CalendarCheck, Clock, TrendingUp, PhoneMissed, CheckCircle2, UserPlus, PhoneForwarded, AlertCircle, MessageSquareText, ThumbsUp, CreditCard } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { PhoneIncoming, CalendarCheck, Clock, TrendingUp, PhoneMissed, CheckCircle2, UserPlus, PhoneForwarded, AlertCircle, MessageSquareText, ThumbsUp, CreditCard, Globe, X } from "lucide-react";
 import { format } from "date-fns";
 
 export function DashboardPage() {
@@ -30,6 +33,8 @@ export function DashboardPage() {
         title="Dashboard" 
         description={company?.isLive ? "Your AI receptionist is live and monitoring calls." : "Complete setup to take your AI receptionist live."} 
       />
+
+      {company && <TimezoneNudge company={company} />}
 
       {company && !company.isLive && (
         <div className="mb-8 bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-4">
@@ -86,6 +91,107 @@ export function DashboardPage() {
         </div>
       </div>
     </AppLayout>
+  );
+}
+
+// Companies created before timezone auto-detection sat on this DB default
+// (see lib/db companies schema). Only they get the confirmation nudge — an
+// owner who *chose* a zone (e.g. runs the business from another region)
+// should never be prompted to overwrite it.
+const DEFAULT_TZ = "America/Edmonton";
+
+/**
+ * One-time nudge for companies still on the default timezone whose browser
+ * reports a different zone. Dismissal is remembered per company + zone pair
+ * in localStorage so owners aren't nagged again.
+ */
+function TimezoneNudge({ company }: { company: { id: number; timezone?: string | null } }) {
+  const detected = (() => {
+    try {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      // Only trust a zone the runtime itself recognizes as valid IANA.
+      if (tz) new Intl.DateTimeFormat("en-US", { timeZone: tz });
+      return tz || null;
+    } catch {
+      return null;
+    }
+  })();
+  const stored = company.timezone || null;
+  const dismissKey = `tzNudgeDismissed:${company.id}:${stored}:${detected}`;
+  // Track dismissal per key: if the company or mismatch pair changes, the
+  // stored flag for the *new* key is re-read instead of reusing mount state.
+  const [dismissedKey, setDismissedKey] = useState<string | null>(null);
+  const dismissed = (() => {
+    if (dismissedKey === dismissKey) return true;
+    try {
+      return localStorage.getItem(dismissKey) === "1";
+    } catch {
+      return true;
+    }
+  })();
+  const update = useUpdateCompany();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  // Only nudge the legacy-default cohort with a real, different detected zone.
+  if (stored !== DEFAULT_TZ || !detected || detected === stored || dismissed) return null;
+
+  const dismiss = () => {
+    setDismissedKey(dismissKey);
+    try {
+      localStorage.setItem(dismissKey, "1");
+    } catch {
+      // Private-mode storage failures just mean the nudge may reappear.
+    }
+  };
+
+  const accept = () => {
+    update.mutate(
+      { data: { timezone: detected } },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getGetCompanyQueryKey() });
+          toast({ title: "Time zone updated", description: `Booking times now use ${detected.replace(/_/g, " ")}.` });
+        },
+        onError: (error: any) => {
+          toast({
+            title: "Couldn't update time zone",
+            description: error?.message || "Please try again from Settings.",
+            variant: "destructive",
+          });
+        },
+      },
+    );
+  };
+
+  return (
+    <div className="mb-8 bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-4">
+      <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center shrink-0 mt-0.5">
+        <Globe className="w-5 h-5 text-blue-600" />
+      </div>
+      <div className="flex-1">
+        <h3 className="font-semibold text-blue-900">Is your time zone right?</h3>
+        <p className="text-sm text-blue-800 mt-1 mb-3">
+          Your company is set to <span className="font-medium">{stored.replace(/_/g, " ")}</span>, but your browser reports{" "}
+          <span className="font-medium">{detected.replace(/_/g, " ")}</span>. Booking times are shown in the company time zone, so a wrong zone shifts every appointment.
+        </p>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={accept}
+            disabled={update.isPending}
+            className="text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 px-3 py-1.5 rounded shadow-sm"
+          >
+            {update.isPending ? "Switching…" : `Switch to ${detected.replace(/_/g, " ")}`}
+          </button>
+          <button onClick={dismiss} className="text-sm font-medium text-blue-700 hover:text-blue-900 px-2 py-1.5">
+            Keep {stored.replace(/_/g, " ")}
+          </button>
+        </div>
+      </div>
+      <button onClick={dismiss} aria-label="Dismiss" className="text-blue-400 hover:text-blue-600 shrink-0">
+        <X className="w-4 h-4" />
+      </button>
+    </div>
   );
 }
 
