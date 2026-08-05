@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { 
   useGetCompany, useConnectJobber, useDisconnectJobber, getGetCompanyQueryKey, 
-  useListAvailableNumbers, getListAvailableNumbersQueryKey, useProvisionNumber, useUpdateCompany,
+  useConnectQuo, useListQuoNumbers, getListQuoNumbersQueryKey, useSelectQuoNumbers, useUpdateCompany,
   useGoLive, useSimulateTestCall, useInviteTeamMember
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -45,8 +45,8 @@ export function SetupPage() {
     },
     {
       id: "phone",
-      title: "Provision Number",
-      description: "Get a local phone number for your AI receptionist.",
+      title: "Connect Quo Lines",
+      description: "Choose which Quo numbers Sona answers for you.",
       icon: Phone,
       isDone: company.setupStatus.phoneProvisioned,
       isActive: company.setupStatus.jobberConnected && !company.setupStatus.phoneProvisioned,
@@ -122,7 +122,7 @@ export function SetupPage() {
                   <div className="p-5 pt-0 border-t border-border mt-2 bg-secondary/30">
                     <div className="pt-4">
                       {step.id === "jobber" && <JobberStep company={company} />}
-                      {step.id === "phone" && <PhoneStep />}
+                      {step.id === "phone" && <PhoneStep company={company} />}
                       {step.id === "customize" && <CustomizeStep company={company} />}
                       {step.id === "team" && <TeamStep />}
                       {step.id === "live" && <GoLiveStep company={company} />}
@@ -163,62 +163,139 @@ function JobberStep({ company }: { company: any }) {
   );
 }
 
-function PhoneStep() {
-  const [areaCode, setAreaCode] = useState("");
-  const [hasSearched, setHasSearched] = useState(false);
-  const { data: numbers, isLoading, refetch } = useListAvailableNumbers(
-    { areaCode: areaCode || undefined }, 
-    { query: { enabled: false, queryKey: getListAvailableNumbersQueryKey({ areaCode: areaCode || undefined }) } }
-  );
-  const provision = useProvisionNumber();
+function PhoneStep({ company }: { company: any }) {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const connectQuo = useConnectQuo();
+  const selectNumbers = useSelectQuoNumbers();
+  const { data: numbers, isLoading } = useListQuoNumbers({
+    query: {
+      enabled: !!company.quoConnected,
+      queryKey: getListQuoNumbersQueryKey(),
+    },
+  });
 
-  const handleSearch = () => {
-    setHasSearched(true);
-    refetch();
-  };
+  const [selected, setSelected] = useState<string[] | null>(null);
+  const watched =
+    selected ?? (numbers ?? []).filter((n) => n.watched).map((n) => n.id);
 
-  const handleProvision = (phoneNumber: string) => {
-    provision.mutate({ data: { phoneNumber } }, {
+  const toggle = (id: string) =>
+    setSelected(
+      watched.includes(id)
+        ? watched.filter((x) => x !== id)
+        : [...watched, id],
+    );
+
+  const refreshCompany = () =>
+    queryClient.invalidateQueries({ queryKey: getGetCompanyQueryKey() });
+
+  const handleConnect = () =>
+    connectQuo.mutate(undefined, {
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getGetCompanyQueryKey() });
-      }
+        refreshCompany();
+        queryClient.invalidateQueries({ queryKey: getListQuoNumbersQueryKey() });
+        toast({
+          title: "Quo connected",
+          description: "We can now see the phone lines in your workspace.",
+        });
+      },
+      onError: () =>
+        toast({
+          variant: "destructive",
+          title: "Couldn't reach Quo",
+          description: "Check that the API key is valid and still active.",
+        }),
     });
-  };
+
+  const handleSave = () =>
+    selectNumbers.mutate(
+      { data: { numberIds: watched } },
+      {
+        onSuccess: () => {
+          setSelected(null);
+          refreshCompany();
+          queryClient.invalidateQueries({ queryKey: getListQuoNumbersQueryKey() });
+          toast({
+            title: "Lines connected",
+            description:
+              "Sona transcripts from these numbers will now flow into your dashboard.",
+          });
+        },
+        onError: () =>
+          toast({
+            variant: "destructive",
+            title: "Couldn't register with Quo",
+            description: "Quo rejected the webhook setup for these lines.",
+          }),
+      },
+    );
+
+  if (!company.quoConnected) {
+    return (
+      <div className="space-y-4">
+        <div className="bg-brand-pink/10 border border-brand-pink/20 rounded-xl p-4 flex gap-3 text-sm text-muted-foreground">
+          <PhoneForwarded className="w-5 h-5 text-brand-pink shrink-0" />
+          <p>
+            You already have phone lines in Quo with Sona answering them. Connect
+            your workspace and we'll pull each call's transcript and summary into
+            your dashboard — no new number needed.
+          </p>
+        </div>
+        <Button onClick={handleConnect} disabled={connectQuo.isPending}>
+          {connectQuo.isPending ? "Connecting..." : "Connect Quo Workspace"}
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-2 max-w-sm">
-        <Input 
-          placeholder="Area Code (e.g. 415)" 
-          value={areaCode} 
-          onChange={(e) => setAreaCode(e.target.value)} 
-          maxLength={3}
-        />
-        <Button variant="secondary" onClick={handleSearch} disabled={isLoading || areaCode.length < 3}>
-          {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Search"}
-        </Button>
-      </div>
+      <p className="text-sm text-muted-foreground">
+        Choose which lines the receptionist watches. We register webhooks with
+        Quo so new calls arrive here automatically.
+      </p>
 
-      {hasSearched && !isLoading && numbers && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
-          {numbers.length === 0 ? (
-            <p className="text-sm text-muted-foreground col-span-2">No numbers found for this area code.</p>
-          ) : (
-            numbers.map((num) => (
-              <div key={num.phoneNumber} className="border border-border rounded-xl p-3 flex items-center justify-between hover:border-primary transition-colors bg-card">
+      {isLoading ? (
+        <LoadingSpinner />
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {(numbers ?? []).map((num) => {
+            const on = watched.includes(num.id);
+            return (
+              <button
+                key={num.id}
+                type="button"
+                onClick={() => toggle(num.id)}
+                className={`text-left border rounded-xl p-3 flex items-center justify-between transition-colors bg-card ${
+                  on ? "border-primary" : "border-border hover:border-primary/50"
+                }`}
+              >
                 <div>
-                  <div className="font-mono font-medium text-muted-foreground">{num.phoneNumber}</div>
-                  <div className="text-xs text-muted-foreground">{num.locality}, {num.region}</div>
+                  <div className="font-medium text-foreground">{num.name}</div>
+                  <div className="font-mono text-xs text-muted-foreground">
+                    {num.phoneNumber}
+                  </div>
                 </div>
-                <Button size="sm" variant="outline" onClick={() => handleProvision(num.phoneNumber)} disabled={provision.isPending}>
-                  Select
-                </Button>
-              </div>
-            ))
-          )}
+                <div
+                  className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 ${
+                    on ? "bg-primary border-primary" : "border-border"
+                  }`}
+                >
+                  {on && <Check className="w-3.5 h-3.5 text-primary-foreground" />}
+                </div>
+              </button>
+            );
+          })}
         </div>
       )}
+
+      <Button onClick={handleSave} disabled={selectNumbers.isPending}>
+        {selectNumbers.isPending ? (
+          <Loader2 className="w-4 h-4 animate-spin" />
+        ) : (
+          `Watch ${watched.length} line${watched.length === 1 ? "" : "s"}`
+        )}
+      </Button>
     </div>
   );
 }

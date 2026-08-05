@@ -9,6 +9,7 @@
 export interface SetupStatus {
   accountCreated: boolean;
   jobberConnected: boolean;
+  quoConnected: boolean;
   phoneProvisioned: boolean;
   receptionistConfigured: boolean;
   teamInvited: boolean;

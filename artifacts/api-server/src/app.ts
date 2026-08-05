@@ -9,6 +9,7 @@ import {
   getClerkProxyHost,
 } from "./middlewares/clerkProxyMiddleware";
 import router from "./routes";
+import quoWebhookRouter, { QUO_WEBHOOK_PATH } from "./routes/quoWebhook";
 import { logger } from "./lib/logger";
 
 const app: Express = express();
@@ -36,6 +37,14 @@ app.use(
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 
 app.use(cors({ credentials: true, origin: true }));
+
+// Quo signs webhooks over the exact bytes it sent, so this one route must see
+// the raw body. The raw parser is scoped to the webhook path only — mounting
+// it on all of /api would leave every other route with a Buffer body, since
+// body-parser skips once an earlier parser has consumed the request.
+app.use(QUO_WEBHOOK_PATH, express.raw({ type: "application/json" }));
+app.use("/api", quoWebhookRouter);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

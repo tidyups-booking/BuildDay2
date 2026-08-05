@@ -18,6 +18,9 @@ import {
 import { requireAuth } from "../middlewares/requireAuth";
 import { getCompanyForUser } from "../lib/company";
 import { buildSimulatedCall } from "../lib/simulateCall";
+import { backfillCalls } from "../lib/quoIngest";
+import { listPhoneNumbers } from "../lib/quo";
+import { SyncCallsFromQuoResponse } from "@workspace/api-zod";
 
 const router: IRouter = Router();
 
@@ -35,12 +38,16 @@ function serializeCall(c: Call) {
     durationSeconds: c.durationSeconds,
     isTest: c.isTest,
     bookingId: c.bookingId,
+    direction: c.direction,
+    summary: c.summary,
+    quoCallId: c.quoCallId,
   };
 }
 
 function serializeCallDetail(c: Call) {
   return {
     ...serializeCall(c),
+    recordingUrl: c.recordingUrl,
     transcript: c.transcript,
     extractedAnswers: c.extractedAnswers,
   };
@@ -66,6 +73,36 @@ router.get("/calls", async (req, res): Promise<void> => {
     .orderBy(desc(callsTable.startedAt));
 
   res.json(ListCallsResponse.parse(calls.map(serializeCall)));
+});
+
+router.post("/calls/sync", async (req, res): Promise<void> => {
+  const company = await getCompanyForUser(req.userId!);
+  if (!company) {
+    res.status(404).json({ error: "No company yet" });
+    return;
+  }
+  if (!company.quoConnected || company.quoNumberIds.length === 0) {
+    res.status(400).json({ error: "Connect Quo and choose lines first" });
+    return;
+  }
+
+  try {
+    const numbers = await listPhoneNumbers();
+    const ourNumbers = new Set(numbers.map((n) => n.number));
+    const result = await backfillCalls(company, ourNumbers);
+    res.json(
+      SyncCallsFromQuoResponse.parse({
+        ...result,
+        message:
+          result.callsImported === 0
+            ? "No new calls found on the watched lines."
+            : `Imported ${result.callsImported} call${result.callsImported === 1 ? "" : "s"} and ${result.transcriptsImported} transcript${result.transcriptsImported === 1 ? "" : "s"}.`,
+      }),
+    );
+  } catch (err) {
+    req.log.error({ err: (err as Error).message }, "Quo sync failed");
+    res.status(502).json({ error: "Could not sync calls from Quo" });
+  }
 });
 
 router.get("/calls/:id", async (req, res): Promise<void> => {

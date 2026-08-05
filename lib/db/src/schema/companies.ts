@@ -25,6 +25,12 @@ export const companiesTable = pgTable("companies", {
   phoneNumber: text("phone_number"),
   jobberConnected: boolean("jobber_connected").notNull().default(false),
   jobberAccountName: text("jobber_account_name"),
+  quoConnected: boolean("quo_connected").notNull().default(false),
+  quoWorkspaceName: text("quo_workspace_name"),
+  // Quo lines this company's receptionist watches. A line may only be claimed
+  // by one company — enforced in the selection route, since Postgres cannot
+  // express uniqueness across array elements without an exclusion constraint.
+  quoNumberIds: text("quo_number_ids").array().notNull().default([]),
   receptionistConfigured: boolean("receptionist_configured")
     .notNull()
     .default(false),

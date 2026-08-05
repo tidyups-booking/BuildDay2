@@ -17,12 +17,20 @@ export interface CustomQuestion {
 export interface SetupStatus {
   accountCreated: boolean;
   jobberConnected: boolean;
+  quoConnected: boolean;
   phoneProvisioned: boolean;
   receptionistConfigured: boolean;
   teamInvited: boolean;
   isLive: boolean;
   completedSteps: number;
   totalSteps: number;
+}
+
+export interface QuoNumber {
+  id: string;
+  phoneNumber: string;
+  name: string;
+  watched: boolean;
 }
 
 export interface Company {
@@ -38,6 +46,10 @@ export interface Company {
   jobberConnected: boolean;
   /** @nullable */
   jobberAccountName?: string | null;
+  quoConnected: boolean;
+  /** @nullable */
+  quoWorkspaceName?: string | null;
+  watchedNumbers: QuoNumber[];
   isLive: boolean;
   setupStatus: SetupStatus;
   createdAt: string;
@@ -58,14 +70,14 @@ export interface CompanyUpdate {
   ringThroughNumber?: string | null;
 }
 
-export interface PhoneNumberOption {
-  phoneNumber: string;
-  locality: string;
-  region: string;
+export interface QuoNumberSelection {
+  numberIds: string[];
 }
 
-export interface PhoneNumberSelection {
-  phoneNumber: string;
+export interface SyncResult {
+  callsImported: number;
+  transcriptsImported: number;
+  message: string;
 }
 
 export interface Service {
@@ -145,6 +157,17 @@ export const CallStatus = {
   booked: 'booked',
 } as const;
 
+/**
+ * @nullable
+ */
+export type CallDirection = typeof CallDirection[keyof typeof CallDirection] | null;
+
+
+export const CallDirection = {
+  incoming: 'incoming',
+  outgoing: 'outgoing',
+} as const;
+
 export interface Call {
   id: number;
   callerName: string;
@@ -159,6 +182,12 @@ export interface Call {
   isTest: boolean;
   /** @nullable */
   bookingId?: number | null;
+  /** @nullable */
+  direction?: CallDirection;
+  /** @nullable */
+  summary?: string | null;
+  /** @nullable */
+  quoCallId?: string | null;
 }
 
 export type TranscriptSegmentSpeaker = typeof TranscriptSegmentSpeaker[keyof typeof TranscriptSegmentSpeaker];
@@ -190,6 +219,17 @@ export const CallDetailStatus = {
   booked: 'booked',
 } as const;
 
+/**
+ * @nullable
+ */
+export type CallDetailDirection = typeof CallDetailDirection[keyof typeof CallDetailDirection] | null;
+
+
+export const CallDetailDirection = {
+  incoming: 'incoming',
+  outgoing: 'outgoing',
+} as const;
+
 export interface CallDetail {
   id: number;
   callerName: string;
@@ -204,6 +244,14 @@ export interface CallDetail {
   isTest: boolean;
   /** @nullable */
   bookingId?: number | null;
+  /** @nullable */
+  direction?: CallDetailDirection;
+  /** @nullable */
+  summary?: string | null;
+  /** @nullable */
+  quoCallId?: string | null;
+  /** @nullable */
+  recordingUrl?: string | null;
   transcript: TranscriptSegment[];
   extractedAnswers: ExtractedAnswer[];
 }
@@ -277,10 +325,6 @@ export interface ActivityItem {
   message: string;
   occurredAt: string;
 }
-
-export type ListAvailableNumbersParams = {
-areaCode?: string;
-};
 
 export type ListCallsParams = {
 status?: string;

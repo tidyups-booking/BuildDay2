@@ -32,10 +32,19 @@ export const GetCompanyResponse = zod.object({
   "phoneNumber": zod.string().nullish(),
   "jobberConnected": zod.boolean(),
   "jobberAccountName": zod.string().nullish(),
+  "quoConnected": zod.boolean(),
+  "quoWorkspaceName": zod.string().nullish(),
+  "watchedNumbers": zod.array(zod.object({
+  "id": zod.string(),
+  "phoneNumber": zod.string(),
+  "name": zod.string(),
+  "watched": zod.boolean()
+})),
   "isLive": zod.boolean(),
   "setupStatus": zod.object({
   "accountCreated": zod.boolean(),
   "jobberConnected": zod.boolean(),
+  "quoConnected": zod.boolean(),
   "phoneProvisioned": zod.boolean(),
   "receptionistConfigured": zod.boolean(),
   "teamInvited": zod.boolean(),
@@ -70,10 +79,19 @@ export const CreateCompanyResponse = zod.object({
   "phoneNumber": zod.string().nullish(),
   "jobberConnected": zod.boolean(),
   "jobberAccountName": zod.string().nullish(),
+  "quoConnected": zod.boolean(),
+  "quoWorkspaceName": zod.string().nullish(),
+  "watchedNumbers": zod.array(zod.object({
+  "id": zod.string(),
+  "phoneNumber": zod.string(),
+  "name": zod.string(),
+  "watched": zod.boolean()
+})),
   "isLive": zod.boolean(),
   "setupStatus": zod.object({
   "accountCreated": zod.boolean(),
   "jobberConnected": zod.boolean(),
+  "quoConnected": zod.boolean(),
   "phoneProvisioned": zod.boolean(),
   "receptionistConfigured": zod.boolean(),
   "teamInvited": zod.boolean(),
@@ -115,10 +133,19 @@ export const UpdateCompanyResponse = zod.object({
   "phoneNumber": zod.string().nullish(),
   "jobberConnected": zod.boolean(),
   "jobberAccountName": zod.string().nullish(),
+  "quoConnected": zod.boolean(),
+  "quoWorkspaceName": zod.string().nullish(),
+  "watchedNumbers": zod.array(zod.object({
+  "id": zod.string(),
+  "phoneNumber": zod.string(),
+  "name": zod.string(),
+  "watched": zod.boolean()
+})),
   "isLive": zod.boolean(),
   "setupStatus": zod.object({
   "accountCreated": zod.boolean(),
   "jobberConnected": zod.boolean(),
+  "quoConnected": zod.boolean(),
   "phoneProvisioned": zod.boolean(),
   "receptionistConfigured": zod.boolean(),
   "teamInvited": zod.boolean(),
@@ -146,10 +173,19 @@ export const ConnectJobberResponse = zod.object({
   "phoneNumber": zod.string().nullish(),
   "jobberConnected": zod.boolean(),
   "jobberAccountName": zod.string().nullish(),
+  "quoConnected": zod.boolean(),
+  "quoWorkspaceName": zod.string().nullish(),
+  "watchedNumbers": zod.array(zod.object({
+  "id": zod.string(),
+  "phoneNumber": zod.string(),
+  "name": zod.string(),
+  "watched": zod.boolean()
+})),
   "isLive": zod.boolean(),
   "setupStatus": zod.object({
   "accountCreated": zod.boolean(),
   "jobberConnected": zod.boolean(),
+  "quoConnected": zod.boolean(),
   "phoneProvisioned": zod.boolean(),
   "receptionistConfigured": zod.boolean(),
   "teamInvited": zod.boolean(),
@@ -177,10 +213,19 @@ export const DisconnectJobberResponse = zod.object({
   "phoneNumber": zod.string().nullish(),
   "jobberConnected": zod.boolean(),
   "jobberAccountName": zod.string().nullish(),
+  "quoConnected": zod.boolean(),
+  "quoWorkspaceName": zod.string().nullish(),
+  "watchedNumbers": zod.array(zod.object({
+  "id": zod.string(),
+  "phoneNumber": zod.string(),
+  "name": zod.string(),
+  "watched": zod.boolean()
+})),
   "isLive": zod.boolean(),
   "setupStatus": zod.object({
   "accountCreated": zod.boolean(),
   "jobberConnected": zod.boolean(),
+  "quoConnected": zod.boolean(),
   "phoneProvisioned": zod.boolean(),
   "receptionistConfigured": zod.boolean(),
   "teamInvited": zod.boolean(),
@@ -208,10 +253,19 @@ export const GoLiveResponse = zod.object({
   "phoneNumber": zod.string().nullish(),
   "jobberConnected": zod.boolean(),
   "jobberAccountName": zod.string().nullish(),
+  "quoConnected": zod.boolean(),
+  "quoWorkspaceName": zod.string().nullish(),
+  "watchedNumbers": zod.array(zod.object({
+  "id": zod.string(),
+  "phoneNumber": zod.string(),
+  "name": zod.string(),
+  "watched": zod.boolean()
+})),
   "isLive": zod.boolean(),
   "setupStatus": zod.object({
   "accountCreated": zod.boolean(),
   "jobberConnected": zod.boolean(),
+  "quoConnected": zod.boolean(),
   "phoneProvisioned": zod.boolean(),
   "receptionistConfigured": zod.boolean(),
   "teamInvited": zod.boolean(),
@@ -224,28 +278,9 @@ export const GoLiveResponse = zod.object({
 
 
 /**
- * @summary List available local phone numbers for an area code (simulated Twilio search)
+ * @summary Connect the Quo workspace using the configured API key
  */
-export const ListAvailableNumbersQueryParams = zod.object({
-  "areaCode": zod.coerce.string().optional()
-})
-
-export const ListAvailableNumbersResponseItem = zod.object({
-  "phoneNumber": zod.string(),
-  "locality": zod.string(),
-  "region": zod.string()
-})
-export const ListAvailableNumbersResponse = zod.array(ListAvailableNumbersResponseItem)
-
-
-/**
- * @summary Provision the selected phone number for the company (simulated)
- */
-export const ProvisionNumberBody = zod.object({
-  "phoneNumber": zod.string()
-})
-
-export const ProvisionNumberResponse = zod.object({
+export const ConnectQuoResponse = zod.object({
   "id": zod.int(),
   "name": zod.string(),
   "greeting": zod.string(),
@@ -258,10 +293,19 @@ export const ProvisionNumberResponse = zod.object({
   "phoneNumber": zod.string().nullish(),
   "jobberConnected": zod.boolean(),
   "jobberAccountName": zod.string().nullish(),
+  "quoConnected": zod.boolean(),
+  "quoWorkspaceName": zod.string().nullish(),
+  "watchedNumbers": zod.array(zod.object({
+  "id": zod.string(),
+  "phoneNumber": zod.string(),
+  "name": zod.string(),
+  "watched": zod.boolean()
+})),
   "isLive": zod.boolean(),
   "setupStatus": zod.object({
   "accountCreated": zod.boolean(),
   "jobberConnected": zod.boolean(),
+  "quoConnected": zod.boolean(),
   "phoneProvisioned": zod.boolean(),
   "receptionistConfigured": zod.boolean(),
   "teamInvited": zod.boolean(),
@@ -270,6 +314,112 @@ export const ProvisionNumberResponse = zod.object({
   "totalSteps": zod.int()
 }),
   "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Disconnect the Quo workspace and remove registered webhooks
+ */
+export const DisconnectQuoResponse = zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "greeting": zod.string(),
+  "collectFields": zod.array(zod.string()),
+  "customQuestions": zod.array(zod.object({
+  "question": zod.string(),
+  "answer": zod.string()
+})),
+  "ringThroughNumber": zod.string().nullish(),
+  "phoneNumber": zod.string().nullish(),
+  "jobberConnected": zod.boolean(),
+  "jobberAccountName": zod.string().nullish(),
+  "quoConnected": zod.boolean(),
+  "quoWorkspaceName": zod.string().nullish(),
+  "watchedNumbers": zod.array(zod.object({
+  "id": zod.string(),
+  "phoneNumber": zod.string(),
+  "name": zod.string(),
+  "watched": zod.boolean()
+})),
+  "isLive": zod.boolean(),
+  "setupStatus": zod.object({
+  "accountCreated": zod.boolean(),
+  "jobberConnected": zod.boolean(),
+  "quoConnected": zod.boolean(),
+  "phoneProvisioned": zod.boolean(),
+  "receptionistConfigured": zod.boolean(),
+  "teamInvited": zod.boolean(),
+  "isLive": zod.boolean(),
+  "completedSteps": zod.int(),
+  "totalSteps": zod.int()
+}),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary List the real phone numbers in the connected Quo workspace
+ */
+export const ListQuoNumbersResponseItem = zod.object({
+  "id": zod.string(),
+  "phoneNumber": zod.string(),
+  "name": zod.string(),
+  "watched": zod.boolean()
+})
+export const ListQuoNumbersResponse = zod.array(ListQuoNumbersResponseItem)
+
+
+/**
+ * @summary Choose which Quo lines the receptionist watches and register webhooks
+ */
+export const SelectQuoNumbersBody = zod.object({
+  "numberIds": zod.array(zod.string())
+})
+
+export const SelectQuoNumbersResponse = zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "greeting": zod.string(),
+  "collectFields": zod.array(zod.string()),
+  "customQuestions": zod.array(zod.object({
+  "question": zod.string(),
+  "answer": zod.string()
+})),
+  "ringThroughNumber": zod.string().nullish(),
+  "phoneNumber": zod.string().nullish(),
+  "jobberConnected": zod.boolean(),
+  "jobberAccountName": zod.string().nullish(),
+  "quoConnected": zod.boolean(),
+  "quoWorkspaceName": zod.string().nullish(),
+  "watchedNumbers": zod.array(zod.object({
+  "id": zod.string(),
+  "phoneNumber": zod.string(),
+  "name": zod.string(),
+  "watched": zod.boolean()
+})),
+  "isLive": zod.boolean(),
+  "setupStatus": zod.object({
+  "accountCreated": zod.boolean(),
+  "jobberConnected": zod.boolean(),
+  "quoConnected": zod.boolean(),
+  "phoneProvisioned": zod.boolean(),
+  "receptionistConfigured": zod.boolean(),
+  "teamInvited": zod.boolean(),
+  "isLive": zod.boolean(),
+  "completedSteps": zod.int(),
+  "totalSteps": zod.int()
+}),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Backfill recent calls, Sona transcripts, and summaries from Quo
+ */
+export const SyncCallsFromQuoResponse = zod.object({
+  "callsImported": zod.int(),
+  "transcriptsImported": zod.int(),
+  "message": zod.string()
 })
 
 
@@ -395,7 +545,10 @@ export const ListCallsResponseItem = zod.object({
   "startedAt": zod.string(),
   "durationSeconds": zod.int(),
   "isTest": zod.boolean(),
-  "bookingId": zod.int().nullish()
+  "bookingId": zod.int().nullish(),
+  "direction": zod.union([zod.literal('incoming'),zod.literal('outgoing'),zod.literal(null)]).nullish(),
+  "summary": zod.string().nullish(),
+  "quoCallId": zod.string().nullish()
 })
 export const ListCallsResponse = zod.array(ListCallsResponseItem)
 
@@ -418,6 +571,10 @@ export const GetCallResponse = zod.object({
   "durationSeconds": zod.int(),
   "isTest": zod.boolean(),
   "bookingId": zod.int().nullish(),
+  "direction": zod.union([zod.literal('incoming'),zod.literal('outgoing'),zod.literal(null)]).nullish(),
+  "summary": zod.string().nullish(),
+  "quoCallId": zod.string().nullish(),
+  "recordingUrl": zod.string().nullish(),
   "transcript": zod.array(zod.object({
   "speaker": zod.enum(['caller', 'ai']),
   "text": zod.string(),
@@ -444,6 +601,10 @@ export const SimulateTestCallResponse = zod.object({
   "durationSeconds": zod.int(),
   "isTest": zod.boolean(),
   "bookingId": zod.int().nullish(),
+  "direction": zod.union([zod.literal('incoming'),zod.literal('outgoing'),zod.literal(null)]).nullish(),
+  "summary": zod.string().nullish(),
+  "quoCallId": zod.string().nullish(),
+  "recordingUrl": zod.string().nullish(),
   "transcript": zod.array(zod.object({
   "speaker": zod.enum(['caller', 'ai']),
   "text": zod.string(),

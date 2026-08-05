@@ -113,44 +113,73 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Company"
-  /phone/available:
-    get:
-      operationId: listAvailableNumbers
+  /company/quo/connect:
+    post:
+      operationId: connectQuo
       tags: [phone]
-      summary: List available local phone numbers for an area code (simulated Twilio search)
-      parameters:
-        - name: areaCode
-          in: query
-          required: false
-          schema:
-            type: string
+      summary: Connect the Quo workspace using the configured API key
       responses:
         "200":
-          description: Available numbers
+          description: Connected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Company"
+  /company/quo/disconnect:
+    post:
+      operationId: disconnectQuo
+      tags: [phone]
+      summary: Disconnect the Quo workspace and remove registered webhooks
+      responses:
+        "200":
+          description: Disconnected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Company"
+  /quo/numbers:
+    get:
+      operationId: listQuoNumbers
+      tags: [phone]
+      summary: List the real phone numbers in the connected Quo workspace
+      responses:
+        "200":
+          description: Quo numbers
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/PhoneNumberOption"
-  /phone/provision:
+                  $ref: "#/components/schemas/QuoNumber"
     post:
-      operationId: provisionNumber
+      operationId: selectQuoNumbers
       tags: [phone]
-      summary: Provision the selected phone number for the company (simulated)
+      summary: Choose which Quo lines the receptionist watches and register webhooks
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/PhoneNumberSelection"
+              $ref: "#/components/schemas/QuoNumberSelection"
       responses:
         "200":
-          description: Provisioned
+          description: Watched lines updated
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Company"
+  /calls/sync:
+    post:
+      operationId: syncCallsFromQuo
+      tags: [calls]
+      summary: Backfill recent calls, Sona transcripts, and summaries from Quo
+      responses:
+        "200":
+          description: Sync result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SyncResult"
   /services:
     get:
       operationId: listServices
@@ -409,10 +438,11 @@ components:
         answer: { type: string }
     SetupStatus:
       type: object
-      required: [accountCreated, jobberConnected, phoneProvisioned, receptionistConfigured, teamInvited, isLive, completedSteps, totalSteps]
+      required: [accountCreated, jobberConnected, quoConnected, phoneProvisioned, receptionistConfigured, teamInvited, isLive, completedSteps, totalSteps]
       properties:
         accountCreated: { type: boolean }
         jobberConnected: { type: boolean }
+        quoConnected: { type: boolean }
         phoneProvisioned: { type: boolean }
         receptionistConfigured: { type: boolean }
         teamInvited: { type: boolean }
@@ -421,7 +451,7 @@ components:
         totalSteps: { type: integer }
     Company:
       type: object
-      required: [id, name, greeting, collectFields, customQuestions, jobberConnected, isLive, setupStatus, createdAt]
+      required: [id, name, greeting, collectFields, customQuestions, jobberConnected, quoConnected, watchedNumbers, isLive, setupStatus, createdAt]
       properties:
         id: { type: integer }
         name: { type: string }
@@ -437,6 +467,12 @@ components:
         phoneNumber: { type: ["string", "null"] }
         jobberConnected: { type: boolean }
         jobberAccountName: { type: ["string", "null"] }
+        quoConnected: { type: boolean }
+        quoWorkspaceName: { type: ["string", "null"] }
+        watchedNumbers:
+          type: array
+          items:
+            $ref: "#/components/schemas/QuoNumber"
         isLive: { type: boolean }
         setupStatus:
           $ref: "#/components/schemas/SetupStatus"
@@ -459,18 +495,28 @@ components:
           items:
             $ref: "#/components/schemas/CustomQuestion"
         ringThroughNumber: { type: ["string", "null"] }
-    PhoneNumberOption:
+    QuoNumber:
       type: object
-      required: [phoneNumber, locality, region]
+      required: [id, phoneNumber, name, watched]
       properties:
+        id: { type: string }
         phoneNumber: { type: string }
-        locality: { type: string }
-        region: { type: string }
-    PhoneNumberSelection:
+        name: { type: string }
+        watched: { type: boolean }
+    QuoNumberSelection:
       type: object
-      required: [phoneNumber]
+      required: [numberIds]
       properties:
-        phoneNumber: { type: string }
+        numberIds:
+          type: array
+          items: { type: string }
+    SyncResult:
+      type: object
+      required: [callsImported, transcriptsImported, message]
+      properties:
+        callsImported: { type: integer }
+        transcriptsImported: { type: integer }
+        message: { type: string }
     Service:
       type: object
       required: [id, name, priceMin, priceMax]
@@ -526,6 +572,9 @@ components:
         durationSeconds: { type: integer }
         isTest: { type: boolean }
         bookingId: { type: ["integer", "null"] }
+        direction: { type: ["string", "null"], enum: [incoming, outgoing, null] }
+        summary: { type: ["string", "null"] }
+        quoCallId: { type: ["string", "null"] }
     TranscriptSegment:
       type: object
       required: [speaker, text, offsetSeconds]
@@ -553,6 +602,10 @@ components:
         durationSeconds: { type: integer }
         isTest: { type: boolean }
         bookingId: { type: ["integer", "null"] }
+        direction: { type: ["string", "null"], enum: [incoming, outgoing, null] }
+        summary: { type: ["string", "null"] }
+        quoCallId: { type: ["string", "null"] }
+        recordingUrl: { type: ["string", "null"] }
         transcript:
           type: array
           items:

@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { CustomQuestion } from './customQuestion';
+import type { QuoNumber } from './quoNumber';
 import type { SetupStatus } from './setupStatus';
 
 export interface Company {
@@ -21,6 +22,10 @@ export interface Company {
   jobberConnected: boolean;
   /** @nullable */
   jobberAccountName?: string | null;
+  quoConnected: boolean;
+  /** @nullable */
+  quoWorkspaceName?: string | null;
+  watchedNumbers: QuoNumber[];
   isLive: boolean;
   setupStatus: SetupStatus;
   createdAt: string;

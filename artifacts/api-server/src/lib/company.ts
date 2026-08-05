@@ -5,6 +5,7 @@ import {
   teamMembersTable,
   type Company,
 } from "@workspace/db";
+import { listPhoneNumbers } from "./quo";
 
 export async function getCompanyForUser(
   userId: string,
@@ -23,7 +24,38 @@ export async function serializeCompany(company: Company) {
     .where(eq(teamMembersTable.companyId, company.id));
 
   const teamInvited = team.some((m) => m.role !== "owner");
-  const phoneProvisioned = !!company.phoneNumber;
+  // A line is "provisioned" once the receptionist is watching at least one
+  // real Quo number.
+  const phoneProvisioned = company.quoNumberIds.length > 0;
+
+  let watchedNumbers: Array<{
+    id: string;
+    phoneNumber: string;
+    name: string;
+    watched: boolean;
+  }> = [];
+  if (company.quoConnected && company.quoNumberIds.length > 0) {
+    try {
+      const numbers = await listPhoneNumbers();
+      watchedNumbers = numbers
+        .filter((n) => company.quoNumberIds.includes(n.id))
+        .map((n) => ({
+          id: n.id,
+          phoneNumber: n.number,
+          name: n.name ?? n.number,
+          watched: true,
+        }));
+    } catch {
+      // Quo being unreachable must not break the dashboard; fall back to ids.
+      watchedNumbers = company.quoNumberIds.map((id) => ({
+        id,
+        phoneNumber: "",
+        name: id,
+        watched: true,
+      }));
+    }
+  }
+
   const steps = [
     true, // account created
     company.jobberConnected,
@@ -40,13 +72,17 @@ export async function serializeCompany(company: Company) {
     collectFields: company.collectFields,
     customQuestions: company.customQuestions,
     ringThroughNumber: company.ringThroughNumber,
-    phoneNumber: company.phoneNumber,
+    phoneNumber: watchedNumbers[0]?.phoneNumber || company.phoneNumber,
     jobberConnected: company.jobberConnected,
     jobberAccountName: company.jobberAccountName,
+    quoConnected: company.quoConnected,
+    quoWorkspaceName: company.quoWorkspaceName,
+    watchedNumbers,
     isLive: company.isLive,
     setupStatus: {
       accountCreated: true,
       jobberConnected: company.jobberConnected,
+      quoConnected: company.quoConnected,
       phoneProvisioned,
       receptionistConfigured: company.receptionistConfigured,
       teamInvited,

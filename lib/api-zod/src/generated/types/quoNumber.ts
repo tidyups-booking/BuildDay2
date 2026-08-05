@@ -6,6 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type ListAvailableNumbersParams = {
-areaCode?: string;
-};
+export interface QuoNumber {
+  id: string;
+  phoneNumber: string;
+  name: string;
+  watched: boolean;
+}

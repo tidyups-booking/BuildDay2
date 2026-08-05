@@ -1,0 +1,272 @@
+/**
+ * Thin client for the Quo (formerly OpenPhone) public API.
+ *
+ * Auth is a workspace-scoped API key sent in the Authorization header
+ * (no "Bearer " prefix — Quo expects the raw key).
+ */
+const QUO_BASE_URL = "https://api.quo.com/v1";
+
+export class QuoError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+    this.name = "QuoError";
+  }
+}
+
+export function getQuoApiKey(): string | undefined {
+  const key = process.env.QUO_API_KEY?.trim();
+  return key && key.length > 0 ? key : undefined;
+}
+
+export function requireQuoApiKey(): string {
+  const key = getQuoApiKey();
+  if (!key) {
+    throw new QuoError("QUO_API_KEY is not configured", 503);
+  }
+  return key;
+}
+
+async function quoRequest<T>(
+  path: string,
+  init: RequestInit = {},
+): Promise<T> {
+  const res = await fetch(`${QUO_BASE_URL}${path}`, {
+    ...init,
+    headers: {
+      Authorization: requireQuoApiKey(),
+      "Content-Type": "application/json",
+      ...(init.headers ?? {}),
+    },
+  });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new QuoError(
+      `Quo API ${init.method ?? "GET"} ${path} failed (${res.status}): ${body.slice(0, 300)}`,
+      res.status,
+    );
+  }
+
+  if (res.status === 204) return undefined as T;
+  return (await res.json()) as T;
+}
+
+// --- Types -----------------------------------------------------------------
+
+export type QuoPhoneNumber = {
+  id: string;
+  name: string | null;
+  number: string;
+};
+
+export type QuoCall = {
+  id: string;
+  phoneNumberId: string;
+  direction: "incoming" | "outgoing";
+  status: string;
+  participants: string[];
+  createdAt: string;
+  answeredAt?: string | null;
+  completedAt?: string | null;
+  duration?: number | null;
+  userId?: string | null;
+};
+
+export type QuoTranscriptDialogue = {
+  content: string;
+  start: number;
+  end: number;
+  identifier: string | null;
+  userId?: string | null;
+};
+
+export type QuoTranscript = {
+  callId: string;
+  createdAt: string;
+  dialogue: QuoTranscriptDialogue[];
+  duration: number;
+  status: string;
+};
+
+export type QuoSummary = {
+  callId: string;
+  summary?: string[] | string | null;
+  nextSteps?: string[] | null;
+  status?: string;
+};
+
+export type QuoWebhookRecord = {
+  id: string;
+  key: string;
+  url: string;
+  events: string[];
+  status: string;
+  resourceIds: string[];
+  label?: string | null;
+};
+
+// --- Endpoints -------------------------------------------------------------
+
+export async function listPhoneNumbers(): Promise<QuoPhoneNumber[]> {
+  const res = await quoRequest<{ data: QuoPhoneNumber[] }>("/phone-numbers");
+  return res.data ?? [];
+}
+
+export async function getCall(callId: string): Promise<QuoCall | null> {
+  try {
+    const res = await quoRequest<{ data: QuoCall }>(`/calls/${callId}`);
+    return res.data ?? null;
+  } catch (err) {
+    if (err instanceof QuoError && err.status === 404) return null;
+    throw err;
+  }
+}
+
+export async function getTranscript(
+  callId: string,
+): Promise<QuoTranscript | null> {
+  try {
+    const res = await quoRequest<{ data: QuoTranscript }>(
+      `/call-transcripts/${callId}`,
+    );
+    return res.data ?? null;
+  } catch (err) {
+    if (err instanceof QuoError && err.status === 404) return null;
+    throw err;
+  }
+}
+
+export async function getSummary(callId: string): Promise<QuoSummary | null> {
+  try {
+    const res = await quoRequest<{ data: QuoSummary }>(
+      `/call-summaries/${callId}`,
+    );
+    return res.data ?? null;
+  } catch (err) {
+    if (err instanceof QuoError && err.status === 404) return null;
+    throw err;
+  }
+}
+
+export async function listConversations(
+  phoneNumberIds: string[],
+  maxResults = 50,
+): Promise<
+  Array<{
+    id: string;
+    phoneNumberId: string;
+    participants: string[];
+    lastActivityAt: string | null;
+  }>
+> {
+  const params = new URLSearchParams();
+  params.set("maxResults", String(maxResults));
+  for (const id of phoneNumberIds) params.append("phoneNumbers", id);
+  const res = await quoRequest<{
+    data: Array<{
+      id: string;
+      phoneNumberId: string;
+      participants: string[];
+      lastActivityAt: string | null;
+    }>;
+  }>(`/conversations?${params.toString()}`);
+  return res.data ?? [];
+}
+
+/**
+ * Quo's call list requires both a Quo number and the other participant, so
+ * calls are enumerated per conversation.
+ */
+export async function listCallsWithParticipant(
+  phoneNumberId: string,
+  participant: string,
+  maxResults = 10,
+): Promise<QuoCall[]> {
+  const params = new URLSearchParams({
+    phoneNumberId,
+    participants: participant,
+    maxResults: String(maxResults),
+  });
+  const res = await quoRequest<{ data: QuoCall[] }>(
+    `/calls?${params.toString()}`,
+  );
+  return res.data ?? [];
+}
+
+export async function listWebhooks(): Promise<QuoWebhookRecord[]> {
+  const res = await quoRequest<{ data: QuoWebhookRecord[] }>("/webhooks");
+  return res.data ?? [];
+}
+
+export async function createCallWebhook(
+  url: string,
+  resourceIds: string[],
+  label: string,
+): Promise<QuoWebhookRecord> {
+  const res = await quoRequest<{ data: QuoWebhookRecord }>("/webhooks/calls", {
+    method: "POST",
+    body: JSON.stringify({
+      url,
+      label,
+      resourceIds,
+      status: "enabled",
+      events: ["call.ringing", "call.completed", "call.recording.completed"],
+    }),
+  });
+  return res.data;
+}
+
+export async function createTranscriptWebhook(
+  url: string,
+  resourceIds: string[],
+  label: string,
+): Promise<QuoWebhookRecord> {
+  const res = await quoRequest<{ data: QuoWebhookRecord }>(
+    "/webhooks/call-transcripts",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        url,
+        label,
+        resourceIds,
+        status: "enabled",
+        events: ["call.transcript.completed"],
+      }),
+    },
+  );
+  return res.data;
+}
+
+export async function createSummaryWebhook(
+  url: string,
+  resourceIds: string[],
+  label: string,
+): Promise<QuoWebhookRecord> {
+  const res = await quoRequest<{ data: QuoWebhookRecord }>(
+    "/webhooks/call-summaries",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        url,
+        label,
+        resourceIds,
+        status: "enabled",
+        events: ["call.summary.completed"],
+      }),
+    },
+  );
+  return res.data;
+}
+
+export async function deleteWebhook(id: string): Promise<void> {
+  try {
+    await quoRequest<void>(`/webhooks/${id}`, { method: "DELETE" });
+  } catch (err) {
+    // A webhook already removed on Quo's side is not an error for us.
+    if (err instanceof QuoError && err.status === 404) return;
+    throw err;
+  }
+}

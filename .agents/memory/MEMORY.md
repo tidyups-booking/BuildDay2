@@ -1,2 +1,4 @@
 - [Orval zod v4 mismatch](orval-zod-v4.md) — orval v8 emits zod v4 API (`zod.int()`); codegen script must rewrite the generated import to `zod/v4`.
 - [Clerk web auth is cookie-based](clerk-web-auth.md) — never add bearer-token wiring to browser API calls; a 401 on web is a cookie/middleware issue, not missing tokens.
+- [Quo API constraints](quo-api.md) — raw key (no `Bearer`), `/v1/calls` needs a participant so enumerate via conversations, transcripts are post-call only.
+- [Scope express.raw to the webhook path](express-raw-body-scope.md) — a raw parser on `/api` leaves every other route's body a Buffer; body-parser skips once `req._body` is set.

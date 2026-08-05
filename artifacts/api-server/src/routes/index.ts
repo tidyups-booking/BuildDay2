@@ -7,6 +7,8 @@ import teamRouter from "./team";
 import callsRouter from "./calls";
 import bookingsRouter from "./bookings";
 import dashboardRouter from "./dashboard";
+// Note: the Quo webhook receiver is mounted in app.ts ahead of the JSON body
+// parser so it can verify signatures against the raw request bytes.
 
 const router: IRouter = Router();
 

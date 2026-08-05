@@ -43,6 +43,11 @@ export const callsTable = pgTable("calls", {
     .notNull()
     .default([]),
   bookingId: integer("booking_id"),
+  quoCallId: text("quo_call_id").unique(),
+  quoPhoneNumberId: text("quo_phone_number_id"),
+  direction: text("direction"), // incoming | outgoing
+  summary: text("summary"),
+  recordingUrl: text("recording_url"),
 });
 
 export const insertCallSchema = createInsertSchema(callsTable).omit({

@@ -30,13 +30,13 @@ import type {
   CompanyUpdate,
   DashboardSummary,
   HealthStatus,
-  ListAvailableNumbersParams,
   ListCallsParams,
-  PhoneNumberOption,
-  PhoneNumberSelection,
+  QuoNumber,
+  QuoNumberSelection,
   Service,
   ServiceInput,
   ServiceUpdate,
+  SyncResult,
   TeamMember,
   TeamMemberInput
 } from './api.schemas';
@@ -577,27 +577,162 @@ export const useGoLive = <TError = ErrorType<unknown>,
       return useMutation(getGoLiveMutationOptions(options));
     }
 
-export const getListAvailableNumbersUrl = (params?: ListAvailableNumbersParams,) => {
-  const normalizedParams = new URLSearchParams();
+export const getConnectQuoUrl = () => {
 
-  Object.entries(params || {}).forEach(([key, value]) => {
 
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? 'null' : String(value))
-    }
-  });
 
-  const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/api/phone/available?${stringifiedParams}` : `/api/phone/available`
+  return `/api/company/quo/connect`
 }
 
 /**
- * @summary List available local phone numbers for an area code (simulated Twilio search)
+ * @summary Connect the Quo workspace using the configured API key
  */
-export const listAvailableNumbers = async (params?: ListAvailableNumbersParams, options?: Parameters<typeof customFetch>[1]): Promise<PhoneNumberOption[]> => {
+export const connectQuo = async ( options?: Parameters<typeof customFetch>[1]): Promise<Company> => {
 
-  return customFetch<PhoneNumberOption[]>(getListAvailableNumbersUrl(params),
+  return customFetch<Company>(getConnectQuoUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getConnectQuoMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof connectQuo>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof connectQuo>>, TError,void, TContext> => {
+
+const mutationKey = ['connectQuo'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof connectQuo>>, void> = () => {
+
+
+          return  connectQuo(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ConnectQuoMutationResult = NonNullable<Awaited<ReturnType<typeof connectQuo>>>
+
+    export type ConnectQuoMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Connect the Quo workspace using the configured API key
+ */
+export const useConnectQuo = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof connectQuo>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof connectQuo>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getConnectQuoMutationOptions(options));
+    }
+
+export const getDisconnectQuoUrl = () => {
+
+
+
+
+  return `/api/company/quo/disconnect`
+}
+
+/**
+ * @summary Disconnect the Quo workspace and remove registered webhooks
+ */
+export const disconnectQuo = async ( options?: Parameters<typeof customFetch>[1]): Promise<Company> => {
+
+  return customFetch<Company>(getDisconnectQuoUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getDisconnectQuoMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof disconnectQuo>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof disconnectQuo>>, TError,void, TContext> => {
+
+const mutationKey = ['disconnectQuo'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof disconnectQuo>>, void> = () => {
+
+
+          return  disconnectQuo(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DisconnectQuoMutationResult = NonNullable<Awaited<ReturnType<typeof disconnectQuo>>>
+
+    export type DisconnectQuoMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Disconnect the Quo workspace and remove registered webhooks
+ */
+export const useDisconnectQuo = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof disconnectQuo>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof disconnectQuo>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getDisconnectQuoMutationOptions(options));
+    }
+
+export const getListQuoNumbersUrl = () => {
+
+
+
+
+  return `/api/quo/numbers`
+}
+
+/**
+ * @summary List the real phone numbers in the connected Quo workspace
+ */
+export const listQuoNumbers = async ( options?: Parameters<typeof customFetch>[1]): Promise<QuoNumber[]> => {
+
+  return customFetch<QuoNumber[]>(getListQuoNumbersUrl(),
   {
     ...options,
     method: 'GET'
@@ -610,45 +745,45 @@ export const listAvailableNumbers = async (params?: ListAvailableNumbersParams, 
 
 
 
-export const getListAvailableNumbersQueryKey = (params?: ListAvailableNumbersParams,) => {
+export const getListQuoNumbersQueryKey = () => {
     return [
-    `/api/phone/available`, ...(params ? [params] : [])
+    `/api/quo/numbers`
     ] as const;
     }
 
 
-export const getListAvailableNumbersQueryOptions = <TData = Awaited<ReturnType<typeof listAvailableNumbers>>, TError = ErrorType<unknown>>(params?: ListAvailableNumbersParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAvailableNumbers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getListQuoNumbersQueryOptions = <TData = Awaited<ReturnType<typeof listQuoNumbers>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listQuoNumbers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getListAvailableNumbersQueryKey(params);
+  const queryKey =  queryOptions?.queryKey ?? getListQuoNumbersQueryKey();
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAvailableNumbers>>> = ({ signal }) => listAvailableNumbers(params, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listQuoNumbers>>> = ({ signal }) => listQuoNumbers({ signal, ...requestOptions });
 
 
 
 
 
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAvailableNumbers>>, TError, TData> & { queryKey: QueryKey }
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listQuoNumbers>>, TError, TData> & { queryKey: QueryKey }
 }
 
-export type ListAvailableNumbersQueryResult = NonNullable<Awaited<ReturnType<typeof listAvailableNumbers>>>
-export type ListAvailableNumbersQueryError = ErrorType<unknown>
+export type ListQuoNumbersQueryResult = NonNullable<Awaited<ReturnType<typeof listQuoNumbers>>>
+export type ListQuoNumbersQueryError = ErrorType<unknown>
 
 
 /**
- * @summary List available local phone numbers for an area code (simulated Twilio search)
+ * @summary List the real phone numbers in the connected Quo workspace
  */
 
-export function useListAvailableNumbers<TData = Awaited<ReturnType<typeof listAvailableNumbers>>, TError = ErrorType<unknown>>(
- params?: ListAvailableNumbersParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAvailableNumbers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export function useListQuoNumbers<TData = Awaited<ReturnType<typeof listQuoNumbers>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listQuoNumbers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getListAvailableNumbersQueryOptions(params,options)
+  const queryOptions = getListQuoNumbersQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
@@ -661,25 +796,25 @@ export function useListAvailableNumbers<TData = Awaited<ReturnType<typeof listAv
 
 
 
-export const getProvisionNumberUrl = () => {
+export const getSelectQuoNumbersUrl = () => {
 
 
 
 
-  return `/api/phone/provision`
+  return `/api/quo/numbers`
 }
 
 /**
- * @summary Provision the selected phone number for the company (simulated)
+ * @summary Choose which Quo lines the receptionist watches and register webhooks
  */
-export const provisionNumber = async (phoneNumberSelection: PhoneNumberSelection, options?: Parameters<typeof customFetch>[1]): Promise<Company> => {
+export const selectQuoNumbers = async (quoNumberSelection: QuoNumberSelection, options?: Parameters<typeof customFetch>[1]): Promise<Company> => {
 
-  return customFetch<Company>(getProvisionNumberUrl(),
+  return customFetch<Company>(getSelectQuoNumbersUrl(),
   {
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(phoneNumberSelection)
+    body: JSON.stringify(quoNumberSelection)
   }
 );}
 
@@ -687,11 +822,11 @@ export const provisionNumber = async (phoneNumberSelection: PhoneNumberSelection
 
 
 
-export const getProvisionNumberMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof provisionNumber>>, TError,{data: BodyType<PhoneNumberSelection>}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof provisionNumber>>, TError,{data: BodyType<PhoneNumberSelection>}, TContext> => {
+export const getSelectQuoNumbersMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof selectQuoNumbers>>, TError,{data: BodyType<QuoNumberSelection>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof selectQuoNumbers>>, TError,{data: BodyType<QuoNumberSelection>}, TContext> => {
 
-const mutationKey = ['provisionNumber'];
+const mutationKey = ['selectQuoNumbers'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -701,10 +836,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof provisionNumber>>, {data: BodyType<PhoneNumberSelection>}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof selectQuoNumbers>>, {data: BodyType<QuoNumberSelection>}> = (props) => {
           const {data} = props ?? {};
 
-          return  provisionNumber(data,requestOptions)
+          return  selectQuoNumbers(data,requestOptions)
         }
 
 
@@ -714,22 +849,93 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type ProvisionNumberMutationResult = NonNullable<Awaited<ReturnType<typeof provisionNumber>>>
-    export type ProvisionNumberMutationBody = BodyType<PhoneNumberSelection>
-    export type ProvisionNumberMutationError = ErrorType<unknown>
+    export type SelectQuoNumbersMutationResult = NonNullable<Awaited<ReturnType<typeof selectQuoNumbers>>>
+    export type SelectQuoNumbersMutationBody = BodyType<QuoNumberSelection>
+    export type SelectQuoNumbersMutationError = ErrorType<unknown>
 
     /**
- * @summary Provision the selected phone number for the company (simulated)
+ * @summary Choose which Quo lines the receptionist watches and register webhooks
  */
-export const useProvisionNumber = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof provisionNumber>>, TError,{data: BodyType<PhoneNumberSelection>}, TContext>, request?: SecondParameter<typeof customFetch>}
+export const useSelectQuoNumbers = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof selectQuoNumbers>>, TError,{data: BodyType<QuoNumberSelection>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
-        Awaited<ReturnType<typeof provisionNumber>>,
+        Awaited<ReturnType<typeof selectQuoNumbers>>,
         TError,
-        {data: BodyType<PhoneNumberSelection>},
+        {data: BodyType<QuoNumberSelection>},
         TContext
       > => {
-      return useMutation(getProvisionNumberMutationOptions(options));
+      return useMutation(getSelectQuoNumbersMutationOptions(options));
+    }
+
+export const getSyncCallsFromQuoUrl = () => {
+
+
+
+
+  return `/api/calls/sync`
+}
+
+/**
+ * @summary Backfill recent calls, Sona transcripts, and summaries from Quo
+ */
+export const syncCallsFromQuo = async ( options?: Parameters<typeof customFetch>[1]): Promise<SyncResult> => {
+
+  return customFetch<SyncResult>(getSyncCallsFromQuoUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getSyncCallsFromQuoMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof syncCallsFromQuo>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof syncCallsFromQuo>>, TError,void, TContext> => {
+
+const mutationKey = ['syncCallsFromQuo'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof syncCallsFromQuo>>, void> = () => {
+
+
+          return  syncCallsFromQuo(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SyncCallsFromQuoMutationResult = NonNullable<Awaited<ReturnType<typeof syncCallsFromQuo>>>
+
+    export type SyncCallsFromQuoMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Backfill recent calls, Sona transcripts, and summaries from Quo
+ */
+export const useSyncCallsFromQuo = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof syncCallsFromQuo>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof syncCallsFromQuo>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getSyncCallsFromQuoMutationOptions(options));
     }
 
 export const getListServicesUrl = () => {

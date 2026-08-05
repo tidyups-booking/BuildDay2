@@ -6,8 +6,6 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface PhoneNumberOption {
-  phoneNumber: string;
-  locality: string;
-  region: string;
+export interface QuoNumberSelection {
+  numberIds: string[];
 }

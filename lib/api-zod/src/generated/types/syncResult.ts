@@ -6,6 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface PhoneNumberSelection {
-  phoneNumber: string;
+export interface SyncResult {
+  callsImported: number;
+  transcriptsImported: number;
+  message: string;
 }

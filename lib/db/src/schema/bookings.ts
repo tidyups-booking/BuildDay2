@@ -15,7 +15,9 @@ export const bookingsTable = pgTable("bookings", {
   companyId: integer("company_id")
     .notNull()
     .references(() => companiesTable.id),
-  callId: integer("call_id"),
+  // Unique so concurrent transcript/summary webhooks for the same call cannot
+  // create duplicate bookings.
+  callId: integer("call_id").unique(),
   customerName: text("customer_name").notNull(),
   customerPhone: text("customer_phone").notNull(),
   customerAddress: text("customer_address"),

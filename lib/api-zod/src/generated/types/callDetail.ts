@@ -5,6 +5,7 @@
  * Book My Cleaning — AI receptionist for Jobber cleaning companies
  * OpenAPI spec version: 0.1.0
  */
+import type { CallDetailDirection } from './callDetailDirection';
 import type { CallDetailStatus } from './callDetailStatus';
 import type { ExtractedAnswer } from './extractedAnswer';
 import type { TranscriptSegment } from './transcriptSegment';
@@ -23,6 +24,14 @@ export interface CallDetail {
   isTest: boolean;
   /** @nullable */
   bookingId?: number | null;
+  /** @nullable */
+  direction?: CallDetailDirection;
+  /** @nullable */
+  summary?: string | null;
+  /** @nullable */
+  quoCallId?: string | null;
+  /** @nullable */
+  recordingUrl?: string | null;
   transcript: TranscriptSegment[];
   extractedAnswers: ExtractedAnswer[];
 }
