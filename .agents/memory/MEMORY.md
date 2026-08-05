@@ -14,4 +14,5 @@
 - [Jobber OAuth PKCE flow](jobber-oauth.md) — real OAuth with PKCE; connect returns authorizeUrl, callback at /api/company/jobber/callback stores tokens; token refresh on every sync.
 - [video-js scaffold gaps](video-artifact-scaffold.md) — new video artifacts ship without DOM libs in tsconfig and unformatted, so repo typecheck + format go red until fixed.
 - [Owner-notify claim release](notify-claim-release.md) — notification sends return sent/skipped/failed; retry state must live apart from health flags or dashboards lie during outages.
+- [Clerk Expo mobile wiring](clerk-expo-mobile.md) — mobile uses bearer tokens via setAuthTokenGetter + custom auth screens; Clerk key must be injected in both dev script and build.js Metro env.
 - [waitForJob timeout is capped](waitforjob-timeout-cap.md) — the `timeout` arg is silently clamped to ~20s; long waits need real sleeps, not a bigger number.

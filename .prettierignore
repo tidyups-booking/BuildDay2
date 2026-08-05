@@ -12,3 +12,4 @@ coverage
 artifacts/*/src/generated
 **/generated
 .replit
+artifacts/owner-mobile/expo-env.d.ts
