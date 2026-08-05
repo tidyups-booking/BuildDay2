@@ -15,3 +15,22 @@ Jobber uses real OAuth 2.0 + PKCE. Tokens are AES-256-GCM encrypted at rest usin
 - Disconnect: calls Jobber's `appDisconnect` mutation with a decrypted token, then nulls all token columns.
 - The OAuth callback URL registered in Jobber Developer Center must be `https://<domain>/api/company/jobber/callback`.
 - `JOBBER_CLIENT_ID` and `JOBBER_CLIENT_SECRET` must be set as secrets.
+
+## Verifying Jobber credentials without a browser
+Do NOT probe `/api/oauth/authorize` to check whether a client id is real — it 302s to
+`api.getjobber.com/login` for a valid key, a wrong key, and pure garbage alike, so it proves nothing.
+
+POST to `/api/oauth/token` instead with the real client id/secret and a junk `code`. Jobber
+distinguishes the two failures in plain text:
+- `"The provided client id and secret do not match an existing application"` → credentials are wrong.
+- `"The provided authorization code was not valid."` → credentials are GOOD; only the code was fake.
+
+**Client id format is not a reliable signal.** Older Jobber apps issue 64-char hex client ids, newer
+ones issue UUIDs; the secret stays 64-char hex. A UUID client id paired with a hex secret is normal,
+so never reject a pasted credential on shape alone — run the token probe.
+
+## Changing credentials
+Swapping the Jobber app invalidates every stored access/refresh token, since they were issued to the
+old client id. Check `companies.jobber_access_token IS NOT NULL` before swapping; any connected
+company must reconnect. The running API reads these from `process.env` at startup, so a secret change
+needs a workflow restart in dev and a re-publish for production.
