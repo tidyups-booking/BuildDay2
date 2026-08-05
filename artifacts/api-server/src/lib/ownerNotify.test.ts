@@ -85,10 +85,27 @@ describe("notifyOwnerQuoKeyDead", () => {
     expect(logger.warn).toHaveBeenCalled();
   });
 
-  it("resolves (with a warning, no send) when the company has no ring-through number", async () => {
+  it("falls back to the notification number when there is no ring-through number", async () => {
+    listPhoneNumbers.mockResolvedValue([{ id: "n1", number: "+15550001111" }]);
+    sendMessage.mockResolvedValue(undefined);
+    const notify = await freshNotify();
+    await notify({
+      ...company,
+      ringThroughNumber: null,
+      notificationNumber: "5559876543",
+    } as unknown as Company);
+    expect(sendMessage).toHaveBeenCalledTimes(1);
+    expect(sendMessage.mock.calls[0]![1]).toMatchObject({ to: "+15559876543" });
+  });
+
+  it("resolves (with a warning, no send) when the company has no ring-through or notification number", async () => {
     const notify = await freshNotify();
     await expect(
-      notify({ ...company, ringThroughNumber: null } as unknown as Company),
+      notify({
+        ...company,
+        ringThroughNumber: null,
+        notificationNumber: null,
+      } as unknown as Company),
     ).resolves.toBeUndefined();
     expect(sendMessage).not.toHaveBeenCalled();
     expect(logger.warn).toHaveBeenCalled();

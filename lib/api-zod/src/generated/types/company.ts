@@ -20,6 +20,8 @@ export interface Company {
   /** @nullable */
   ringThroughNumber?: string | null;
   /** @nullable */
+  notificationNumber?: string | null;
+  /** @nullable */
   phoneNumber?: string | null;
   jobberConnected: boolean;
   jobberSkipped: boolean;

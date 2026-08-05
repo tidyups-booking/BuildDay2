@@ -104,6 +104,7 @@ export async function serializeCompany(company: Company) {
     collectFields: company.collectFields,
     customQuestions: company.customQuestions,
     ringThroughNumber: company.ringThroughNumber,
+    notificationNumber: company.notificationNumber,
     phoneNumber: watchedNumbers[0]?.phoneNumber || company.phoneNumber,
     timezone: company.timezone,
     jobberConnected: company.jobberConnected,

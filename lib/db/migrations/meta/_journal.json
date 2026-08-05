@@ -85,6 +85,13 @@
       "when": 1785923100000,
       "tag": "0011_quo_needs_reauth",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1785923200000,
+      "tag": "0012_notification_number",
+      "breakpoints": true
     }
   ]
 }

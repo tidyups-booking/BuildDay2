@@ -13,6 +13,7 @@ export interface CompanyUpdate {
   collectFields?: string[];
   customQuestions?: CustomQuestion[];
   ringThroughNumber?: string;
+  notificationNumber?: string;
   /** @minLength 1 */
   timezone?: string;
   /**

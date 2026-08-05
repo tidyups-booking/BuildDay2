@@ -29,6 +29,7 @@ export interface CompanyUpdate {
   collectFields?: string[];
   customQuestions?: CustomQuestion[];
   ringThroughNumber?: string;
+  notificationNumber?: string;
   /** @minLength 1 */
   timezone?: string;
   /**
@@ -116,6 +117,8 @@ export interface Company {
   customQuestions: CustomQuestion[];
   /** @nullable */
   ringThroughNumber?: string | null;
+  /** @nullable */
+  notificationNumber?: string | null;
   /** @nullable */
   phoneNumber?: string | null;
   jobberConnected: boolean;

@@ -127,6 +127,33 @@ export function DashboardPage() {
         </div>
       )}
 
+      {company &&
+        company.quoConnected &&
+        !company.ringThroughNumber &&
+        !company.notificationNumber && (
+          <div className="mb-8 bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-4">
+            <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0 mt-0.5">
+              <AlertCircle className="w-5 h-5 text-amber-600" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-amber-900">
+                Add a notification number
+              </h3>
+              <p className="text-sm text-amber-800 mt-1 mb-3">
+                We have no phone number on file to text you if your Quo
+                connection breaks or comes back online. Add a ring-through or
+                notification number so outages don't go unnoticed.
+              </p>
+              <a
+                href="/settings"
+                className="text-sm font-medium text-amber-700 bg-card border border-amber-300 px-3 py-1.5 rounded shadow-sm hover:bg-amber-50"
+              >
+                Add a Number
+              </a>
+            </div>
+          </div>
+        )}
+
       {company && <TimezoneNudge company={company} />}
       {company && <BookingTimeReview company={company} />}
 

@@ -30,6 +30,10 @@ export const companiesTable = pgTable("companies", {
     .notNull()
     .default([]),
   ringThroughNumber: text("ring_through_number"),
+  // Fallback for owner-facing outage/recovery texts when no ring-through
+  // number is set. Without either, those notifications can only surface in
+  // the dashboard.
+  notificationNumber: text("notification_number"),
   phoneNumber: text("phone_number"),
   // IANA zone used when writing appointment times into customer-facing text.
   // Without this a quote would quote UTC and promise the wrong hour.

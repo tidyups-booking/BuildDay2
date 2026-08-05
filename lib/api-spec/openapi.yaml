@@ -671,6 +671,9 @@ components:
           items:
             $ref: "#/components/schemas/CustomQuestion"
         ringThroughNumber: { type: string }
+        # Fallback number for owner outage/recovery texts when no ring-through
+        # number is set.
+        notificationNumber: { type: string }
         # IANA zone name, e.g. America/Edmonton. Validated server-side against
         # the runtime's timezone database.
         timezone: { type: string, minLength: 1 }
@@ -776,6 +779,9 @@ components:
           items:
             $ref: "#/components/schemas/CustomQuestion"
         ringThroughNumber: { type: ["string", "null"] }
+        # Fallback number for owner outage/recovery texts when no ring-through
+        # number is set.
+        notificationNumber: { type: ["string", "null"] }
         phoneNumber: { type: ["string", "null"] }
         jobberConnected: { type: boolean }
         jobberSkipped: { type: boolean }

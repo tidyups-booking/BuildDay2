@@ -30,6 +30,7 @@ export const GetCompanyResponse = zod.object({
   "answer": zod.string()
 })),
   "ringThroughNumber": zod.string().nullish(),
+  "notificationNumber": zod.string().nullish(),
   "phoneNumber": zod.string().nullish(),
   "jobberConnected": zod.boolean(),
   "jobberSkipped": zod.boolean(),
@@ -94,6 +95,7 @@ export const CreateCompanyResponse = zod.object({
   "answer": zod.string()
 })),
   "ringThroughNumber": zod.string().nullish(),
+  "notificationNumber": zod.string().nullish(),
   "phoneNumber": zod.string().nullish(),
   "jobberConnected": zod.boolean(),
   "jobberSkipped": zod.boolean(),
@@ -171,6 +173,7 @@ export const UpdateCompanyBody = zod.object({
   "answer": zod.string()
 })).optional(),
   "ringThroughNumber": zod.string().optional(),
+  "notificationNumber": zod.string().optional(),
   "timezone": zod.string().min(1).optional(),
   "quoteRateSolo": zod.number().min(updateCompanyBodyQuoteRateSoloMin).max(updateCompanyBodyQuoteRateSoloMax).optional(),
   "quoteRateTeam": zod.number().min(updateCompanyBodyQuoteRateTeamMin).max(updateCompanyBodyQuoteRateTeamMax).optional(),
@@ -194,6 +197,7 @@ export const UpdateCompanyResponse = zod.object({
   "answer": zod.string()
 })),
   "ringThroughNumber": zod.string().nullish(),
+  "notificationNumber": zod.string().nullish(),
   "phoneNumber": zod.string().nullish(),
   "jobberConnected": zod.boolean(),
   "jobberSkipped": zod.boolean(),
@@ -258,6 +262,7 @@ export const DisconnectJobberResponse = zod.object({
   "answer": zod.string()
 })),
   "ringThroughNumber": zod.string().nullish(),
+  "notificationNumber": zod.string().nullish(),
   "phoneNumber": zod.string().nullish(),
   "jobberConnected": zod.boolean(),
   "jobberSkipped": zod.boolean(),
@@ -314,6 +319,7 @@ export const GoLiveResponse = zod.object({
   "answer": zod.string()
 })),
   "ringThroughNumber": zod.string().nullish(),
+  "notificationNumber": zod.string().nullish(),
   "phoneNumber": zod.string().nullish(),
   "jobberConnected": zod.boolean(),
   "jobberSkipped": zod.boolean(),
@@ -374,6 +380,7 @@ export const SetJobberSkippedResponse = zod.object({
   "answer": zod.string()
 })),
   "ringThroughNumber": zod.string().nullish(),
+  "notificationNumber": zod.string().nullish(),
   "phoneNumber": zod.string().nullish(),
   "jobberConnected": zod.boolean(),
   "jobberSkipped": zod.boolean(),
@@ -434,6 +441,7 @@ export const ConnectQuoResponse = zod.object({
   "answer": zod.string()
 })),
   "ringThroughNumber": zod.string().nullish(),
+  "notificationNumber": zod.string().nullish(),
   "phoneNumber": zod.string().nullish(),
   "jobberConnected": zod.boolean(),
   "jobberSkipped": zod.boolean(),
@@ -490,6 +498,7 @@ export const DisconnectQuoResponse = zod.object({
   "answer": zod.string()
 })),
   "ringThroughNumber": zod.string().nullish(),
+  "notificationNumber": zod.string().nullish(),
   "phoneNumber": zod.string().nullish(),
   "jobberConnected": zod.boolean(),
   "jobberSkipped": zod.boolean(),
@@ -562,6 +571,7 @@ export const SelectQuoNumbersResponse = zod.object({
   "answer": zod.string()
 })),
   "ringThroughNumber": zod.string().nullish(),
+  "notificationNumber": zod.string().nullish(),
   "phoneNumber": zod.string().nullish(),
   "jobberConnected": zod.boolean(),
   "jobberSkipped": zod.boolean(),

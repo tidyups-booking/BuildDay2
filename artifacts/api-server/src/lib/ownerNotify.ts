@@ -90,13 +90,15 @@ async function notifyOwner(
       );
       return;
     }
-    const to = company.ringThroughNumber
-      ? toE164(company.ringThroughNumber)
-      : null;
+    // Ring-through number first; fall back to the dedicated notification
+    // number so owners without a transfer target still hear about outages.
+    const to =
+      (company.ringThroughNumber ? toE164(company.ringThroughNumber) : null) ??
+      (company.notificationNumber ? toE164(company.notificationNumber) : null);
     if (!to) {
       logger.warn(
         { companyId: company.id },
-        `Wanted to notify owner (${opts.what}) but company has no usable ring-through number; owner not notified`,
+        `Wanted to notify owner (${opts.what}) but company has no usable ring-through or notification number; owner not notified`,
       );
       return;
     }

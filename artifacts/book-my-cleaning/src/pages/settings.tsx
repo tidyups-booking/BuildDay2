@@ -240,6 +240,9 @@ function ReceptionistSettings({ company }: { company: any }) {
   const [ringThrough, setRingThrough] = useState(
     company.ringThroughNumber || "",
   );
+  const [notificationNumber, setNotificationNumber] = useState(
+    company.notificationNumber || "",
+  );
   const [customQuestions, setCustomQuestions] = useState(
     company.customQuestions || [],
   );
@@ -250,7 +253,14 @@ function ReceptionistSettings({ company }: { company: any }) {
 
   const handleSave = () => {
     update.mutate(
-      { data: { greeting, ringThroughNumber: ringThrough, customQuestions } },
+      {
+        data: {
+          greeting,
+          ringThroughNumber: ringThrough,
+          notificationNumber,
+          customQuestions,
+        },
+      },
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getGetCompanyQueryKey() });
@@ -298,6 +308,18 @@ function ReceptionistSettings({ company }: { company: any }) {
             value={ringThrough}
             onChange={(e) => setRingThrough(e.target.value)}
           />
+        </div>
+        <div className="space-y-2">
+          <Label>Notification Number</Label>
+          <Input
+            value={notificationNumber}
+            onChange={(e) => setNotificationNumber(e.target.value)}
+            placeholder="e.g. 555-123-4567"
+          />
+          <p className="text-sm text-muted-foreground">
+            Where we text you if your Quo connection breaks or recovers. Used
+            when no ring-through number is set.
+          </p>
         </div>
       </div>
 
