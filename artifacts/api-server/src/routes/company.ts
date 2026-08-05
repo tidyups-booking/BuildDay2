@@ -27,6 +27,8 @@ import {
   buildAuthorizeUrl,
   exchangeAuthorizationCode,
   fetchJobberAccount,
+  friendlyTokenExchangeError,
+  JobberTokenError,
   disconnectJobberApp,
   getValidAccessToken,
   tokenExpiry,
@@ -54,7 +56,11 @@ function safePathPrefix(value: string | undefined): string {
 // OAuth callback — hit by a browser redirect from Jobber; identified by the
 // `state` value we generated at connect time, not by a session.
 router.get("/company/jobber/callback", async (req, res): Promise<void> => {
-  const { code, state } = req.query as { code?: string; state?: string };
+  const {
+    code,
+    state,
+    error: oauthError,
+  } = req.query as { code?: string; state?: string; error?: string };
   // Build the absolute frontend URL from server-side configuration only.
   // Request headers (X-Forwarded-Host / -Proto / -Prefix) are attacker
   // controllable on this unauthenticated endpoint and must not influence
@@ -67,6 +73,15 @@ router.get("/company/jobber/callback", async (req, res): Promise<void> => {
     res.redirect(`${setupUrl}?jobber_error=${encodeURIComponent(reason)}`);
   };
 
+  // Jobber sends ?error=access_denied when the owner clicks "Deny".
+  if (oauthError === "access_denied") {
+    fail("You declined access in Jobber. Connect again whenever you're ready.");
+    return;
+  }
+  if (oauthError) {
+    fail(`Jobber reported a problem (${oauthError}). Please try again.`);
+    return;
+  }
   if (!code || !state) {
     fail("Jobber did not return an authorization code.");
     return;
@@ -112,7 +127,13 @@ router.get("/company/jobber/callback", async (req, res): Promise<void> => {
     res.redirect(`${setupUrl}?jobber=connected`);
   } catch (err) {
     logger.error({ err }, "Jobber token exchange failed");
-    fail("Could not complete the Jobber connection. Please try again.");
+    if (err instanceof JobberTokenError) {
+      fail(friendlyTokenExchangeError(err));
+    } else {
+      fail(
+        "Connected to Jobber, but we couldn't finish setting up your account. Please try again.",
+      );
+    }
   }
 });
 

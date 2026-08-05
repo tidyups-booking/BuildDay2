@@ -81,6 +81,29 @@ async function requestToken(
   return JSON.parse(text) as TokenResponse;
 }
 
+/**
+ * Translate a token-exchange failure into a message an owner can act on.
+ * Jobber's error bodies are plain text and distinguish the common causes.
+ */
+export function friendlyTokenExchangeError(err: unknown): string {
+  if (err instanceof JobberTokenError) {
+    const body = err.message.toLowerCase();
+    if (body.includes("client id and secret do not match")) {
+      return "Jobber rejected this app's credentials. The Jobber client ID and secret configured on the server don't match a Jobber app — check JOBBER_CLIENT_ID and JOBBER_CLIENT_SECRET.";
+    }
+    if (
+      body.includes("redirect uri") ||
+      body.includes("redirect_uri") ||
+      body.includes("authorization code was not valid") ||
+      body.includes("invalid_grant")
+    ) {
+      return "Jobber rejected the sign-in handoff. This usually means the callback URL registered in the Jobber app doesn't exactly match this site's callback URL, or the approval expired — check the Jobber Developer Center callback URL and try connecting again.";
+    }
+    return "Jobber refused to complete the connection. Please try connecting again.";
+  }
+  return "Could not complete the Jobber connection. Please try again.";
+}
+
 export async function exchangeAuthorizationCode(args: {
   code: string;
   redirectUri: string;
