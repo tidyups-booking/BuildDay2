@@ -6,6 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface CompanyInput {
+export interface WatchedNumber {
+  id: string;
+  phoneNumber: string;
   name: string;
+  watched: boolean;
 }

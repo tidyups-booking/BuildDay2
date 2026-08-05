@@ -7,9 +7,5 @@
  */
 
 export interface ConnectQuoInput {
-  /**
-     * A Quo workspace API key from the company's own Quo account
-     * @minLength 10
-     */
   apiKey: string;
 }

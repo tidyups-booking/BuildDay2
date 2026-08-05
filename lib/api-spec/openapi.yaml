@@ -81,19 +81,21 @@ paths:
     post:
       operationId: connectJobber
       tags: [company]
-      summary: Connect the company's Jobber account (simulated OAuth until keys are configured)
+      summary: Start Jobber OAuth — returns an authorizeUrl to redirect the user to Jobber
       responses:
         "200":
-          description: Connected
+          description: OAuth start — redirect the browser to authorizeUrl
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Company"
+                $ref: "#/components/schemas/JobberConnectStart"
+        "503":
+          description: Jobber API credentials not configured
   /company/jobber/disconnect:
     post:
       operationId: disconnectJobber
       tags: [company]
-      summary: Disconnect Jobber
+      summary: Disconnect Jobber and revoke app access
       responses:
         "200":
           description: Disconnected
@@ -388,7 +390,7 @@ paths:
     post:
       operationId: syncBookingToJobber
       tags: [bookings]
-      summary: Push this booking into Jobber (simulated until Jobber is connected with real keys)
+      summary: Push this booking into Jobber as a real client + work request
       parameters:
         - name: id
           in: path
@@ -442,6 +444,52 @@ components:
       properties:
         question: { type: string }
         answer: { type: string }
+    CompanyInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+    CompanyUpdate:
+      type: object
+      properties:
+        name: { type: string }
+        greeting: { type: string }
+        collectFields:
+          type: array
+          items: { type: string }
+        customQuestions:
+          type: array
+          items:
+            $ref: "#/components/schemas/CustomQuestion"
+        ringThroughNumber: { type: string }
+    ConnectQuoInput:
+      type: object
+      required: [apiKey]
+      properties:
+        apiKey: { type: string }
+    QuoNumberSelection:
+      type: object
+      required: [numberIds]
+      properties:
+        numberIds:
+          type: array
+          items: { type: string }
+    QuoNumber:
+      type: object
+      required: [id, phoneNumber]
+      properties:
+        id: { type: string }
+        phoneNumber: { type: string }
+        name: { type: ["string", "null"] }
+        watched: { type: boolean }
+    WatchedNumber:
+      type: object
+      required: [id, phoneNumber, name, watched]
+      properties:
+        id: { type: string }
+        phoneNumber: { type: string }
+        name: { type: string }
+        watched: { type: boolean }
     SetupStatus:
       type: object
       required: [accountCreated, jobberConnected, quoConnected, phoneProvisioned, receptionistConfigured, teamInvited, isLive, completedSteps, totalSteps]
@@ -479,83 +527,60 @@ components:
         watchedNumbers:
           type: array
           items:
-            $ref: "#/components/schemas/QuoNumber"
+            $ref: "#/components/schemas/WatchedNumber"
         isLive: { type: boolean }
         setupStatus:
           $ref: "#/components/schemas/SetupStatus"
         createdAt: { type: string }
-    CompanyInput:
+    JobberConnectStart:
+      type: object
+      required: [authorizeUrl]
+      properties:
+        authorizeUrl: { type: string }
+    SyncResult:
+      type: object
+      required: [synced, skipped]
+      properties:
+        synced: { type: integer }
+        skipped: { type: integer }
+        errors:
+          type: array
+          items: { type: string }
+    ServiceInput:
       type: object
       required: [name]
       properties:
-        name: { type: string, minLength: 1 }
-    CompanyUpdate:
-      type: object
-      properties:
-        name: { type: string, minLength: 1 }
-        greeting: { type: string }
-        collectFields:
-          type: array
-          items: { type: string }
-        customQuestions:
-          type: array
-          items:
-            $ref: "#/components/schemas/CustomQuestion"
-        ringThroughNumber: { type: ["string", "null"] }
-    QuoNumber:
-      type: object
-      required: [id, phoneNumber, name, watched]
-      properties:
-        id: { type: string }
-        phoneNumber: { type: string }
         name: { type: string }
-        watched: { type: boolean }
-    ConnectQuoInput:
+        description: { type: string }
+        priceMin: { type: number }
+        priceMax: { type: number }
+        durationMinutes: { type: integer }
+    ServiceUpdate:
       type: object
-      required: [apiKey]
       properties:
-        apiKey:
-          type: string
-          minLength: 10
-          description: A Quo workspace API key from the company's own Quo account
-    QuoNumberSelection:
-      type: object
-      required: [numberIds]
-      properties:
-        numberIds:
-          type: array
-          items: { type: string }
-    SyncResult:
-      type: object
-      required: [callsImported, transcriptsImported, message]
-      properties:
-        callsImported: { type: integer }
-        transcriptsImported: { type: integer }
-        message: { type: string }
+        name: { type: string }
+        description: { type: string }
+        priceMin: { type: number }
+        priceMax: { type: number }
+        durationMinutes: { type: integer }
     Service:
       type: object
-      required: [id, name, priceMin, priceMax]
+      required: [id, name, createdAt]
       properties:
         id: { type: integer }
         name: { type: string }
         description: { type: ["string", "null"] }
-        priceMin: { type: number }
-        priceMax: { type: number }
-    ServiceInput:
+        priceMin: { type: ["number", "null"] }
+        priceMax: { type: ["number", "null"] }
+        durationMinutes: { type: ["integer", "null"] }
+        createdAt: { type: string }
+    TeamMemberInput:
       type: object
-      required: [name, priceMin, priceMax]
+      required: [name, email, role]
       properties:
-        name: { type: string, minLength: 1 }
-        description: { type: string }
-        priceMin: { type: number }
-        priceMax: { type: number }
-    ServiceUpdate:
-      type: object
-      properties:
-        name: { type: string, minLength: 1 }
-        description: { type: ["string", "null"] }
-        priceMin: { type: number }
-        priceMax: { type: number }
+        name: { type: string }
+        email: { type: string }
+        role: { type: string, enum: [owner, dispatcher, cleaner] }
     TeamMember:
       type: object
       required: [id, name, email, role, status, createdAt]
@@ -563,16 +588,22 @@ components:
         id: { type: integer }
         name: { type: string }
         email: { type: string }
-        role: { type: string, enum: [owner, dispatcher, cleaner] }
-        status: { type: string, enum: [active, invited] }
+        role: { type: string }
+        status: { type: string }
         createdAt: { type: string }
-    TeamMemberInput:
+    TranscriptSegment:
       type: object
-      required: [name, email, role]
+      required: [speaker, text, offsetSeconds]
       properties:
-        name: { type: string, minLength: 1 }
-        email: { type: string, format: email }
-        role: { type: string, enum: [dispatcher, cleaner] }
+        speaker: { type: string, enum: [caller, ai] }
+        text: { type: string }
+        offsetSeconds: { type: number }
+    ExtractedAnswer:
+      type: object
+      required: [field, value]
+      properties:
+        field: { type: string }
+        value: { type: string }
     Call:
       type: object
       required: [id, callerName, callerPhone, status, startedAt, durationSeconds, isTest]
@@ -587,22 +618,10 @@ components:
         durationSeconds: { type: integer }
         isTest: { type: boolean }
         bookingId: { type: ["integer", "null"] }
-        direction: { type: ["string", "null"], enum: [incoming, outgoing, null] }
+        direction: { type: ["string", "null"] }
         summary: { type: ["string", "null"] }
         quoCallId: { type: ["string", "null"] }
-    TranscriptSegment:
-      type: object
-      required: [speaker, text, offsetSeconds]
-      properties:
-        speaker: { type: string, enum: [caller, ai] }
-        text: { type: string }
-        offsetSeconds: { type: integer }
-    ExtractedAnswer:
-      type: object
-      required: [field, value]
-      properties:
-        field: { type: string }
-        value: { type: string }
+        recordingUrl: { type: ["string", "null"] }
     CallDetail:
       type: object
       required: [id, callerName, callerPhone, status, startedAt, durationSeconds, isTest, transcript, extractedAnswers]
@@ -617,7 +636,7 @@ components:
         durationSeconds: { type: integer }
         isTest: { type: boolean }
         bookingId: { type: ["integer", "null"] }
-        direction: { type: ["string", "null"], enum: [incoming, outgoing, null] }
+        direction: { type: ["string", "null"] }
         summary: { type: ["string", "null"] }
         quoCallId: { type: ["string", "null"] }
         recordingUrl: { type: ["string", "null"] }
@@ -643,6 +662,8 @@ components:
         status: { type: string, enum: [pending, confirmed, completed, canceled] }
         jobberSynced: { type: boolean }
         jobberJobId: { type: ["string", "null"] }
+        jobberClientId: { type: ["string", "null"] }
+        jobberWebUri: { type: ["string", "null"] }
         createdAt: { type: string }
     BookingUpdate:
       type: object

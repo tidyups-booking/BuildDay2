@@ -72,7 +72,9 @@ export function buildSimulatedCall(company: Company, services: Service[]) {
     serviceName: service ? service.name : "a deep clean",
     preferredTime: pick(PREFERRED_TIMES),
     budget: service
-      ? `Somewhere around $${Math.round((service.priceMin + service.priceMax) / 2)}`
+      ? service.priceMin != null && service.priceMax != null
+        ? `Somewhere around $${Math.round((service.priceMin + service.priceMax) / 2)}`
+        : "Varies by job"
       : "Around $200",
   };
 

@@ -31,6 +31,7 @@ import type {
   ConnectQuoInput,
   DashboardSummary,
   HealthStatus,
+  JobberConnectStart,
   ListCallsParams,
   QuoNumber,
   QuoNumberSelection,
@@ -374,11 +375,11 @@ export const getConnectJobberUrl = () => {
 }
 
 /**
- * @summary Connect the company's Jobber account (simulated OAuth until keys are configured)
+ * @summary Start Jobber OAuth — returns an authorizeUrl to redirect the user to Jobber
  */
-export const connectJobber = async ( options?: Parameters<typeof customFetch>[1]): Promise<Company> => {
+export const connectJobber = async ( options?: Parameters<typeof customFetch>[1]): Promise<JobberConnectStart> => {
 
-  return customFetch<Company>(getConnectJobberUrl(),
+  return customFetch<JobberConnectStart>(getConnectJobberUrl(),
   {
     ...options,
     method: 'POST'
@@ -391,7 +392,7 @@ export const connectJobber = async ( options?: Parameters<typeof customFetch>[1]
 
 
 
-export const getConnectJobberMutationOptions = <TError = ErrorType<unknown>,
+export const getConnectJobberMutationOptions = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof connectJobber>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof connectJobber>>, TError,void, TContext> => {
 
@@ -420,12 +421,12 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type ConnectJobberMutationResult = NonNullable<Awaited<ReturnType<typeof connectJobber>>>
 
-    export type ConnectJobberMutationError = ErrorType<unknown>
+    export type ConnectJobberMutationError = ErrorType<void>
 
     /**
- * @summary Connect the company's Jobber account (simulated OAuth until keys are configured)
+ * @summary Start Jobber OAuth — returns an authorizeUrl to redirect the user to Jobber
  */
-export const useConnectJobber = <TError = ErrorType<unknown>,
+export const useConnectJobber = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof connectJobber>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof connectJobber>>,
@@ -445,7 +446,7 @@ export const getDisconnectJobberUrl = () => {
 }
 
 /**
- * @summary Disconnect Jobber
+ * @summary Disconnect Jobber and revoke app access
  */
 export const disconnectJobber = async ( options?: Parameters<typeof customFetch>[1]): Promise<Company> => {
 
@@ -494,7 +495,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type DisconnectJobberMutationError = ErrorType<unknown>
 
     /**
- * @summary Disconnect Jobber
+ * @summary Disconnect Jobber and revoke app access
  */
 export const useDisconnectJobber = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof disconnectJobber>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -1809,7 +1810,7 @@ export const getSyncBookingToJobberUrl = (id: number,) => {
 }
 
 /**
- * @summary Push this booking into Jobber (simulated until Jobber is connected with real keys)
+ * @summary Push this booking into Jobber as a real client + work request
  */
 export const syncBookingToJobber = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<Booking> => {
 
@@ -1858,7 +1859,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type SyncBookingToJobberMutationError = ErrorType<unknown>
 
     /**
- * @summary Push this booking into Jobber (simulated until Jobber is connected with real keys)
+ * @summary Push this booking into Jobber as a real client + work request
  */
 export const useSyncBookingToJobber = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof syncBookingToJobber>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}

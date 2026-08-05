@@ -6,10 +6,6 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type TeamMemberStatus = typeof TeamMemberStatus[keyof typeof TeamMemberStatus];
-
-
-export const TeamMemberStatus = {
-  active: 'active',
-  invited: 'invited',
-} as const;
+export interface JobberConnectStart {
+  authorizeUrl: string;
+}

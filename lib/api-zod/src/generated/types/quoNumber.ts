@@ -9,6 +9,7 @@
 export interface QuoNumber {
   id: string;
   phoneNumber: string;
-  name: string;
-  watched: boolean;
+  /** @nullable */
+  name?: string | null;
+  watched?: boolean;
 }

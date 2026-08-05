@@ -11,6 +11,11 @@ export interface Service {
   name: string;
   /** @nullable */
   description?: string | null;
-  priceMin: number;
-  priceMax: number;
+  /** @nullable */
+  priceMin?: number | null;
+  /** @nullable */
+  priceMax?: number | null;
+  /** @nullable */
+  durationMinutes?: number | null;
+  createdAt: string;
 }

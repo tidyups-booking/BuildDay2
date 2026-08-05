@@ -8,11 +8,9 @@
 import type { CustomQuestion } from './customQuestion';
 
 export interface CompanyUpdate {
-  /** @minLength 1 */
   name?: string;
   greeting?: string;
   collectFields?: string[];
   customQuestions?: CustomQuestion[];
-  /** @nullable */
-  ringThroughNumber?: string | null;
+  ringThroughNumber?: string;
 }

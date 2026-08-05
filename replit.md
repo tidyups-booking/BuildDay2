@@ -6,7 +6,7 @@ A multi-company SaaS: an AI phone receptionist for cleaning companies that use J
 
 Telephony is **real**: the app reads calls, Sona transcripts, and summaries from the customer's own Quo workspace. We never provision phone numbers — there is no Twilio dependency.
 
-Jobber OAuth is still **simulated** server-side (drop-in replaceable). Test calls generate realistic transcripts from the company's receptionist configuration.
+Jobber OAuth is **real**: companies go through a proper OAuth 2.0 + PKCE flow. Tokens (access + refresh) are stored encrypted in the DB. Sync creates real Jobber clients and work requests via GraphQL.
 
 ### Quo integration
 
@@ -19,6 +19,13 @@ Jobber OAuth is still **simulated** server-side (drop-in replaceable). Test call
 - Deliveries are idempotent: each `webhook-id` is claimed in `quo_webhook_deliveries` before processing, so replays and retries of an already-handled event are acknowledged without side effects. Processing happens **before** the response — success returns 200, failure releases the claim and returns 500 so Quo retries. Events for a line the matched company does not watch are ignored.
 - Transcripts are **post-call**, not live. `call.ringing` shows a call in progress; the transcript arrives seconds after hangup via `call.transcript.completed`.
 - `POST /api/calls/sync` backfills history, since webhooks only cover calls made after setup.
+
+### Jobber integration
+
+- Real OAuth 2.0 + PKCE flow: `POST /api/company/jobber/connect` generates a PKCE challenge and returns `{ authorizeUrl }` — the frontend redirects the user to Jobber to authorize. Jobber redirects back to `/api/company/jobber/callback` with the auth code; the server exchanges it for tokens and stores them (`jobberAccessToken`, `jobberRefreshToken`, `jobberTokenExpiresAt`).
+- `JOBBER_CLIENT_ID` and `JOBBER_CLIENT_SECRET` must be set. The OAuth callback URL registered in the Jobber Developer Center must be `https://<domain>/api/company/jobber/callback`.
+- Sync (`POST /api/bookings/:id/sync-jobber`) calls `getValidAccessToken` which automatically refreshes when within 60 s of expiry. It then creates a Jobber `clientCreate` + `requestCreate` via GraphQL, attaches extracted wizard answers as a note, and stores the request ID + web URI.
+- Disconnect calls Jobber's `appDisconnect` mutation and clears all stored tokens.
 
 ## Architecture
 

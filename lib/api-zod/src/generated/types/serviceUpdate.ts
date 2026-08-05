@@ -7,10 +7,9 @@
  */
 
 export interface ServiceUpdate {
-  /** @minLength 1 */
   name?: string;
-  /** @nullable */
-  description?: string | null;
+  description?: string;
   priceMin?: number;
   priceMax?: number;
+  durationMinutes?: number;
 }

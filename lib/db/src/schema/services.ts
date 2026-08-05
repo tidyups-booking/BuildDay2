@@ -16,8 +16,10 @@ export const servicesTable = pgTable("services", {
     .references(() => companiesTable.id),
   name: text("name").notNull(),
   description: text("description"),
-  priceMin: doublePrecision("price_min").notNull(),
-  priceMax: doublePrecision("price_max").notNull(),
+  // Optional — not every service has a published price range.
+  priceMin: doublePrecision("price_min"),
+  priceMax: doublePrecision("price_max"),
+  durationMinutes: integer("duration_minutes"),
 });
 
 export const insertServiceSchema = createInsertSchema(servicesTable).omit({

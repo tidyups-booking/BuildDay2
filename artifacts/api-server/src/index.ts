@@ -1,5 +1,6 @@
 import app from "./app";
 import { logger } from "./lib/logger";
+import { runMigrations } from "./lib/migrate";
 
 const rawPort = process.env["PORT"];
 
@@ -14,6 +15,11 @@ const port = Number(rawPort);
 if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
+
+// Apply any pending schema migrations before accepting traffic so that the
+// database is always in sync with the deployed code, including on first boot
+// or after a schema-changing deploy.
+await runMigrations();
 
 app.listen(port, (err) => {
   if (err) {

@@ -4,6 +4,28 @@ import { fileURLToPath } from "node:url";
 import { build as esbuild } from "esbuild";
 import esbuildPluginPino from "esbuild-plugin-pino";
 import { rm } from "node:fs/promises";
+import { readdir, cp } from "node:fs/promises";
+
+/**
+ * Resolve the zod/v4 subpath from pnpm's virtual store.
+ * pnpm does not create top-level node_modules/zod symlinks so esbuild cannot
+ * find subpath exports via normal resolution. We walk .pnpm to locate the
+ * versioned directory, then append the subpath manually.
+ */
+async function resolveZodV4(workspaceRoot) {
+  const pnpmStore = path.join(workspaceRoot, "node_modules", ".pnpm");
+  try {
+    const entries = await readdir(pnpmStore);
+    const zodDir = entries.find((e) => e.startsWith("zod@"));
+    if (zodDir) {
+      const candidate = path.join(pnpmStore, zodDir, "node_modules", "zod", "v4", "index.js");
+      return candidate;
+    }
+  } catch {
+    // ignore
+  }
+  return null;
+}
 
 // Plugins (e.g. 'esbuild-plugin-pino') may use `require` to resolve dependencies
 globalThis.require = createRequire(import.meta.url);
@@ -13,6 +35,10 @@ const artifactDir = path.dirname(fileURLToPath(import.meta.url));
 async function buildAll() {
   const distDir = path.resolve(artifactDir, "dist");
   await rm(distDir, { recursive: true, force: true });
+
+  const workspaceRoot = path.resolve(artifactDir, "../..");
+  const zodV4Path = await resolveZodV4(workspaceRoot);
+  const zodAlias = zodV4Path ? { "zod/v4": zodV4Path } : {};
 
   await esbuild({
     entryPoints: [path.resolve(artifactDir, "src/index.ts")],
@@ -101,6 +127,7 @@ async function buildAll() {
       "puppeteer-core",
       "electron",
     ],
+    alias: zodAlias,
     sourcemap: "linked",
     plugins: [
       // pino relies on workers to handle logging, instead of externalizing it we use a plugin to handle it
@@ -120,7 +147,17 @@ globalThis.__dirname = __bannerPath.dirname(globalThis.__filename);
   });
 }
 
-buildAll().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+async function copyMigrations(artifactDir) {
+  // Copy lib/db/migrations → dist/migrations so the production bundle can apply
+  // schema migrations on startup without needing drizzle-kit in the runtime image.
+  const src = path.resolve(artifactDir, "..", "..", "lib", "db", "migrations");
+  const dest = path.resolve(artifactDir, "dist", "migrations");
+  await cp(src, dest, { recursive: true });
+}
+
+buildAll()
+  .then(() => copyMigrations(artifactDir))
+  .catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });

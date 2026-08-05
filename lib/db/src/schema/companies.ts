@@ -11,6 +11,13 @@ import { z } from "zod/v4";
 
 export type CustomQuestion = { question: string; answer: string };
 
+export type JobberOauthState = {
+  state: string;
+  verifier: string;
+  redirectUri: string;
+  createdAt: string;
+};
+
 export const companiesTable = pgTable("companies", {
   id: serial("id").primaryKey(),
   ownerUserId: text("owner_user_id").notNull().unique(),
@@ -23,8 +30,17 @@ export const companiesTable = pgTable("companies", {
     .default([]),
   ringThroughNumber: text("ring_through_number"),
   phoneNumber: text("phone_number"),
+  // Jobber OAuth tokens — real OAuth with PKCE
   jobberConnected: boolean("jobber_connected").notNull().default(false),
   jobberAccountName: text("jobber_account_name"),
+  jobberAccountId: text("jobber_account_id"),
+  jobberAccessToken: text("jobber_access_token"),
+  jobberRefreshToken: text("jobber_refresh_token"),
+  jobberTokenExpiresAt: timestamp("jobber_token_expires_at", {
+    withTimezone: true,
+  }),
+  jobberOauth: jsonb("jobber_oauth").$type<JobberOauthState | null>(),
+  // Quo integration — company brings their own Quo workspace key
   quoConnected: boolean("quo_connected").notNull().default(false),
   quoWorkspaceName: text("quo_workspace_name"),
   // Quo lines this company's receptionist watches. A line may only be claimed

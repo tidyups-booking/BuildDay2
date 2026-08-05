@@ -8,7 +8,6 @@
 import type { TeamMemberInputRole } from './teamMemberInputRole';
 
 export interface TeamMemberInput {
-  /** @minLength 1 */
   name: string;
   email: string;
   role: TeamMemberInputRole;

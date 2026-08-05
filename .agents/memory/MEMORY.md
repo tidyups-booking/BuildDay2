@@ -4,3 +4,4 @@
 - [Scope express.raw to the webhook path](express-raw-body-scope.md) — a raw parser on `/api` leaves every other route's body a Buffer; body-parser skips once `req._body` is set.
 - [Quo plans & provisioning](quo-plans-and-provisioning.md) — transcripts need Business (not Starter), Sona calls burn credits, and there is no API to create accounts, numbers, or keys.
 - [Webhook idempotency via claim rows](webhook-idempotency-claim.md) — claim the delivery id before processing and release it on failure; ack-then-process silently drops events.
+- [Jobber OAuth PKCE flow](jobber-oauth.md) — real OAuth with PKCE; connect returns authorizeUrl, callback at /api/company/jobber/callback stores tokens; token refresh on every sync.

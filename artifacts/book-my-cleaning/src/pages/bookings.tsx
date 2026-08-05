@@ -4,7 +4,7 @@ import { useListBookings, useUpdateBooking, useSyncBookingToJobber, getListBooki
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
-import { Calendar, MapPin, Phone, User, CheckCircle2, MoreHorizontal, RefreshCw } from "lucide-react";
+import { Calendar, MapPin, Phone, User, CheckCircle2, MoreHorizontal, RefreshCw, ExternalLink } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
@@ -29,8 +29,15 @@ export function BookingsPage() {
     syncJobber.mutate({ id }, {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getListBookingsQueryKey() });
-        toast({ title: "Synced to Jobber", description: "Job created in your Jobber account." });
-      }
+        toast({ title: "Synced to Jobber", description: "Client and work request created in your Jobber account." });
+      },
+      onError: (error: any) => {
+        toast({
+          title: "Jobber sync failed",
+          description: error?.message || "Could not create the job in Jobber. Try again.",
+          variant: "destructive",
+        });
+      },
     });
   };
 
@@ -100,7 +107,7 @@ export function BookingsPage() {
                 </div>
               </div>
 
-              {!booking.jobberSynced && (
+              {!booking.jobberSynced ? (
                 <div className="mt-5 pt-4 border-t border-border">
                   <Button 
                     variant="outline" 
@@ -112,7 +119,15 @@ export function BookingsPage() {
                     {syncJobber.isPending ? "Syncing..." : "Sync to Jobber"}
                   </Button>
                 </div>
-              )}
+              ) : (booking as any).jobberWebUri ? (
+                <div className="mt-5 pt-4 border-t border-border">
+                  <a href={(booking as any).jobberWebUri} target="_blank" rel="noopener noreferrer">
+                    <Button variant="outline" className="w-full gap-2 text-green-400 border-green-800 hover:bg-green-950 hover:text-green-300">
+                      <ExternalLink className="w-4 h-4" /> View in Jobber
+                    </Button>
+                  </a>
+                </div>
+              ) : null}
             </div>
           ))}
         </div>

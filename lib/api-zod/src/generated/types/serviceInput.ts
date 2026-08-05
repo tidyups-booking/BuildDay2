@@ -7,9 +7,9 @@
  */
 
 export interface ServiceInput {
-  /** @minLength 1 */
   name: string;
   description?: string;
-  priceMin: number;
-  priceMax: number;
+  priceMin?: number;
+  priceMax?: number;
+  durationMinutes?: number;
 }

@@ -14,6 +14,41 @@ export interface CustomQuestion {
   answer: string;
 }
 
+export interface CompanyInput {
+  name: string;
+}
+
+export interface CompanyUpdate {
+  name?: string;
+  greeting?: string;
+  collectFields?: string[];
+  customQuestions?: CustomQuestion[];
+  ringThroughNumber?: string;
+}
+
+export interface ConnectQuoInput {
+  apiKey: string;
+}
+
+export interface QuoNumberSelection {
+  numberIds: string[];
+}
+
+export interface QuoNumber {
+  id: string;
+  phoneNumber: string;
+  /** @nullable */
+  name?: string | null;
+  watched?: boolean;
+}
+
+export interface WatchedNumber {
+  id: string;
+  phoneNumber: string;
+  name: string;
+  watched: boolean;
+}
+
 export interface SetupStatus {
   accountCreated: boolean;
   jobberConnected: boolean;
@@ -24,13 +59,6 @@ export interface SetupStatus {
   isLive: boolean;
   completedSteps: number;
   totalSteps: number;
-}
-
-export interface QuoNumber {
-  id: string;
-  phoneNumber: string;
-  name: string;
-  watched: boolean;
 }
 
 export interface Company {
@@ -51,43 +79,36 @@ export interface Company {
   quoWorkspaceName?: string | null;
   /** @nullable */
   quoKeyLast4?: string | null;
-  watchedNumbers: QuoNumber[];
+  watchedNumbers: WatchedNumber[];
   isLive: boolean;
   setupStatus: SetupStatus;
   createdAt: string;
 }
 
-export interface CompanyInput {
-  /** @minLength 1 */
-  name: string;
-}
-
-export interface CompanyUpdate {
-  /** @minLength 1 */
-  name?: string;
-  greeting?: string;
-  collectFields?: string[];
-  customQuestions?: CustomQuestion[];
-  /** @nullable */
-  ringThroughNumber?: string | null;
-}
-
-export interface ConnectQuoInput {
-  /**
-     * A Quo workspace API key from the company's own Quo account
-     * @minLength 10
-     */
-  apiKey: string;
-}
-
-export interface QuoNumberSelection {
-  numberIds: string[];
+export interface JobberConnectStart {
+  authorizeUrl: string;
 }
 
 export interface SyncResult {
-  callsImported: number;
-  transcriptsImported: number;
-  message: string;
+  synced: number;
+  skipped: number;
+  errors?: string[];
+}
+
+export interface ServiceInput {
+  name: string;
+  description?: string;
+  priceMin?: number;
+  priceMax?: number;
+  durationMinutes?: number;
+}
+
+export interface ServiceUpdate {
+  name?: string;
+  description?: string;
+  priceMin?: number;
+  priceMax?: number;
+  durationMinutes?: number;
 }
 
 export interface Service {
@@ -95,50 +116,12 @@ export interface Service {
   name: string;
   /** @nullable */
   description?: string | null;
-  priceMin: number;
-  priceMax: number;
-}
-
-export interface ServiceInput {
-  /** @minLength 1 */
-  name: string;
-  description?: string;
-  priceMin: number;
-  priceMax: number;
-}
-
-export interface ServiceUpdate {
-  /** @minLength 1 */
-  name?: string;
   /** @nullable */
-  description?: string | null;
-  priceMin?: number;
-  priceMax?: number;
-}
-
-export type TeamMemberRole = typeof TeamMemberRole[keyof typeof TeamMemberRole];
-
-
-export const TeamMemberRole = {
-  owner: 'owner',
-  dispatcher: 'dispatcher',
-  cleaner: 'cleaner',
-} as const;
-
-export type TeamMemberStatus = typeof TeamMemberStatus[keyof typeof TeamMemberStatus];
-
-
-export const TeamMemberStatus = {
-  active: 'active',
-  invited: 'invited',
-} as const;
-
-export interface TeamMember {
-  id: number;
-  name: string;
-  email: string;
-  role: TeamMemberRole;
-  status: TeamMemberStatus;
+  priceMin?: number | null;
+  /** @nullable */
+  priceMax?: number | null;
+  /** @nullable */
+  durationMinutes?: number | null;
   createdAt: string;
 }
 
@@ -146,58 +129,24 @@ export type TeamMemberInputRole = typeof TeamMemberInputRole[keyof typeof TeamMe
 
 
 export const TeamMemberInputRole = {
+  owner: 'owner',
   dispatcher: 'dispatcher',
   cleaner: 'cleaner',
 } as const;
 
 export interface TeamMemberInput {
-  /** @minLength 1 */
   name: string;
   email: string;
   role: TeamMemberInputRole;
 }
 
-export type CallStatus = typeof CallStatus[keyof typeof CallStatus];
-
-
-export const CallStatus = {
-  in_progress: 'in_progress',
-  completed: 'completed',
-  missed: 'missed',
-  booked: 'booked',
-} as const;
-
-/**
- * @nullable
- */
-export type CallDirection = typeof CallDirection[keyof typeof CallDirection] | null;
-
-
-export const CallDirection = {
-  incoming: 'incoming',
-  outgoing: 'outgoing',
-} as const;
-
-export interface Call {
+export interface TeamMember {
   id: number;
-  callerName: string;
-  callerPhone: string;
-  status: CallStatus;
-  /** @nullable */
-  serviceRequested?: string | null;
-  /** @nullable */
-  preferredTime?: string | null;
-  startedAt: string;
-  durationSeconds: number;
-  isTest: boolean;
-  /** @nullable */
-  bookingId?: number | null;
-  /** @nullable */
-  direction?: CallDirection;
-  /** @nullable */
-  summary?: string | null;
-  /** @nullable */
-  quoCallId?: string | null;
+  name: string;
+  email: string;
+  role: string;
+  status: string;
+  createdAt: string;
 }
 
 export type TranscriptSegmentSpeaker = typeof TranscriptSegmentSpeaker[keyof typeof TranscriptSegmentSpeaker];
@@ -219,6 +168,40 @@ export interface ExtractedAnswer {
   value: string;
 }
 
+export type CallStatus = typeof CallStatus[keyof typeof CallStatus];
+
+
+export const CallStatus = {
+  in_progress: 'in_progress',
+  completed: 'completed',
+  missed: 'missed',
+  booked: 'booked',
+} as const;
+
+export interface Call {
+  id: number;
+  callerName: string;
+  callerPhone: string;
+  status: CallStatus;
+  /** @nullable */
+  serviceRequested?: string | null;
+  /** @nullable */
+  preferredTime?: string | null;
+  startedAt: string;
+  durationSeconds: number;
+  isTest: boolean;
+  /** @nullable */
+  bookingId?: number | null;
+  /** @nullable */
+  direction?: string | null;
+  /** @nullable */
+  summary?: string | null;
+  /** @nullable */
+  quoCallId?: string | null;
+  /** @nullable */
+  recordingUrl?: string | null;
+}
+
 export type CallDetailStatus = typeof CallDetailStatus[keyof typeof CallDetailStatus];
 
 
@@ -227,17 +210,6 @@ export const CallDetailStatus = {
   completed: 'completed',
   missed: 'missed',
   booked: 'booked',
-} as const;
-
-/**
- * @nullable
- */
-export type CallDetailDirection = typeof CallDetailDirection[keyof typeof CallDetailDirection] | null;
-
-
-export const CallDetailDirection = {
-  incoming: 'incoming',
-  outgoing: 'outgoing',
 } as const;
 
 export interface CallDetail {
@@ -255,7 +227,7 @@ export interface CallDetail {
   /** @nullable */
   bookingId?: number | null;
   /** @nullable */
-  direction?: CallDetailDirection;
+  direction?: string | null;
   /** @nullable */
   summary?: string | null;
   /** @nullable */
@@ -290,6 +262,10 @@ export interface Booking {
   jobberSynced: boolean;
   /** @nullable */
   jobberJobId?: string | null;
+  /** @nullable */
+  jobberClientId?: string | null;
+  /** @nullable */
+  jobberWebUri?: string | null;
   createdAt: string;
 }
 

@@ -5,14 +5,12 @@
  * Book My Cleaning — AI receptionist for Jobber cleaning companies
  * OpenAPI spec version: 0.1.0
  */
-import type { TeamMemberRole } from './teamMemberRole';
-import type { TeamMemberStatus } from './teamMemberStatus';
 
 export interface TeamMember {
   id: number;
   name: string;
   email: string;
-  role: TeamMemberRole;
-  status: TeamMemberStatus;
+  role: string;
+  status: string;
   createdAt: string;
 }

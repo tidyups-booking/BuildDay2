@@ -10,6 +10,7 @@ export type TeamMemberInputRole = typeof TeamMemberInputRole[keyof typeof TeamMe
 
 
 export const TeamMemberInputRole = {
+  owner: 'owner',
   dispatcher: 'dispatcher',
   cleaner: 'cleaner',
 } as const;

@@ -21,5 +21,9 @@ export interface Booking {
   jobberSynced: boolean;
   /** @nullable */
   jobberJobId?: string | null;
+  /** @nullable */
+  jobberClientId?: string | null;
+  /** @nullable */
+  jobberWebUri?: string | null;
   createdAt: string;
 }

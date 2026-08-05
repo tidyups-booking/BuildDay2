@@ -6,7 +6,7 @@ import {
   type Company,
 } from "@workspace/db";
 import { listPhoneNumbers, QuoError } from "./quo";
-import { decryptSecret } from "./secretBox";
+import { decryptQuoKey } from "./secretBox";
 
 export async function getCompanyForUser(
   userId: string,
@@ -20,7 +20,7 @@ export async function getCompanyForUser(
 
 /** The company's decrypted Quo key, or null if they have not connected one. */
 export function companyQuoKey(company: Company): string | null {
-  return decryptSecret(company.quoApiKeyEncrypted);
+  return decryptQuoKey(company.quoApiKeyEncrypted);
 }
 
 /**

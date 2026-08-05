@@ -15,7 +15,7 @@ import {
   serializeCompany,
   companyQuoKey,
 } from "../lib/company";
-import { encryptSecret } from "../lib/secretBox";
+import { encryptQuoKey } from "../lib/secretBox";
 import * as quo from "../lib/quo";
 import { publicWebhookUrl } from "../lib/publicUrl";
 
@@ -66,7 +66,7 @@ router.post("/company/quo/connect", async (req, res): Promise<void> => {
     .set({
       quoConnected: true,
       quoWorkspaceName: `${numbers.length} line${numbers.length === 1 ? "" : "s"}`,
-      quoApiKeyEncrypted: encryptSecret(apiKey),
+      quoApiKeyEncrypted: encryptQuoKey(apiKey),
       quoKeyLast4: apiKey.slice(-4),
     })
     .where(eq(companiesTable.id, company.id))

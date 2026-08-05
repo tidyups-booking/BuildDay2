@@ -60,11 +60,8 @@ export const GetCompanyResponse = zod.object({
 /**
  * @summary Create the company workspace for the current user
  */
-
-
-
 export const CreateCompanyBody = zod.object({
-  "name": zod.string().min(1)
+  "name": zod.string()
 })
 
 export const CreateCompanyResponse = zod.object({
@@ -108,18 +105,15 @@ export const CreateCompanyResponse = zod.object({
 /**
  * @summary Update company settings / receptionist configuration
  */
-
-
-
 export const UpdateCompanyBody = zod.object({
-  "name": zod.string().min(1).optional(),
+  "name": zod.string().optional(),
   "greeting": zod.string().optional(),
   "collectFields": zod.array(zod.string()).optional(),
   "customQuestions": zod.array(zod.object({
   "question": zod.string(),
   "answer": zod.string()
 })).optional(),
-  "ringThroughNumber": zod.string().nullish()
+  "ringThroughNumber": zod.string().optional()
 })
 
 export const UpdateCompanyResponse = zod.object({
@@ -161,48 +155,15 @@ export const UpdateCompanyResponse = zod.object({
 
 
 /**
- * @summary Connect the company's Jobber account (simulated OAuth until keys are configured)
+ * @summary Start Jobber OAuth — returns an authorizeUrl to redirect the user to Jobber
  */
 export const ConnectJobberResponse = zod.object({
-  "id": zod.int(),
-  "name": zod.string(),
-  "greeting": zod.string(),
-  "collectFields": zod.array(zod.string()),
-  "customQuestions": zod.array(zod.object({
-  "question": zod.string(),
-  "answer": zod.string()
-})),
-  "ringThroughNumber": zod.string().nullish(),
-  "phoneNumber": zod.string().nullish(),
-  "jobberConnected": zod.boolean(),
-  "jobberAccountName": zod.string().nullish(),
-  "quoConnected": zod.boolean(),
-  "quoWorkspaceName": zod.string().nullish(),
-  "quoKeyLast4": zod.string().nullish(),
-  "watchedNumbers": zod.array(zod.object({
-  "id": zod.string(),
-  "phoneNumber": zod.string(),
-  "name": zod.string(),
-  "watched": zod.boolean()
-})),
-  "isLive": zod.boolean(),
-  "setupStatus": zod.object({
-  "accountCreated": zod.boolean(),
-  "jobberConnected": zod.boolean(),
-  "quoConnected": zod.boolean(),
-  "phoneProvisioned": zod.boolean(),
-  "receptionistConfigured": zod.boolean(),
-  "teamInvited": zod.boolean(),
-  "isLive": zod.boolean(),
-  "completedSteps": zod.int(),
-  "totalSteps": zod.int()
-}),
-  "createdAt": zod.string()
+  "authorizeUrl": zod.string()
 })
 
 
 /**
- * @summary Disconnect Jobber
+ * @summary Disconnect Jobber and revoke app access
  */
 export const DisconnectJobberResponse = zod.object({
   "id": zod.int(),
@@ -286,12 +247,8 @@ export const GoLiveResponse = zod.object({
 /**
  * @summary Connect this company's own Quo workspace with their API key
  */
-export const connectQuoBodyApiKeyMin = 10;
-
-
-
 export const ConnectQuoBody = zod.object({
-  "apiKey": zod.string().min(connectQuoBodyApiKeyMin).describe('A Quo workspace API key from the company\'s own Quo account')
+  "apiKey": zod.string()
 })
 
 export const ConnectQuoResponse = zod.object({
@@ -379,8 +336,8 @@ export const DisconnectQuoResponse = zod.object({
 export const ListQuoNumbersResponseItem = zod.object({
   "id": zod.string(),
   "phoneNumber": zod.string(),
-  "name": zod.string(),
-  "watched": zod.boolean()
+  "name": zod.string().nullish(),
+  "watched": zod.boolean().optional()
 })
 export const ListQuoNumbersResponse = zod.array(ListQuoNumbersResponseItem)
 
@@ -434,9 +391,9 @@ export const SelectQuoNumbersResponse = zod.object({
  * @summary Backfill recent calls, Sona transcripts, and summaries from Quo
  */
 export const SyncCallsFromQuoResponse = zod.object({
-  "callsImported": zod.int(),
-  "transcriptsImported": zod.int(),
-  "message": zod.string()
+  "synced": zod.int(),
+  "skipped": zod.int(),
+  "errors": zod.array(zod.string()).optional()
 })
 
 
@@ -447,28 +404,30 @@ export const ListServicesResponseItem = zod.object({
   "id": zod.int(),
   "name": zod.string(),
   "description": zod.string().nullish(),
-  "priceMin": zod.number(),
-  "priceMax": zod.number()
+  "priceMin": zod.number().nullish(),
+  "priceMax": zod.number().nullish(),
+  "durationMinutes": zod.int().nullish(),
+  "createdAt": zod.string()
 })
 export const ListServicesResponse = zod.array(ListServicesResponseItem)
 
 
-
-
-
 export const CreateServiceBody = zod.object({
-  "name": zod.string().min(1),
+  "name": zod.string(),
   "description": zod.string().optional(),
-  "priceMin": zod.number(),
-  "priceMax": zod.number()
+  "priceMin": zod.number().optional(),
+  "priceMax": zod.number().optional(),
+  "durationMinutes": zod.int().optional()
 })
 
 export const CreateServiceResponse = zod.object({
   "id": zod.int(),
   "name": zod.string(),
   "description": zod.string().nullish(),
-  "priceMin": zod.number(),
-  "priceMax": zod.number()
+  "priceMin": zod.number().nullish(),
+  "priceMax": zod.number().nullish(),
+  "durationMinutes": zod.int().nullish(),
+  "createdAt": zod.string()
 })
 
 
@@ -476,22 +435,22 @@ export const UpdateServiceParams = zod.object({
   "id": zod.coerce.number().int()
 })
 
-
-
-
 export const UpdateServiceBody = zod.object({
-  "name": zod.string().min(1).optional(),
-  "description": zod.string().nullish(),
+  "name": zod.string().optional(),
+  "description": zod.string().optional(),
   "priceMin": zod.number().optional(),
-  "priceMax": zod.number().optional()
+  "priceMax": zod.number().optional(),
+  "durationMinutes": zod.int().optional()
 })
 
 export const UpdateServiceResponse = zod.object({
   "id": zod.int(),
   "name": zod.string(),
   "description": zod.string().nullish(),
-  "priceMin": zod.number(),
-  "priceMax": zod.number()
+  "priceMin": zod.number().nullish(),
+  "priceMax": zod.number().nullish(),
+  "durationMinutes": zod.int().nullish(),
+  "createdAt": zod.string()
 })
 
 
@@ -509,8 +468,8 @@ export const ListTeamMembersResponseItem = zod.object({
   "id": zod.int(),
   "name": zod.string(),
   "email": zod.string(),
-  "role": zod.enum(['owner', 'dispatcher', 'cleaner']),
-  "status": zod.enum(['active', 'invited']),
+  "role": zod.string(),
+  "status": zod.string(),
   "createdAt": zod.string()
 })
 export const ListTeamMembersResponse = zod.array(ListTeamMembersResponseItem)
@@ -519,21 +478,18 @@ export const ListTeamMembersResponse = zod.array(ListTeamMembersResponseItem)
 /**
  * @summary Invite a dispatcher or cleaner (invite email simulated for now)
  */
-
-
-
 export const InviteTeamMemberBody = zod.object({
-  "name": zod.string().min(1),
-  "email": zod.email(),
-  "role": zod.enum(['dispatcher', 'cleaner'])
+  "name": zod.string(),
+  "email": zod.string(),
+  "role": zod.enum(['owner', 'dispatcher', 'cleaner'])
 })
 
 export const InviteTeamMemberResponse = zod.object({
   "id": zod.int(),
   "name": zod.string(),
   "email": zod.string(),
-  "role": zod.enum(['owner', 'dispatcher', 'cleaner']),
-  "status": zod.enum(['active', 'invited']),
+  "role": zod.string(),
+  "status": zod.string(),
   "createdAt": zod.string()
 })
 
@@ -563,9 +519,10 @@ export const ListCallsResponseItem = zod.object({
   "durationSeconds": zod.int(),
   "isTest": zod.boolean(),
   "bookingId": zod.int().nullish(),
-  "direction": zod.union([zod.literal('incoming'),zod.literal('outgoing'),zod.literal(null)]).nullish(),
+  "direction": zod.string().nullish(),
   "summary": zod.string().nullish(),
-  "quoCallId": zod.string().nullish()
+  "quoCallId": zod.string().nullish(),
+  "recordingUrl": zod.string().nullish()
 })
 export const ListCallsResponse = zod.array(ListCallsResponseItem)
 
@@ -588,14 +545,14 @@ export const GetCallResponse = zod.object({
   "durationSeconds": zod.int(),
   "isTest": zod.boolean(),
   "bookingId": zod.int().nullish(),
-  "direction": zod.union([zod.literal('incoming'),zod.literal('outgoing'),zod.literal(null)]).nullish(),
+  "direction": zod.string().nullish(),
   "summary": zod.string().nullish(),
   "quoCallId": zod.string().nullish(),
   "recordingUrl": zod.string().nullish(),
   "transcript": zod.array(zod.object({
   "speaker": zod.enum(['caller', 'ai']),
   "text": zod.string(),
-  "offsetSeconds": zod.int()
+  "offsetSeconds": zod.number()
 })),
   "extractedAnswers": zod.array(zod.object({
   "field": zod.string(),
@@ -618,14 +575,14 @@ export const SimulateTestCallResponse = zod.object({
   "durationSeconds": zod.int(),
   "isTest": zod.boolean(),
   "bookingId": zod.int().nullish(),
-  "direction": zod.union([zod.literal('incoming'),zod.literal('outgoing'),zod.literal(null)]).nullish(),
+  "direction": zod.string().nullish(),
   "summary": zod.string().nullish(),
   "quoCallId": zod.string().nullish(),
   "recordingUrl": zod.string().nullish(),
   "transcript": zod.array(zod.object({
   "speaker": zod.enum(['caller', 'ai']),
   "text": zod.string(),
-  "offsetSeconds": zod.int()
+  "offsetSeconds": zod.number()
 })),
   "extractedAnswers": zod.array(zod.object({
   "field": zod.string(),
@@ -648,6 +605,8 @@ export const ListBookingsResponseItem = zod.object({
   "status": zod.enum(['pending', 'confirmed', 'completed', 'canceled']),
   "jobberSynced": zod.boolean(),
   "jobberJobId": zod.string().nullish(),
+  "jobberClientId": zod.string().nullish(),
+  "jobberWebUri": zod.string().nullish(),
   "createdAt": zod.string()
 })
 export const ListBookingsResponse = zod.array(ListBookingsResponseItem)
@@ -673,12 +632,14 @@ export const UpdateBookingResponse = zod.object({
   "status": zod.enum(['pending', 'confirmed', 'completed', 'canceled']),
   "jobberSynced": zod.boolean(),
   "jobberJobId": zod.string().nullish(),
+  "jobberClientId": zod.string().nullish(),
+  "jobberWebUri": zod.string().nullish(),
   "createdAt": zod.string()
 })
 
 
 /**
- * @summary Push this booking into Jobber (simulated until Jobber is connected with real keys)
+ * @summary Push this booking into Jobber as a real client + work request
  */
 export const SyncBookingToJobberParams = zod.object({
   "id": zod.coerce.number().int()
@@ -695,6 +656,8 @@ export const SyncBookingToJobberResponse = zod.object({
   "status": zod.enum(['pending', 'confirmed', 'completed', 'canceled']),
   "jobberSynced": zod.boolean(),
   "jobberJobId": zod.string().nullish(),
+  "jobberClientId": zod.string().nullish(),
+  "jobberWebUri": zod.string().nullish(),
   "createdAt": zod.string()
 })
 

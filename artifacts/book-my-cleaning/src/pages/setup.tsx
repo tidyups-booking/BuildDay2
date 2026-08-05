@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { PageHeader, LoadingSpinner } from "@/components/ui/shared";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,25 @@ const QUO_SIGNUP_URL =
 
 export function SetupPage() {
   const { data: company, isLoading } = useGetCompany();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  // Handle OAuth callback redirect params from Jobber
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const connected = params.get("jobber");
+    const error = params.get("jobber_error");
+    if (connected === "connected") {
+      queryClient.invalidateQueries({ queryKey: getGetCompanyQueryKey() });
+      toast({ title: "Jobber connected", description: "Your Jobber account is now linked." });
+    } else if (error) {
+      toast({ title: "Jobber connection failed", description: error, variant: "destructive" });
+    }
+    if (connected || error) {
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (isLoading || !company) {
     return (
@@ -145,26 +164,34 @@ export function SetupPage() {
   );
 }
 
-function JobberStep({ company }: { company: any }) {
-  const queryClient = useQueryClient();
+function JobberStep({ company: _company }: { company: any }) {
   const connect = useConnectJobber();
+  const { toast } = useToast();
 
   const handleConnect = () => {
     connect.mutate(undefined, {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getGetCompanyQueryKey() });
-      }
+      onSuccess: (data) => {
+        // Send the user to Jobber to authorize; they'll be redirected back.
+        window.location.href = data.authorizeUrl;
+      },
+      onError: (error: any) => {
+        toast({
+          title: "Couldn't start Jobber connection",
+          description: error?.message || "Jobber API credentials may not be configured yet.",
+          variant: "destructive",
+        });
+      },
     });
   };
 
   return (
     <div className="space-y-4">
-      <div className="bg-brand-purple/10 border border-brand-purple/20 rounded-xl p-4 flex gap-3 text-sm text-blue-800">
-        <Zap className="w-5 h-5 text-blue-600 shrink-0" />
-        <p>Connecting Jobber allows your AI receptionist to read your schedule, quote accurate wait times, and create pending jobs directly.</p>
+      <div className="bg-brand-purple/10 border border-brand-purple/20 rounded-xl p-4 flex gap-3 text-sm text-muted-foreground">
+        <Zap className="w-5 h-5 text-brand-purple shrink-0" />
+        <p>You'll be sent to Jobber to sign in and approve access. Once connected, bookings can be pushed into Jobber as real clients and work requests.</p>
       </div>
       <Button onClick={handleConnect} disabled={connect.isPending} className="w-full sm:w-auto">
-        {connect.isPending ? "Connecting..." : "Connect Jobber Account"}
+        {connect.isPending ? "Redirecting to Jobber..." : "Connect Jobber Account"}
       </Button>
     </div>
   );
@@ -174,190 +201,101 @@ function PhoneStep({ company }: { company: any }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const connectQuo = useConnectQuo();
-  const selectNumbers = useSelectQuoNumbers();
-  const { data: numbers, isLoading } = useListQuoNumbers({
-    query: {
-      enabled: !!company.quoConnected,
-      queryKey: getListQuoNumbersQueryKey(),
-    },
-  });
-
   const [apiKey, setApiKey] = useState("");
-  const [selected, setSelected] = useState<string[] | null>(null);
-  const watched =
-    selected ?? (numbers ?? []).filter((n) => n.watched).map((n) => n.id);
 
-  const toggle = (id: string) =>
-    setSelected(
-      watched.includes(id)
-        ? watched.filter((x) => x !== id)
-        : [...watched, id],
-    );
-
-  const refreshCompany = () =>
-    queryClient.invalidateQueries({ queryKey: getGetCompanyQueryKey() });
+  const { data: numbers, isLoading: loadingNumbers, refetch: refetchNumbers } = useListQuoNumbers({
+    query: { enabled: !!company.quoConnected, queryKey: getListQuoNumbersQueryKey() },
+  });
+  const selectNumbers = useSelectQuoNumbers();
+  const [selected, setSelected] = useState<string[]>(
+    company.watchedNumbers?.map((n: any) => n.id) ?? [],
+  );
 
   const handleConnect = () => {
-    const key = apiKey.trim();
-    if (key.length < 10) {
-      toast({
-        variant: "destructive",
-        title: "That key looks too short",
-        description: "Copy the whole key from Quo settings → API.",
-      });
-      return;
-    }
-    connectQuo.mutate(
-      { data: { apiKey: key } },
-      {
-        onSuccess: () => {
-          setApiKey("");
-          refreshCompany();
-          queryClient.invalidateQueries({
-            queryKey: getListQuoNumbersQueryKey(),
-          });
-          toast({
-            title: "Quo connected",
-            description: "We can now see the phone lines in your workspace.",
-          });
-        },
-        onError: (err: any) =>
-          toast({
-            variant: "destructive",
-            title: "Couldn't connect Quo",
-            description:
-              err?.response?.data?.error ??
-              "Check that the API key is valid and still active.",
-          }),
+    if (!apiKey.trim()) return;
+    connectQuo.mutate({ data: { apiKey } }, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetCompanyQueryKey() });
+        refetchNumbers();
+        toast({ title: "Quo connected", description: "Your workspace is linked. Now choose which lines to answer." });
       },
-    );
+      onError: (err: any) => {
+        toast({ title: "Connection failed", description: err?.message || "Check the API key and try again.", variant: "destructive" });
+      },
+    });
   };
 
-  const handleSave = () =>
-    selectNumbers.mutate(
-      { data: { numberIds: watched } },
-      {
-        onSuccess: () => {
-          setSelected(null);
-          refreshCompany();
-          queryClient.invalidateQueries({ queryKey: getListQuoNumbersQueryKey() });
-          toast({
-            title: "Lines connected",
-            description:
-              "Sona transcripts from these numbers will now flow into your dashboard.",
-          });
-        },
-        onError: () =>
-          toast({
-            variant: "destructive",
-            title: "Couldn't register with Quo",
-            description: "Quo rejected the webhook setup for these lines.",
-          }),
+  const handleSave = () => {
+    selectNumbers.mutate({ data: { numberIds: selected } }, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetCompanyQueryKey() });
+        toast({ title: "Lines saved", description: "Your AI receptionist will now watch those numbers." });
       },
-    );
+      onError: (err: any) => {
+        toast({ title: "Could not save lines", description: err?.message || "Try again.", variant: "destructive" });
+      },
+    });
+  };
+
+  const toggleNumber = (id: string) => {
+    setSelected((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
+  };
 
   if (!company.quoConnected) {
     return (
       <div className="space-y-4">
-        <div className="bg-brand-pink/10 border border-brand-pink/20 rounded-xl p-4 flex gap-3 text-sm text-muted-foreground">
-          <PhoneForwarded className="w-5 h-5 text-brand-pink shrink-0" />
-          <p>
-            Your phone lines live in Quo, with Sona answering them. Connect your
-            Quo workspace and we'll pull every call's transcript and summary
-            into your dashboard — no new number needed.
-          </p>
+        <div className="bg-brand-purple/10 border border-brand-purple/20 rounded-xl p-4 text-sm text-muted-foreground space-y-2">
+          <p className="font-semibold text-foreground">Connect your existing Quo workspace</p>
+          <p>Paste the API key from <strong>Quo settings → API</strong>. Your existing numbers stay in Quo — we never provision new ones.</p>
+          <p className="text-xs text-muted-foreground">Don't have Quo? <a href={QUO_SIGNUP_URL} target="_blank" rel="noopener noreferrer" className="underline text-brand-pink">Sign up here.</a></p>
         </div>
-
-        <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
-          <li>
-            No Quo account yet?{" "}
-            <a
-              href={QUO_SIGNUP_URL}
-              target="_blank"
-              rel="noreferrer"
-              className="text-brand-pink underline underline-offset-4"
-            >
-              Start a free trial
-            </a>{" "}
-            — you'll need the Business plan for AI call transcripts.
-          </li>
-          <li>
-            In Quo, open <span className="text-foreground">Settings → API</span>{" "}
-            and create a key (workspace owners and admins only).
-          </li>
-          <li>Paste it below. We store it encrypted and never show it again.</li>
-        </ol>
-
-        <div className="space-y-2">
-          <Label htmlFor="quo-api-key">Quo API key</Label>
+        <div className="flex gap-2 max-w-sm">
           <Input
-            id="quo-api-key"
             type="password"
-            autoComplete="off"
-            spellCheck={false}
-            placeholder="Paste your Quo API key"
+            placeholder="quo_live_..."
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleConnect();
-            }}
           />
+          <Button onClick={handleConnect} disabled={connectQuo.isPending || !apiKey.trim()}>
+            {connectQuo.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Connect"}
+          </Button>
         </div>
-
-        <Button onClick={handleConnect} disabled={connectQuo.isPending}>
-          {connectQuo.isPending ? "Connecting..." : "Connect Quo Workspace"}
-        </Button>
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">
-        Choose which lines the receptionist watches. We register webhooks with
-        Quo so new calls arrive here automatically.
-      </p>
-
-      {isLoading ? (
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          <span className="font-medium text-foreground">Quo connected</span>
+          {company.quoKeyLast4 ? ` (key …${company.quoKeyLast4})` : ""}. Select which lines the AI answers:
+        </p>
+      </div>
+      {loadingNumbers ? (
         <LoadingSpinner />
+      ) : !numbers || numbers.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No phone numbers found in this Quo workspace.</p>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {(numbers ?? []).map((num) => {
-            const on = watched.includes(num.id);
-            return (
-              <button
-                key={num.id}
-                type="button"
-                onClick={() => toggle(num.id)}
-                className={`text-left border rounded-xl p-3 flex items-center justify-between transition-colors bg-card ${
-                  on ? "border-primary" : "border-border hover:border-primary/50"
-                }`}
-              >
-                <div>
-                  <div className="font-medium text-foreground">{num.name}</div>
-                  <div className="font-mono text-xs text-muted-foreground">
-                    {num.phoneNumber}
-                  </div>
-                </div>
-                <div
-                  className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 ${
-                    on ? "bg-primary border-primary" : "border-border"
-                  }`}
-                >
-                  {on && <Check className="w-3.5 h-3.5 text-primary-foreground" />}
-                </div>
-              </button>
-            );
-          })}
+        <div className="space-y-2">
+          {numbers.map((num: any) => (
+            <label key={num.id} className="flex items-center gap-3 p-3 border border-border rounded-xl cursor-pointer hover:bg-secondary/40 transition-colors">
+              <input
+                type="checkbox"
+                checked={selected.includes(num.id)}
+                onChange={() => toggleNumber(num.id)}
+                className="accent-primary"
+              />
+              <div>
+                <div className="font-mono font-medium text-foreground">{num.phoneNumber}</div>
+                {num.name && <div className="text-xs text-muted-foreground">{num.name}</div>}
+              </div>
+            </label>
+          ))}
         </div>
       )}
-
-      <Button onClick={handleSave} disabled={selectNumbers.isPending}>
-        {selectNumbers.isPending ? (
-          <Loader2 className="w-4 h-4 animate-spin" />
-        ) : (
-          `Watch ${watched.length} line${watched.length === 1 ? "" : "s"}`
-        )}
+      <Button onClick={handleSave} disabled={selectNumbers.isPending || selected.length === 0} className="w-full sm:w-auto">
+        {selectNumbers.isPending ? "Saving..." : `Watch ${selected.length} line${selected.length === 1 ? "" : "s"}`}
       </Button>
     </div>
   );
@@ -368,7 +306,7 @@ function CustomizeStep({ company }: { company: any }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   
-  const [greeting, setGreeting] = useState(company.greeting || "Hi, thanks for calling Tidyups. How can I help you today?");
+  const [greeting, setGreeting] = useState(company.greeting || "Hi, thanks for calling. How can I help you today?");
   const [ringThrough, setRingThrough] = useState(company.ringThroughNumber || "");
 
   const handleSave = () => {
@@ -403,7 +341,7 @@ function CustomizeStep({ company }: { company: any }) {
         <p className="text-xs text-muted-foreground">If the AI gets stuck or the user demands a human, it will transfer the call here.</p>
       </div>
 
-      <div className="bg-secondary p-4 rounded-xl text-sm text-muted-foreground mb-4">
+      <div className="bg-secondary/50 p-4 rounded-xl text-sm text-muted-foreground mb-4">
         <strong>Tip:</strong> You can configure detailed services and custom Q&A later in Settings. Let's get the basics down first.
       </div>
 
@@ -465,7 +403,7 @@ function GoLiveStep({ company }: { company: any }) {
         <PhoneForwarded className="w-8 h-8" />
       </div>
       <h4 className="text-xl font-bold text-muted-foreground">Ready to Answer Calls</h4>
-      <p className="text-muted-foreground max-w-sm mx-auto">Your AI is configured, Jobber is connected, and your new phone number ({company.phoneNumber}) is ready.</p>
+      <p className="text-muted-foreground max-w-sm mx-auto">Your AI is configured, Jobber is connected, and your phone number is ready.</p>
       
       <div className="pt-4 flex flex-col sm:flex-row gap-3 justify-center">
         <Button variant="outline" onClick={() => testCall.mutate(undefined)} disabled={testCall.isPending}>

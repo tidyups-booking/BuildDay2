@@ -7,7 +7,7 @@
  */
 
 export interface SyncResult {
-  callsImported: number;
-  transcriptsImported: number;
-  message: string;
+  synced: number;
+  skipped: number;
+  errors?: string[];
 }

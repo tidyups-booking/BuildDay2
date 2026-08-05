@@ -78,10 +78,18 @@ function GeneralSettings({ company }: { company: any }) {
       });
     } else {
       connectJobber.mutate(undefined, {
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getGetCompanyQueryKey() });
-          toast({ title: "Connected", description: "Jobber account connected." });
-        }
+        onSuccess: (data) => {
+          // Send the user to Jobber to authorize — they'll be redirected back
+          // to /setup?jobber=connected (same flow as the setup wizard step).
+          window.location.href = data.authorizeUrl;
+        },
+        onError: (error: any) => {
+          toast({
+            title: "Couldn't start Jobber connection",
+            description: error?.message || "Jobber API credentials may not be configured yet.",
+            variant: "destructive",
+          });
+        },
       });
     }
   };

@@ -26,6 +26,8 @@ export const bookingsTable = pgTable("bookings", {
   status: text("status").notNull().default("pending"), // pending | confirmed | completed | canceled
   jobberSynced: boolean("jobber_synced").notNull().default(false),
   jobberJobId: text("jobber_job_id"),
+  jobberClientId: text("jobber_client_id"),
+  jobberWebUri: text("jobber_web_uri"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
