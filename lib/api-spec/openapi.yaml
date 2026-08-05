@@ -271,6 +271,44 @@ paths:
       responses:
         "204":
           description: Deleted
+  /me:
+    get:
+      operationId: getCurrentUser
+      tags: [team]
+      summary: The signed-in account's seat within its company
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CurrentUser"
+  /bookings/{id}/crew:
+    put:
+      operationId: setBookingCrew
+      tags: [bookings]
+      summary: Set which cleaners are working a booking
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetBookingCrewInput"
+      responses:
+        "200":
+          description: Updated booking
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Booking"
+        "404":
+          description: Booking not found
   /team:
     get:
       operationId: listTeamMembers
@@ -288,7 +326,11 @@ paths:
     post:
       operationId: inviteTeamMember
       tags: [team]
-      summary: Invite a dispatcher or cleaner (invite email simulated for now)
+      summary: Invite a dispatcher or cleaner by name and email
+      description: >-
+        Sends a real Clerk sign-up invitation to the address. The seat is
+        claimed the first time that person signs in with the address verified
+        on their account, so the invite still works if the email bounces.
       requestBody:
         required: true
         content:
@@ -864,17 +906,57 @@ components:
       properties:
         name: { type: string }
         email: { type: string }
-        role: { type: string, enum: [owner, dispatcher, cleaner] }
+        # Only a dispatcher or a cleaner can be invited. The owner seat is the
+        # company's Clerk account and is never created through this endpoint.
+        role: { type: string, enum: [dispatcher, cleaner] }
     TeamMember:
       type: object
-      required: [id, name, email, role, status, createdAt]
+      required:
+        [id, name, email, role, status, hasLogin, inviteEmailSent, createdAt]
       properties:
         id: { type: integer }
         name: { type: string }
         email: { type: string }
-        role: { type: string }
-        status: { type: string }
+        role: { type: string, enum: [owner, dispatcher, cleaner] }
+        status: { type: string, enum: [active, invited] }
+        # True once this person has signed up and their verified email was
+        # matched to this seat, i.e. they can actually sign in.
+        hasLogin: { type: boolean }
+        # False when Clerk would not send the sign-up email. The seat still
+        # works — they just have to sign up with the invited address manually.
+        inviteEmailSent: { type: boolean }
+        claimedAt: { type: ["string", "null"] }
         createdAt: { type: string }
+    CrewMember:
+      type: object
+      required: [id, name, role]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        role: { type: string, enum: [owner, dispatcher, cleaner] }
+    SetBookingCrewInput:
+      type: object
+      required: [teamMemberIds]
+      properties:
+        # The complete crew for the job — this replaces whoever was on it.
+        # An empty list unassigns everyone.
+        teamMemberIds:
+          type: array
+          maxItems: 20
+          items: { type: integer }
+    CurrentUser:
+      type: object
+      required: [role, name, email, companyName]
+      properties:
+        # Which seat the signed-in account holds. Drives what the dashboard
+        # shows and what the API will let them do.
+        role: { type: string, enum: [owner, dispatcher, cleaner] }
+        # The team_members row backing this session. Null for the owner, whose
+        # access comes from owning the company rather than holding a seat.
+        teamMemberId: { type: ["integer", "null"] }
+        name: { type: string }
+        email: { type: string }
+        companyName: { type: string }
     TranscriptSegment:
       type: object
       required: [speaker, text, offsetSeconds]
@@ -1017,6 +1099,10 @@ components:
         jobberWebUri: { type: ["string", "null"] }
         jobberSyncError: { type: ["string", "null"] }
         jobberSyncErrorAt: { type: ["string", "null"] }
+        # The cleaners working this job. Empty until a crew is assigned.
+        crew:
+          type: array
+          items: { $ref: "#/components/schemas/CrewMember" }
         createdAt: { type: string }
     BookingUpdate:
       type: object
@@ -1199,6 +1285,7 @@ components:
                 deposit_paid,
                 test_call,
                 team_invited,
+                crew_assigned,
                 reschedule_texted,
               ],
           }

@@ -30,6 +30,7 @@ import type {
   CompanyInput,
   CompanyUpdate,
   ConnectQuoInput,
+  CurrentUser,
   DashboardSummary,
   HealthStatus,
   JobberConnectStart,
@@ -44,6 +45,7 @@ import type {
   Service,
   ServiceInput,
   ServiceUpdate,
+  SetBookingCrewInput,
   SyncResult,
   TeamMember,
   TeamMemberInput
@@ -1290,6 +1292,155 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getDeleteServiceMutationOptions(options));
     }
 
+export const getGetCurrentUserUrl = () => {
+
+
+
+
+  return `/api/me`
+}
+
+/**
+ * @summary The signed-in account's seat within its company
+ */
+export const getCurrentUser = async ( options?: Parameters<typeof customFetch>[1]): Promise<CurrentUser> => {
+
+  return customFetch<CurrentUser>(getGetCurrentUserUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCurrentUserQueryKey = () => {
+    return [
+    `/api/me`
+    ] as const;
+    }
+
+
+export const getGetCurrentUserQueryOptions = <TData = Awaited<ReturnType<typeof getCurrentUser>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCurrentUser>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCurrentUserQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCurrentUser>>> = ({ signal }) => getCurrentUser({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCurrentUser>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCurrentUserQueryResult = NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>
+export type GetCurrentUserQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary The signed-in account's seat within its company
+ */
+
+export function useGetCurrentUser<TData = Awaited<ReturnType<typeof getCurrentUser>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCurrentUser>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCurrentUserQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSetBookingCrewUrl = (id: number,) => {
+
+
+
+
+  return `/api/bookings/${id}/crew`
+}
+
+/**
+ * @summary Set which cleaners are working a booking
+ */
+export const setBookingCrew = async (id: number,
+    setBookingCrewInput: SetBookingCrewInput, options?: Parameters<typeof customFetch>[1]): Promise<Booking> => {
+
+  return customFetch<Booking>(getSetBookingCrewUrl(id),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(setBookingCrewInput)
+  }
+);}
+
+
+
+
+
+export const getSetBookingCrewMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setBookingCrew>>, TError,{id: number;data: BodyType<SetBookingCrewInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof setBookingCrew>>, TError,{id: number;data: BodyType<SetBookingCrewInput>}, TContext> => {
+
+const mutationKey = ['setBookingCrew'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof setBookingCrew>>, {id: number;data: BodyType<SetBookingCrewInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  setBookingCrew(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SetBookingCrewMutationResult = NonNullable<Awaited<ReturnType<typeof setBookingCrew>>>
+    export type SetBookingCrewMutationBody = BodyType<SetBookingCrewInput>
+    export type SetBookingCrewMutationError = ErrorType<void>
+
+    /**
+ * @summary Set which cleaners are working a booking
+ */
+export const useSetBookingCrew = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setBookingCrew>>, TError,{id: number;data: BodyType<SetBookingCrewInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof setBookingCrew>>,
+        TError,
+        {id: number;data: BodyType<SetBookingCrewInput>},
+        TContext
+      > => {
+      return useMutation(getSetBookingCrewMutationOptions(options));
+    }
+
 export const getListTeamMembersUrl = () => {
 
 
@@ -1376,7 +1527,8 @@ export const getInviteTeamMemberUrl = () => {
 }
 
 /**
- * @summary Invite a dispatcher or cleaner (invite email simulated for now)
+ * Sends a real Clerk sign-up invitation to the address. The seat is claimed the first time that person signs in with the address verified on their account, so the invite still works if the email bounces.
+ * @summary Invite a dispatcher or cleaner by name and email
  */
 export const inviteTeamMember = async (teamMemberInput: TeamMemberInput, options?: Parameters<typeof customFetch>[1]): Promise<TeamMember> => {
 
@@ -1425,7 +1577,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type InviteTeamMemberMutationError = ErrorType<unknown>
 
     /**
- * @summary Invite a dispatcher or cleaner (invite email simulated for now)
+ * @summary Invite a dispatcher or cleaner by name and email
  */
 export const useInviteTeamMember = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof inviteTeamMember>>, TError,{data: BodyType<TeamMemberInput>}, TContext>, request?: SecondParameter<typeof customFetch>}

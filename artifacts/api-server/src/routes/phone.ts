@@ -10,6 +10,7 @@ import {
   SelectQuoNumbersResponse,
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/requireAuth";
+import { requireRole } from "../middlewares/requireRole";
 import {
   getCompanyForUser,
   serializeCompany,
@@ -22,6 +23,8 @@ import { publicWebhookUrl } from "../lib/publicUrl";
 const router: IRouter = Router();
 
 router.use(requireAuth);
+// Quo credentials and phone lines are company configuration.
+router.use(requireRole("owner"));
 
 router.post("/company/quo/connect", async (req, res): Promise<void> => {
   const parsed = ConnectQuoBody.safeParse(req.body);

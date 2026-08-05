@@ -10,14 +10,21 @@ import { decryptQuoKey } from "./secretBox";
 import { notifyOwnerQuoKeyDead, notifyOwnerQuoRestored } from "./ownerNotify";
 import { logger } from "./logger";
 
+/**
+ * The company this account works for — either because they own it or because
+ * they hold a team seat in it.
+ *
+ * SCOPE ONLY, NOT PERMISSION. This answers "whose data is this request about",
+ * and it now returns a company for cleaners and dispatchers too. It does NOT
+ * say the caller may act on it — every route must declare the roles it accepts
+ * with `requireRole`, or a cleaner inherits the owner's whole dashboard.
+ */
 export async function getCompanyForUser(
   userId: string,
 ): Promise<Company | undefined> {
-  const [company] = await db
-    .select()
-    .from(companiesTable)
-    .where(eq(companiesTable.ownerUserId, userId));
-  return company;
+  const { resolveCaller } = await import("./callerRole");
+  const caller = await resolveCaller(userId);
+  return caller.company ?? undefined;
 }
 
 /** The company's decrypted Quo key, or null if they have not connected one. */

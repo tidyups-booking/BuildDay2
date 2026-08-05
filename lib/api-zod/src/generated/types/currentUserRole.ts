@@ -6,10 +6,11 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type TeamMemberInputRole = typeof TeamMemberInputRole[keyof typeof TeamMemberInputRole];
+export type CurrentUserRole = typeof CurrentUserRole[keyof typeof CurrentUserRole];
 
 
-export const TeamMemberInputRole = {
+export const CurrentUserRole = {
+  owner: 'owner',
   dispatcher: 'dispatcher',
   cleaner: 'cleaner',
 } as const;

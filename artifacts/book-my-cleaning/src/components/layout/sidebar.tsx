@@ -9,7 +9,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { useClerk } from "@clerk/react";
-import { Company } from "@workspace/api-client-react";
+import { Company, useGetCurrentUser } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 
 interface SidebarProps {
@@ -19,13 +19,24 @@ interface SidebarProps {
 export function Sidebar({ company }: SidebarProps) {
   const [location] = useLocation();
   const { signOut } = useClerk();
+  const { data: me } = useGetCurrentUser();
 
-  const navItems = [
-    { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/calls", label: "Calls", icon: PhoneCall },
-    { href: "/bookings", label: "Bookings", icon: CalendarCheck },
-    { href: "/team", label: "Team", icon: Users },
-  ];
+  // Default to the fullest menu while the role is still loading, so an owner
+  // never watches their own navigation pop in.
+  const role = me?.role ?? "owner";
+  const isCleaner = role === "cleaner";
+  const isOwner = role === "owner";
+
+  // A cleaner's whole job is the list of jobs they are on. Everything else is
+  // dispatch work they have no access to on the API either.
+  const navItems = isCleaner
+    ? [{ href: "/bookings", label: "My Jobs", icon: CalendarCheck }]
+    : [
+        { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+        { href: "/calls", label: "Calls", icon: PhoneCall },
+        { href: "/bookings", label: "Bookings", icon: CalendarCheck },
+        ...(isOwner ? [{ href: "/team", label: "Team", icon: Users }] : []),
+      ];
 
   const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -67,8 +78,8 @@ export function Sidebar({ company }: SidebarProps) {
           );
         })}
 
-        {/* Setup Progress Nudge */}
-        {company && !company.isLive && (
+        {/* Setup Progress Nudge — only the owner can action any of it. */}
+        {isOwner && company && !company.isLive && (
           <div className="mt-8 bg-brand-purple/10 rounded-xl p-4 border border-brand-purple/20">
             <div className="text-sm font-bold text-white mb-1">
               Setup Progress
@@ -100,18 +111,21 @@ export function Sidebar({ company }: SidebarProps) {
       </div>
 
       <div className="p-4 border-t border-sidebar-border flex flex-col gap-1">
-        <Link href="/settings">
-          <div
-            className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors cursor-pointer text-sm font-medium ${
-              location === "/settings"
-                ? "bg-white/10 text-white"
-                : "text-muted-foreground hover:bg-white/5 hover:text-white"
-            }`}
-          >
-            <Settings className="w-4 h-4 text-muted-foreground" />
-            Settings
-          </div>
-        </Link>
+        {/* Settings is company configuration — Quo keys, Jobber, going live. */}
+        {isOwner && (
+          <Link href="/settings">
+            <div
+              className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors cursor-pointer text-sm font-medium ${
+                location === "/settings"
+                  ? "bg-white/10 text-white"
+                  : "text-muted-foreground hover:bg-white/5 hover:text-white"
+              }`}
+            >
+              <Settings className="w-4 h-4 text-muted-foreground" />
+              Settings
+            </div>
+          </Link>
+        )}
         <button
           onClick={() => signOut({ redirectUrl: basePath || "/" })}
           className="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors cursor-pointer text-sm font-medium text-muted-foreground hover:bg-red-500/10 hover:text-red-500 w-full text-left"

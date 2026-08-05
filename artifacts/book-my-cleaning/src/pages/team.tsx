@@ -82,9 +82,16 @@ export function TeamPage() {
                   <div>
                     <h4 className="font-medium text-muted-foreground flex items-center gap-2">
                       {member.name}
-                      {member.status === "invited" && (
+                      {member.hasLogin ? (
+                        <Badge
+                          variant="secondary"
+                          className="text-xs py-0 h-5 bg-green-500/10 text-green-400 border-green-500/20"
+                        >
+                          Signed up
+                        </Badge>
+                      ) : (
                         <Badge variant="secondary" className="text-xs py-0 h-5">
-                          Invited
+                          Waiting to join
                         </Badge>
                       )}
                     </h4>
@@ -101,6 +108,16 @@ export function TeamPage() {
                         <span className="capitalize">{member.role}</span>
                       </span>
                     </div>
+                    {/* Say so when the email never left, rather than letting
+                        the owner wait for someone who was never contacted. */}
+                    {!member.hasLogin &&
+                      !member.inviteEmailSent &&
+                      member.role !== "owner" && (
+                        <p className="text-xs text-amber-500 mt-1">
+                          We couldn&apos;t send the invite email. They can still
+                          join by signing up with {member.email}.
+                        </p>
+                      )}
                   </div>
                 </div>
                 {member.role !== "owner" && (
@@ -138,13 +155,15 @@ function InviteModal() {
     invite.mutate(
       { data: { name, email, role } },
       {
-        onSuccess: () => {
+        onSuccess: (created) => {
           queryClient.invalidateQueries({
             queryKey: getListTeamMembersQueryKey(),
           });
           toast({
-            title: "Invite sent",
-            description: `An invitation was sent to ${email}.`,
+            title: created.inviteEmailSent ? "Invite sent" : "Member added",
+            description: created.inviteEmailSent
+              ? `${email} can now create their login from the email we sent.`
+              : `We couldn't send the email, but they can still join by signing up with ${email}.`,
           });
           setOpen(false);
           setName("");

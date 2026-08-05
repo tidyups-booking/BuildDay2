@@ -19,5 +19,6 @@ export const ActivityItemType = {
   deposit_paid: 'deposit_paid',
   test_call: 'test_call',
   team_invited: 'team_invited',
+  crew_assigned: 'crew_assigned',
   reschedule_texted: 'reschedule_texted',
 } as const;

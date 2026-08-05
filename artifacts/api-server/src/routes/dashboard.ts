@@ -6,11 +6,14 @@ import {
   GetRecentActivityResponse,
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/requireAuth";
+import { requireRole } from "../middlewares/requireRole";
 import { getCompanyForUser } from "../lib/company";
 
 const router: IRouter = Router();
 
 router.use(requireAuth);
+// Company-wide numbers and activity: dispatch work, not crew work.
+router.use(requireRole("owner", "dispatcher"));
 
 router.get("/dashboard/summary", async (req, res): Promise<void> => {
   const company = await getCompanyForUser(req.userId!);

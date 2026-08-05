@@ -1,0 +1,54 @@
+---
+name: Team roles and the authorization boundary
+description: Why resolving a company is not the same as permission in this multi-tenant app, and how owner/dispatcher/cleaner access is enforced.
+---
+
+# Resolving a company is scope, not permission
+
+`getCompanyForUser` answers "whose data is this request about". It does NOT
+answer "may this caller act on it". Every authenticated route must declare the
+roles it accepts with `requireRole(...)`.
+
+**Why:** team members were given real logins by making company resolution fall
+back from `companies.owner_user_id` to a `team_members` seat. That one change
+made every existing route — company settings, Quo credentials, Jobber OAuth,
+go-live, service pricing, call transcripts, quoting, sending money links —
+reachable by a cleaner, because those routes used "did I get a company back?"
+as their entire authorization check. Hiding navigation in the sidebar is not
+authorization; the API is directly callable.
+
+**How to apply:** when adding a route, or when changing how a caller is
+resolved, ask which of owner / dispatcher / cleaner may call it and attach
+`requireRole`. Default-deny: a route with no guard is reachable by the whole
+company including crews, which is only ever right for things everyone may see
+(currently just `GET /company` for timezone/branding, and `/me`).
+
+Role intent:
+- **owner** — everything, including company config, connections, billing, team.
+- **dispatcher** — the day-to-day board (calls, bookings, quotes, crews). No
+  company config, no connections, no team changes.
+- **cleaner** — only the jobs they are assigned to, and only status changes on
+  them. Enforced in SQL on list endpoints, and with an assignment lookup on
+  the per-booking update.
+
+# Seat claiming
+
+An invited person is matched to their seat on first sign-in by **verified**
+Clerk email only — an unverified address would let someone hijack an invite by
+typing it in. The claim is a conditional `UPDATE ... WHERE clerk_user_id IS
+NULL`, which is what makes concurrent first requests safe.
+
+A signed-in account with no company and no seat is treated as a *prospective
+owner*, not as denied — that is the onboarding state, and it is what lets
+someone create their first company.
+
+**Known product limitation:** `clerk_user_id` is unique table-wide, so if two
+companies invite the same address, the first claim wins and the other invite
+stays pending forever with no signal to that owner.
+
+# Keeping the hot path off Clerk
+
+Authorization resolution must stay a pure database lookup. Clerk is only called
+on the rare first-sign-in bootstrap (negative-cached ~60s) and in `/me` for
+display name/email. Fetching the owner's Clerk profile on every request added a
+network round trip to every single API call.

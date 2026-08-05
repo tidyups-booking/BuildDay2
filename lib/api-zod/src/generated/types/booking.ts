@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { BookingStatus } from './bookingStatus';
+import type { CrewMember } from './crewMember';
 import type { QuoteTotals } from './quoteTotals';
 
 export interface Booking {
@@ -65,5 +66,6 @@ export interface Booking {
   jobberSyncError?: string | null;
   /** @nullable */
   jobberSyncErrorAt?: string | null;
+  crew?: CrewMember[];
   createdAt: string;
 }

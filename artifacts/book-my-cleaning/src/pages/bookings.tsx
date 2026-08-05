@@ -9,6 +9,9 @@ import {
   useGetCompany,
   useGetQuotePreview,
   useSendQuote,
+  useSetBookingCrew,
+  useListTeamMembers,
+  useGetCurrentUser,
   getListBookingsQueryKey,
   getGetQuotePreviewQueryKey,
   Booking,
@@ -52,6 +55,7 @@ import {
   DollarSign,
   ThumbsUp,
   CreditCard,
+  Users,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -127,8 +131,134 @@ function formatRate(rate: number): string {
   return `${Number(rate.toFixed(2))}%`;
 }
 
+/**
+ * Pick the crew for one job. The whole crew is submitted at once — the API
+ * replaces the assignment list — so a half-saved crew is not a state the
+ * schedule can end up in.
+ */
+function AssignCrewDialog({
+  booking,
+  onClose,
+}: {
+  booking: Booking | null;
+  onClose: () => void;
+}) {
+  const { data: team } = useListTeamMembers();
+  const setCrew = useSetBookingCrew();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [selected, setSelected] = useState<number[]>([]);
+
+  // Reset to whoever is currently on the job each time the dialog opens, so
+  // an abandoned edit never leaks into the next booking.
+  useEffect(() => {
+    setSelected(booking ? (booking.crew ?? []).map((c) => c.id) : []);
+  }, [booking]);
+
+  const assignable = (team ?? []).filter((m) => m.role !== "dispatcher");
+
+  const toggle = (id: number) =>
+    setSelected((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+
+  const handleSave = () => {
+    if (!booking) return;
+    setCrew.mutate(
+      { id: booking.id, data: { teamMemberIds: selected } },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({
+            queryKey: getListBookingsQueryKey(),
+          });
+          toast({
+            title: selected.length > 0 ? "Crew assigned" : "Crew cleared",
+            description:
+              selected.length > 0
+                ? `${selected.length} ${selected.length === 1 ? "person" : "people"} on ${booking.customerName}'s job.`
+                : `Nobody is assigned to ${booking.customerName}'s job.`,
+          });
+          onClose();
+        },
+      },
+    );
+  };
+
+  return (
+    <Dialog open={booking !== null} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Assign crew</DialogTitle>
+          <DialogDescription>
+            Choose everyone working {booking?.customerName}&apos;s job. They
+            will see it on their own schedule.
+          </DialogDescription>
+        </DialogHeader>
+
+        {assignable.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-4">
+            You haven&apos;t added any cleaners yet. Invite them from the Team
+            page first.
+          </p>
+        ) : (
+          <div className="space-y-1 py-2 max-h-72 overflow-y-auto">
+            {assignable.map((member) => {
+              const isOn = selected.includes(member.id);
+              return (
+                <button
+                  key={member.id}
+                  type="button"
+                  onClick={() => toggle(member.id)}
+                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
+                    isOn
+                      ? "bg-brand-pink/10 text-foreground"
+                      : "hover:bg-secondary text-muted-foreground"
+                  }`}
+                >
+                  <div
+                    className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
+                      isOn
+                        ? "bg-brand-pink border-brand-pink"
+                        : "border-muted-foreground/40"
+                    }`}
+                  >
+                    {isOn && <CheckCircle2 className="w-3 h-3 text-white" />}
+                  </div>
+                  <span className="flex-1 text-sm font-medium">
+                    {member.name}
+                  </span>
+                  {!member.hasLogin && (
+                    <span className="text-xs opacity-60">not signed up</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSave}
+            disabled={setCrew.isPending || assignable.length === 0}
+          >
+            {setCrew.isPending ? "Saving..." : "Save crew"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function BookingsPage() {
   const { data: bookings, isLoading } = useListBookings();
+  const { data: me } = useGetCurrentUser();
+  // Cleaners get a read-mostly view of their own jobs: no quoting, no
+  // reassigning, no Jobber. The API enforces the same thing.
+  const canDispatch = (me?.role ?? "owner") !== "cleaner";
+  const [crewBooking, setCrewBooking] = useState<Booking | null>(null);
   const { data: company } = useGetCompany();
   const jobberConnected = Boolean(company?.jobberConnected);
   const jobberNeedsReauth = Boolean(company?.jobberNeedsReauth);
@@ -212,9 +342,11 @@ export function BookingsPage() {
             : "Quote, schedule and book — all in one place."
         }
       >
-        <Button onClick={openNew} className="gap-2">
-          <Plus className="w-4 h-4" /> Add booking
-        </Button>
+        {canDispatch && (
+          <Button onClick={openNew} className="gap-2">
+            <Plus className="w-4 h-4" /> Add booking
+          </Button>
+        )}
       </PageHeader>
 
       {isLoading ? (
@@ -285,10 +417,19 @@ export function BookingsPage() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => openEdit(booking)}>
-                        <Pencil className="w-4 h-4 mr-2" /> Edit &amp;
-                        reschedule
-                      </DropdownMenuItem>
+                      {canDispatch && (
+                        <>
+                          <DropdownMenuItem onClick={() => openEdit(booking)}>
+                            <Pencil className="w-4 h-4 mr-2" /> Edit &amp;
+                            reschedule
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => setCrewBooking(booking)}
+                          >
+                            <Users className="w-4 h-4 mr-2" /> Assign crew
+                          </DropdownMenuItem>
+                        </>
+                      )}
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
                         onClick={() =>
@@ -338,6 +479,22 @@ export function BookingsPage() {
                   <span>{booking.customerPhone}</span>
                 </div>
                 <div className="flex items-start gap-3">
+                  <Users className="w-4 h-4 mt-0.5 shrink-0" />
+                  {booking.crew && booking.crew.length > 0 ? (
+                    <span>{booking.crew.map((c) => c.name).join(", ")}</span>
+                  ) : canDispatch ? (
+                    <button
+                      type="button"
+                      onClick={() => setCrewBooking(booking)}
+                      className="text-brand-pink hover:underline"
+                    >
+                      Assign crew
+                    </button>
+                  ) : (
+                    <span className="opacity-60">No crew assigned</span>
+                  )}
+                </div>
+                <div className="flex items-start gap-3">
                   <User className="w-4 h-4 mt-0.5 shrink-0" />
                   <span className="font-medium text-foreground">
                     Requested: {booking.service}
@@ -356,78 +513,83 @@ export function BookingsPage() {
                 )}
               </div>
 
-              <div className="mt-5 pt-4 border-t border-border grid gap-2">
-                <Button
-                  variant="outline"
-                  className="w-full gap-2 text-brand-blue border-brand-blue/20 hover:bg-brand-blue/10 hover:text-brand-blue"
-                  onClick={() => setQuoteBooking(booking)}
-                >
-                  <MessageSquareText className="w-4 h-4" />
-                  {booking.quoteSentAt ? "Send updated quote" : "Send quote"}
-                </Button>
+              {/* Quoting, money and Jobber are dispatch work. Hidden for
+                  cleaners to match what the API will actually allow. */}
+              {canDispatch && (
+                <div className="mt-5 pt-4 border-t border-border grid gap-2">
+                  <Button
+                    variant="outline"
+                    className="w-full gap-2 text-brand-blue border-brand-blue/20 hover:bg-brand-blue/10 hover:text-brand-blue"
+                    onClick={() => setQuoteBooking(booking)}
+                  >
+                    <MessageSquareText className="w-4 h-4" />
+                    {booking.quoteSentAt ? "Send updated quote" : "Send quote"}
+                  </Button>
 
-                {jobberNeedsReauth && !booking.jobberSynced ? (
-                  <Link href="/setup">
-                    <Button
-                      variant="outline"
-                      className="w-full gap-2 text-amber-400 border-amber-800 hover:bg-amber-950 hover:text-amber-300"
-                    >
-                      <RefreshCw className="w-4 h-4" /> Reconnect Jobber to sync
-                    </Button>
-                  </Link>
-                ) : jobberConnected && !booking.jobberSynced ? (
-                  <div className="grid gap-2">
-                    {booking.jobberSyncError && (
-                      <div
-                        className="rounded-md border border-red-800 bg-red-950/50 px-3 py-2 text-xs text-red-400"
-                        data-testid={`text-sync-error-${booking.id}`}
+                  {jobberNeedsReauth && !booking.jobberSynced ? (
+                    <Link href="/setup">
+                      <Button
+                        variant="outline"
+                        className="w-full gap-2 text-amber-400 border-amber-800 hover:bg-amber-950 hover:text-amber-300"
                       >
-                        <div className="flex items-start gap-2">
-                          <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                          <div>
-                            <span className="font-medium">
-                              Last sync failed:
-                            </span>{" "}
-                            {booking.jobberSyncError}
-                            {booking.jobberSyncErrorAt && (
-                              <span className="block text-red-400/70 mt-0.5">
-                                {formatDistanceToNow(
-                                  new Date(booking.jobberSyncErrorAt),
-                                  { addSuffix: true },
-                                )}
-                              </span>
-                            )}
+                        <RefreshCw className="w-4 h-4" /> Reconnect Jobber to
+                        sync
+                      </Button>
+                    </Link>
+                  ) : jobberConnected && !booking.jobberSynced ? (
+                    <div className="grid gap-2">
+                      {booking.jobberSyncError && (
+                        <div
+                          className="rounded-md border border-red-800 bg-red-950/50 px-3 py-2 text-xs text-red-400"
+                          data-testid={`text-sync-error-${booking.id}`}
+                        >
+                          <div className="flex items-start gap-2">
+                            <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                            <div>
+                              <span className="font-medium">
+                                Last sync failed:
+                              </span>{" "}
+                              {booking.jobberSyncError}
+                              {booking.jobberSyncErrorAt && (
+                                <span className="block text-red-400/70 mt-0.5">
+                                  {formatDistanceToNow(
+                                    new Date(booking.jobberSyncErrorAt),
+                                    { addSuffix: true },
+                                  )}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    )}
-                    <Button
-                      variant="outline"
-                      className="w-full text-primary hover:text-primary hover:bg-primary/5 border-primary/20 gap-2"
-                      onClick={() => handleSync(booking.id)}
-                      disabled={syncJobber.isPending}
+                      )}
+                      <Button
+                        variant="outline"
+                        className="w-full text-primary hover:text-primary hover:bg-primary/5 border-primary/20 gap-2"
+                        onClick={() => handleSync(booking.id)}
+                        disabled={syncJobber.isPending}
+                      >
+                        <RefreshCw
+                          className={`w-4 h-4 ${syncJobber.isPending ? "animate-spin" : ""}`}
+                        />
+                        {syncJobber.isPending ? "Syncing..." : "Sync to Jobber"}
+                      </Button>
+                    </div>
+                  ) : booking.jobberSynced && booking.jobberWebUri ? (
+                    <a
+                      href={booking.jobberWebUri}
+                      target="_blank"
+                      rel="noopener noreferrer"
                     >
-                      <RefreshCw
-                        className={`w-4 h-4 ${syncJobber.isPending ? "animate-spin" : ""}`}
-                      />
-                      {syncJobber.isPending ? "Syncing..." : "Sync to Jobber"}
-                    </Button>
-                  </div>
-                ) : booking.jobberSynced && booking.jobberWebUri ? (
-                  <a
-                    href={booking.jobberWebUri}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <Button
-                      variant="outline"
-                      className="w-full gap-2 text-green-400 border-green-800 hover:bg-green-950 hover:text-green-300"
-                    >
-                      <ExternalLink className="w-4 h-4" /> View in Jobber
-                    </Button>
-                  </a>
-                ) : null}
-              </div>
+                      <Button
+                        variant="outline"
+                        className="w-full gap-2 text-green-400 border-green-800 hover:bg-green-950 hover:text-green-300"
+                      >
+                        <ExternalLink className="w-4 h-4" /> View in Jobber
+                      </Button>
+                    </a>
+                  ) : null}
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -447,6 +609,10 @@ export function BookingsPage() {
           onOpenChange={(open) => !open && setQuoteBooking(null)}
         />
       )}
+      <AssignCrewDialog
+        booking={crewBooking}
+        onClose={() => setCrewBooking(null)}
+      />
     </AppLayout>
   );
 }

@@ -33,6 +33,7 @@ import {
   Globe,
   X,
   CalendarClock,
+  Users,
 } from "lucide-react";
 import { format } from "date-fns";
 import {
@@ -725,6 +726,12 @@ function ActivityIcon({ type }: { type: ActivityItem["type"] }) {
       return (
         <div className="w-8 h-8 rounded-full bg-brand-purple/10 flex items-center justify-center shrink-0">
           <UserPlus className="w-4 h-4 text-brand-purple" />
+        </div>
+      );
+    case "crew_assigned":
+      return (
+        <div className="w-8 h-8 rounded-full bg-brand-purple/10 flex items-center justify-center shrink-0">
+          <Users className="w-4 h-4 text-brand-purple" />
         </div>
       );
     case "test_call":

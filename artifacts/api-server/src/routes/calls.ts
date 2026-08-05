@@ -16,6 +16,7 @@ import {
   SimulateTestCallResponse,
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/requireAuth";
+import { requireRole } from "../middlewares/requireRole";
 import {
   getCompanyForUser,
   companyQuoKey,
@@ -30,6 +31,8 @@ import { SyncCallsFromQuoResponse } from "@workspace/api-zod";
 const router: IRouter = Router();
 
 router.use(requireAuth);
+// Recordings and transcripts are customer PII; crews never need them.
+router.use(requireRole("owner", "dispatcher"));
 
 function serializeCall(c: Call) {
   return {

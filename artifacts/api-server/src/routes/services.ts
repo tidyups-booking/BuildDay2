@@ -11,11 +11,14 @@ import {
   DeleteServiceParams,
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/requireAuth";
+import { requireRole } from "../middlewares/requireRole";
 import { getCompanyForUser } from "../lib/company";
 
 const router: IRouter = Router();
 
 router.use(requireAuth);
+// Dispatchers quote from the service list, so they may read it.
+router.use(requireRole("owner", "dispatcher"));
 
 router.get("/services", async (req, res): Promise<void> => {
   const company = await getCompanyForUser(req.userId!);
@@ -31,82 +34,94 @@ router.get("/services", async (req, res): Promise<void> => {
   res.json(ListServicesResponse.parse(services));
 });
 
-router.post("/services", async (req, res): Promise<void> => {
-  const parsed = CreateServiceBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
-  }
-  const company = await getCompanyForUser(req.userId!);
-  if (!company) {
-    res.status(404).json({ error: "No company yet" });
-    return;
-  }
-  const [service] = await db
-    .insert(servicesTable)
-    .values({ ...parsed.data, companyId: company.id })
-    .returning();
-  res.status(201).json(CreateServiceResponse.parse(service));
-});
+router.post(
+  "/services",
+  requireRole("owner"),
+  async (req, res): Promise<void> => {
+    const parsed = CreateServiceBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+    const company = await getCompanyForUser(req.userId!);
+    if (!company) {
+      res.status(404).json({ error: "No company yet" });
+      return;
+    }
+    const [service] = await db
+      .insert(servicesTable)
+      .values({ ...parsed.data, companyId: company.id })
+      .returning();
+    res.status(201).json(CreateServiceResponse.parse(service));
+  },
+);
 
-router.patch("/services/:id", async (req, res): Promise<void> => {
-  const params = UpdateServiceParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
-  }
-  const parsed = UpdateServiceBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
-  }
-  const company = await getCompanyForUser(req.userId!);
-  if (!company) {
-    res.status(404).json({ error: "No company yet" });
-    return;
-  }
-  const [service] = await db
-    .update(servicesTable)
-    .set(parsed.data)
-    .where(
-      and(
-        eq(servicesTable.id, params.data.id),
-        eq(servicesTable.companyId, company.id),
-      ),
-    )
-    .returning();
-  if (!service) {
-    res.status(404).json({ error: "Service not found" });
-    return;
-  }
-  res.json(UpdateServiceResponse.parse(service));
-});
+router.patch(
+  "/services/:id",
+  requireRole("owner"),
+  async (req, res): Promise<void> => {
+    const params = UpdateServiceParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ error: params.error.message });
+      return;
+    }
+    const parsed = UpdateServiceBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+    const company = await getCompanyForUser(req.userId!);
+    if (!company) {
+      res.status(404).json({ error: "No company yet" });
+      return;
+    }
+    const [service] = await db
+      .update(servicesTable)
+      .set(parsed.data)
+      .where(
+        and(
+          eq(servicesTable.id, params.data.id),
+          eq(servicesTable.companyId, company.id),
+        ),
+      )
+      .returning();
+    if (!service) {
+      res.status(404).json({ error: "Service not found" });
+      return;
+    }
+    res.json(UpdateServiceResponse.parse(service));
+  },
+);
 
-router.delete("/services/:id", async (req, res): Promise<void> => {
-  const params = DeleteServiceParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
-  }
-  const company = await getCompanyForUser(req.userId!);
-  if (!company) {
-    res.status(404).json({ error: "No company yet" });
-    return;
-  }
-  const [service] = await db
-    .delete(servicesTable)
-    .where(
-      and(
-        eq(servicesTable.id, params.data.id),
-        eq(servicesTable.companyId, company.id),
-      ),
-    )
-    .returning();
-  if (!service) {
-    res.status(404).json({ error: "Service not found" });
-    return;
-  }
-  res.sendStatus(204);
-});
+router.delete(
+  "/services/:id",
+  requireRole("owner"),
+  async (req, res): Promise<void> => {
+    const params = DeleteServiceParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ error: params.error.message });
+      return;
+    }
+    const company = await getCompanyForUser(req.userId!);
+    if (!company) {
+      res.status(404).json({ error: "No company yet" });
+      return;
+    }
+    const [service] = await db
+      .delete(servicesTable)
+      .where(
+        and(
+          eq(servicesTable.id, params.data.id),
+          eq(servicesTable.companyId, company.id),
+        ),
+      )
+      .returning();
+    if (!service) {
+      res.status(404).json({ error: "Service not found" });
+      return;
+    }
+    res.sendStatus(204);
+  },
+);
 
 export default router;

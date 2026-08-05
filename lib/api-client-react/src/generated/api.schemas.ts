@@ -196,7 +196,6 @@ export type TeamMemberInputRole = typeof TeamMemberInputRole[keyof typeof TeamMe
 
 
 export const TeamMemberInputRole = {
-  owner: 'owner',
   dispatcher: 'dispatcher',
   cleaner: 'cleaner',
 } as const;
@@ -207,13 +206,72 @@ export interface TeamMemberInput {
   role: TeamMemberInputRole;
 }
 
+export type TeamMemberRole = typeof TeamMemberRole[keyof typeof TeamMemberRole];
+
+
+export const TeamMemberRole = {
+  owner: 'owner',
+  dispatcher: 'dispatcher',
+  cleaner: 'cleaner',
+} as const;
+
+export type TeamMemberStatus = typeof TeamMemberStatus[keyof typeof TeamMemberStatus];
+
+
+export const TeamMemberStatus = {
+  active: 'active',
+  invited: 'invited',
+} as const;
+
 export interface TeamMember {
   id: number;
   name: string;
   email: string;
-  role: string;
-  status: string;
+  role: TeamMemberRole;
+  status: TeamMemberStatus;
+  hasLogin: boolean;
+  inviteEmailSent: boolean;
+  /** @nullable */
+  claimedAt?: string | null;
   createdAt: string;
+}
+
+export type CrewMemberRole = typeof CrewMemberRole[keyof typeof CrewMemberRole];
+
+
+export const CrewMemberRole = {
+  owner: 'owner',
+  dispatcher: 'dispatcher',
+  cleaner: 'cleaner',
+} as const;
+
+export interface CrewMember {
+  id: number;
+  name: string;
+  role: CrewMemberRole;
+}
+
+export interface SetBookingCrewInput {
+  /** @maxItems 20 */
+  teamMemberIds: number[];
+}
+
+export type CurrentUserRole = typeof CurrentUserRole[keyof typeof CurrentUserRole];
+
+
+export const CurrentUserRole = {
+  owner: 'owner',
+  dispatcher: 'dispatcher',
+  cleaner: 'cleaner',
+} as const;
+
+export interface CurrentUser {
+  role: CurrentUserRole;
+  /** @nullable */
+  teamMemberId?: number | null;
+  name: string;
+  email: string;
+  companyName: string;
 }
 
 export type TranscriptSegmentSpeaker = typeof TranscriptSegmentSpeaker[keyof typeof TranscriptSegmentSpeaker];
@@ -394,6 +452,7 @@ export interface Booking {
   jobberSyncError?: string | null;
   /** @nullable */
   jobberSyncErrorAt?: string | null;
+  crew?: CrewMember[];
   createdAt: string;
 }
 
@@ -610,6 +669,7 @@ export const ActivityItemType = {
   deposit_paid: 'deposit_paid',
   test_call: 'test_call',
   team_invited: 'team_invited',
+  crew_assigned: 'crew_assigned',
   reschedule_texted: 'reschedule_texted',
 } as const;
 

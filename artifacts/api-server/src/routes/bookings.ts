@@ -1,8 +1,10 @@
 import { Router, type IRouter } from "express";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import {
   db,
   bookingsTable,
+  bookingAssignmentsTable,
+  teamMembersTable,
   callsTable,
   activityTable,
   type Booking,
@@ -25,9 +27,14 @@ import {
   ConfirmBookingTimeResponse,
   SendRescheduleTextParams,
   SendRescheduleTextResponse,
+  SetBookingCrewParams,
+  SetBookingCrewBody,
+  SetBookingCrewResponse,
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/requireAuth";
+import { requireRole } from "../middlewares/requireRole";
 import { getCompanyForUser, companyQuoKey } from "../lib/company";
+import { getCaller } from "../middlewares/requireRole";
 import { listPhoneNumbers, sendMessage, toE164 } from "../lib/quo";
 import {
   buildQuoteMessage,
@@ -48,9 +55,51 @@ const router: IRouter = Router();
 
 router.use(requireAuth);
 
-function serializeBooking(company: Company, b: Booking) {
+type CrewMember = { id: number; name: string; role: string };
+
+/**
+ * Crews for a set of bookings, keyed by booking id. Loaded in one query so a
+ * long schedule does not fan out into a lookup per job.
+ */
+async function loadCrews(
+  bookingIds: number[],
+): Promise<Map<number, CrewMember[]>> {
+  const crews = new Map<number, CrewMember[]>();
+  if (bookingIds.length === 0) return crews;
+
+  const rows = await db
+    .select({
+      bookingId: bookingAssignmentsTable.bookingId,
+      id: teamMembersTable.id,
+      name: teamMembersTable.name,
+      role: teamMembersTable.role,
+    })
+    .from(bookingAssignmentsTable)
+    .innerJoin(
+      teamMembersTable,
+      eq(bookingAssignmentsTable.teamMemberId, teamMembersTable.id),
+    )
+    .where(inArray(bookingAssignmentsTable.bookingId, bookingIds))
+    .orderBy(teamMembersTable.name);
+
+  for (const row of rows) {
+    const list = crews.get(row.bookingId) ?? [];
+    list.push({ id: row.id, name: row.name, role: row.role });
+    crews.set(row.bookingId, list);
+  }
+  return crews;
+}
+
+function serializeBooking(
+  company: Company,
+  b: Booking,
+  crew: CrewMember[] = [],
+) {
   return {
     ...b,
+    // Who is working the job. Defaulted rather than required so the many
+    // existing call sites that respond with a single booking keep compiling.
+    crew,
     scheduledFor: b.scheduledFor.toISOString(),
     // Nullable: only set once a quote has actually gone out. Forgetting this
     // breaks every booking response, not just the one that was quoted.
@@ -74,22 +123,141 @@ function serializeBooking(company: Company, b: Booking) {
 }
 
 router.get("/bookings", async (req, res): Promise<void> => {
-  const company = await getCompanyForUser(req.userId!);
-  if (!company) {
+  const caller = await getCaller(req);
+  if (!caller.company) {
     res.json(ListBookingsResponse.parse([]));
     return;
   }
+  const company = caller.company;
+
+  // A cleaner sees only the jobs they are actually on — the whole point of
+  // the role. Filtered in SQL rather than after the fact so an unassigned
+  // job never reaches their device.
+  const scope =
+    caller.role === "cleaner" && caller.teamMemberId !== null
+      ? and(
+          eq(bookingsTable.companyId, company.id),
+          inArray(
+            bookingsTable.id,
+            db
+              .select({ id: bookingAssignmentsTable.bookingId })
+              .from(bookingAssignmentsTable)
+              .where(
+                eq(bookingAssignmentsTable.teamMemberId, caller.teamMemberId),
+              ),
+          ),
+        )
+      : eq(bookingsTable.companyId, company.id);
+
   const bookings = await db
     .select()
     .from(bookingsTable)
-    .where(eq(bookingsTable.companyId, company.id))
+    .where(scope)
     .orderBy(desc(bookingsTable.createdAt));
+
+  const crews = await loadCrews(bookings.map((b) => b.id));
+
   res.json(
     ListBookingsResponse.parse(
-      bookings.map((b) => serializeBooking(company, b)),
+      bookings.map((b) => serializeBooking(company, b, crews.get(b.id) ?? [])),
     ),
   );
 });
+
+router.put(
+  "/bookings/:id/crew",
+  requireRole("owner", "dispatcher"),
+  async (req, res): Promise<void> => {
+    const params = SetBookingCrewParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ error: params.error.message });
+      return;
+    }
+    const parsed = SetBookingCrewBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+    const caller = await getCaller(req);
+    if (!caller.company) {
+      res.status(404).json({ error: "No company yet" });
+      return;
+    }
+    const company = caller.company;
+
+    const [booking] = await db
+      .select()
+      .from(bookingsTable)
+      .where(
+        and(
+          eq(bookingsTable.id, params.data.id),
+          eq(bookingsTable.companyId, company.id),
+        ),
+      );
+    if (!booking) {
+      res.status(404).json({ error: "Booking not found" });
+      return;
+    }
+
+    const requested = [...new Set(parsed.data.teamMemberIds)];
+
+    // Only this company's own people, so a guessed id cannot put a stranger on
+    // the schedule or leak their name back in the response.
+    const eligible =
+      requested.length > 0
+        ? await db
+            .select({
+              id: teamMembersTable.id,
+              name: teamMembersTable.name,
+              role: teamMembersTable.role,
+            })
+            .from(teamMembersTable)
+            .where(
+              and(
+                eq(teamMembersTable.companyId, company.id),
+                inArray(teamMembersTable.id, requested),
+              ),
+            )
+        : [];
+
+    if (eligible.length !== requested.length) {
+      res
+        .status(400)
+        .json({ error: "One or more people are not on your team" });
+      return;
+    }
+
+    await db.transaction(async (tx) => {
+      await tx
+        .delete(bookingAssignmentsTable)
+        .where(eq(bookingAssignmentsTable.bookingId, booking.id));
+      if (eligible.length > 0) {
+        await tx.insert(bookingAssignmentsTable).values(
+          eligible.map((m) => ({
+            bookingId: booking.id,
+            teamMemberId: m.id,
+          })),
+        );
+      }
+    });
+
+    await db.insert(activityTable).values({
+      companyId: company.id,
+      type: "crew_assigned",
+      message:
+        eligible.length > 0
+          ? `${eligible.map((m) => m.name).join(", ")} assigned to ${booking.customerName}'s job.`
+          : `Crew cleared from ${booking.customerName}'s job.`,
+    });
+
+    const crews = await loadCrews([booking.id]);
+    res.json(
+      SetBookingCrewResponse.parse(
+        serializeBooking(company, booking, crews.get(booking.id) ?? []),
+      ),
+    );
+  },
+);
 
 router.patch("/bookings/:id", async (req, res): Promise<void> => {
   const params = UpdateBookingParams.safeParse(req.params);
@@ -102,7 +270,8 @@ router.patch("/bookings/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const company = await getCompanyForUser(req.userId!);
+  const caller = await getCaller(req);
+  const company = caller.company;
   if (!company) {
     res.status(404).json({ error: "Booking not found" });
     return;
@@ -146,6 +315,34 @@ router.patch("/bookings/:id", async (req, res): Promise<void> => {
     return;
   }
 
+  // A cleaner reports progress on their own job and nothing else: no pricing,
+  // no rescheduling, no touching a job they were never sent to.
+  if (caller.role === "cleaner") {
+    const changesBeyondStatus = Object.keys(updates).some(
+      (k) => k !== "status",
+    );
+    if (changesBeyondStatus) {
+      res
+        .status(403)
+        .json({ error: "You can only update the status of your own jobs" });
+      return;
+    }
+    const [assignment] = await db
+      .select({ id: bookingAssignmentsTable.id })
+      .from(bookingAssignmentsTable)
+      .where(
+        and(
+          eq(bookingAssignmentsTable.bookingId, params.data.id),
+          eq(bookingAssignmentsTable.teamMemberId, caller.teamMemberId!),
+        ),
+      )
+      .limit(1);
+    if (!assignment) {
+      res.status(404).json({ error: "Booking not found" });
+      return;
+    }
+  }
+
   const [booking] = await db
     .update(bookingsTable)
     .set(updates)
@@ -163,57 +360,61 @@ router.patch("/bookings/:id", async (req, res): Promise<void> => {
   res.json(UpdateBookingResponse.parse(serializeBooking(company, booking)));
 });
 
-router.post("/bookings", async (req, res): Promise<void> => {
-  const parsed = CreateBookingBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
-  }
-  const company = await getCompanyForUser(req.userId!);
-  if (!company) {
-    res.status(404).json({ error: "No company yet" });
-    return;
-  }
-  const when = new Date(parsed.data.scheduledFor);
-  if (Number.isNaN(when.getTime())) {
-    res.status(400).json({ error: "Invalid scheduledFor date" });
-    return;
-  }
+router.post(
+  "/bookings",
+  requireRole("owner", "dispatcher"),
+  async (req, res): Promise<void> => {
+    const parsed = CreateBookingBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+    const company = await getCompanyForUser(req.userId!);
+    if (!company) {
+      res.status(404).json({ error: "No company yet" });
+      return;
+    }
+    const when = new Date(parsed.data.scheduledFor);
+    if (Number.isNaN(when.getTime())) {
+      res.status(400).json({ error: "Invalid scheduledFor date" });
+      return;
+    }
 
-  const [booking] = await db
-    .insert(bookingsTable)
-    .values({
+    const [booking] = await db
+      .insert(bookingsTable)
+      .values({
+        companyId: company.id,
+        // Hand-entered bookings have no originating call.
+        callId: null,
+        customerName: parsed.data.customerName,
+        customerPhone: parsed.data.customerPhone,
+        customerAddress: parsed.data.customerAddress ?? null,
+        service: parsed.data.service,
+        scheduledFor: when,
+        status: parsed.data.status ?? "pending",
+        quoteHours: parsed.data.quoteHours ?? null,
+        quoteCrewLabel: parsed.data.quoteCrewLabel ?? null,
+        quoteHourlyRate: parsed.data.quoteHourlyRate ?? null,
+        quoteFuelSurcharge: parsed.data.quoteFuelSurcharge ?? null,
+        quoteDiscountAmount: parsed.data.quoteDiscountAmount ?? null,
+        quoteReferralSource: parsed.data.quoteReferralSource ?? null,
+        quotedAmount: parsed.data.quotedAmount ?? null,
+        quoteDeposit: parsed.data.quoteDeposit ?? null,
+        quoteNotes: parsed.data.quoteNotes ?? null,
+      })
+      .returning();
+
+    await db.insert(activityTable).values({
       companyId: company.id,
-      // Hand-entered bookings have no originating call.
-      callId: null,
-      customerName: parsed.data.customerName,
-      customerPhone: parsed.data.customerPhone,
-      customerAddress: parsed.data.customerAddress ?? null,
-      service: parsed.data.service,
-      scheduledFor: when,
-      status: parsed.data.status ?? "pending",
-      quoteHours: parsed.data.quoteHours ?? null,
-      quoteCrewLabel: parsed.data.quoteCrewLabel ?? null,
-      quoteHourlyRate: parsed.data.quoteHourlyRate ?? null,
-      quoteFuelSurcharge: parsed.data.quoteFuelSurcharge ?? null,
-      quoteDiscountAmount: parsed.data.quoteDiscountAmount ?? null,
-      quoteReferralSource: parsed.data.quoteReferralSource ?? null,
-      quotedAmount: parsed.data.quotedAmount ?? null,
-      quoteDeposit: parsed.data.quoteDeposit ?? null,
-      quoteNotes: parsed.data.quoteNotes ?? null,
-    })
-    .returning();
+      type: "booking_created",
+      message: `Booking added by hand for ${booking!.customerName} — ${booking!.service}.`,
+    });
 
-  await db.insert(activityTable).values({
-    companyId: company.id,
-    type: "booking_created",
-    message: `Booking added by hand for ${booking!.customerName} — ${booking!.service}.`,
-  });
-
-  res
-    .status(201)
-    .json(CreateBookingResponse.parse(serializeBooking(company, booking!)));
-});
+    res
+      .status(201)
+      .json(CreateBookingResponse.parse(serializeBooking(company, booking!)));
+  },
+);
 
 /**
  * Works out which of the company's own Quo lines a quote should be sent from,
@@ -292,200 +493,215 @@ async function loadBooking(
   return booking;
 }
 
-router.get("/bookings/:id/quote-preview", async (req, res): Promise<void> => {
-  const params = GetQuotePreviewParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
-  }
-  const company = await getCompanyForUser(req.userId!);
-  if (!company) {
-    res.status(404).json({ error: "Booking not found" });
-    return;
-  }
-  const booking = await loadBooking(company.id, params.data.id);
-  if (!booking) {
-    res.status(404).json({ error: "Booking not found" });
-    return;
-  }
+router.get(
+  "/bookings/:id/quote-preview",
+  requireRole("owner", "dispatcher"),
+  async (req, res): Promise<void> => {
+    const params = GetQuotePreviewParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ error: params.error.message });
+      return;
+    }
+    const company = await getCompanyForUser(req.userId!);
+    if (!company) {
+      res.status(404).json({ error: "Booking not found" });
+      return;
+    }
+    const booking = await loadBooking(company.id, params.data.id);
+    if (!booking) {
+      res.status(404).json({ error: "Booking not found" });
+      return;
+    }
 
-  const sender = await resolveQuoteSender(company, booking);
-  const reachable = toE164(booking.customerPhone) !== null;
-  // Minted here rather than at send time so the dispatcher sees the real link
-  // in the draft, and so the same link is reused if they send twice.
-  const token = await ensureQuoteToken(booking);
+    const sender = await resolveQuoteSender(company, booking);
+    const reachable = toE164(booking.customerPhone) !== null;
+    // Minted here rather than at send time so the dispatcher sees the real link
+    // in the draft, and so the same link is reused if they send twice.
+    const token = await ensureQuoteToken(booking);
 
-  res.json(
-    GetQuotePreviewResponse.parse({
-      // Always regenerated from the current price and time so edits show up,
-      // even if an earlier version was already sent.
-      message: buildQuoteMessage(company, booking, quoteUrl(token)),
-      canSend: "from" in sender && reachable,
-      blockedReason:
-        "blockedReason" in sender
-          ? sender.blockedReason
-          : reachable
-            ? null
-            : "This customer's phone number isn't a number we can text.",
-      fromNumber: "from" in sender ? sender.from : null,
-      // Shown beside the draft so the dispatcher can check the maths against
-      // the estimate before it goes to the customer.
-      totals: computeQuoteTotals(company, booking),
-    }),
-  );
-});
+    res.json(
+      GetQuotePreviewResponse.parse({
+        // Always regenerated from the current price and time so edits show up,
+        // even if an earlier version was already sent.
+        message: buildQuoteMessage(company, booking, quoteUrl(token)),
+        canSend: "from" in sender && reachable,
+        blockedReason:
+          "blockedReason" in sender
+            ? sender.blockedReason
+            : reachable
+              ? null
+              : "This customer's phone number isn't a number we can text.",
+        fromNumber: "from" in sender ? sender.from : null,
+        // Shown beside the draft so the dispatcher can check the maths against
+        // the estimate before it goes to the customer.
+        totals: computeQuoteTotals(company, booking),
+      }),
+    );
+  },
+);
 
-router.post("/bookings/:id/send-quote", async (req, res): Promise<void> => {
-  const params = SendQuoteParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
-  }
-  const parsed = SendQuoteBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
-  }
-  const company = await getCompanyForUser(req.userId!);
-  if (!company) {
-    res.status(404).json({ error: "Booking not found" });
-    return;
-  }
-  const booking = await loadBooking(company.id, params.data.id);
-  if (!booking) {
-    res.status(404).json({ error: "Booking not found" });
-    return;
-  }
+router.post(
+  "/bookings/:id/send-quote",
+  requireRole("owner", "dispatcher"),
+  async (req, res): Promise<void> => {
+    const params = SendQuoteParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ error: params.error.message });
+      return;
+    }
+    const parsed = SendQuoteBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+    const company = await getCompanyForUser(req.userId!);
+    if (!company) {
+      res.status(404).json({ error: "Booking not found" });
+      return;
+    }
+    const booking = await loadBooking(company.id, params.data.id);
+    if (!booking) {
+      res.status(404).json({ error: "Booking not found" });
+      return;
+    }
 
-  const to = toE164(booking.customerPhone);
-  if (!to) {
-    res.status(400).json({
-      error: "This customer's phone number isn't a number we can text.",
-    });
-    return;
-  }
-  const sender = await resolveQuoteSender(company, booking);
-  if ("blockedReason" in sender) {
-    res.status(409).json({ error: sender.blockedReason });
-    return;
-  }
-  // Normally already minted by the preview, but a send that skipped the
-  // preview must not text a link that 404s.
-  const token = await ensureQuoteToken(booking);
-  const link = quoteUrl(token);
-  // The dispatcher can edit the draft freely, and an edit that trims the
-  // bottom off the message would otherwise send a quote the customer has no
-  // way to read or approve. Put the link back rather than silently shipping a
-  // dead end.
-  const content = parsed.data.message.includes(link)
-    ? parsed.data.message
-    : `${parsed.data.message.trimEnd()}\n\nView your estimate here:\n${link}`;
-  const apiKey = companyQuoKey(company);
-  if (!apiKey) {
-    res.status(409).json({ error: "Connect your Quo account to text quotes." });
-    return;
-  }
+    const to = toE164(booking.customerPhone);
+    if (!to) {
+      res.status(400).json({
+        error: "This customer's phone number isn't a number we can text.",
+      });
+      return;
+    }
+    const sender = await resolveQuoteSender(company, booking);
+    if ("blockedReason" in sender) {
+      res.status(409).json({ error: sender.blockedReason });
+      return;
+    }
+    // Normally already minted by the preview, but a send that skipped the
+    // preview must not text a link that 404s.
+    const token = await ensureQuoteToken(booking);
+    const link = quoteUrl(token);
+    // The dispatcher can edit the draft freely, and an edit that trims the
+    // bottom off the message would otherwise send a quote the customer has no
+    // way to read or approve. Put the link back rather than silently shipping a
+    // dead end.
+    const content = parsed.data.message.includes(link)
+      ? parsed.data.message
+      : `${parsed.data.message.trimEnd()}\n\nView your estimate here:\n${link}`;
+    const apiKey = companyQuoKey(company);
+    if (!apiKey) {
+      res
+        .status(409)
+        .json({ error: "Connect your Quo account to text quotes." });
+      return;
+    }
 
-  try {
-    await sendMessage(apiKey, {
-      from: sender.from,
-      to,
-      content,
-    });
-  } catch (err) {
-    logger.error({ err }, "Quote text failed to send");
-    res.status(502).json({
-      error:
-        err instanceof Error
-          ? `Couldn't send the quote: ${err.message}`
-          : "Couldn't send the quote",
-    });
-    return;
-  }
+    try {
+      await sendMessage(apiKey, {
+        from: sender.from,
+        to,
+        content,
+      });
+    } catch (err) {
+      logger.error({ err }, "Quote text failed to send");
+      res.status(502).json({
+        error:
+          err instanceof Error
+            ? `Couldn't send the quote: ${err.message}`
+            : "Couldn't send the quote",
+      });
+      return;
+    }
 
-  // Past this point the customer HAS the text. If bookkeeping fails we must not
-  // report a plain failure — the dispatcher would resend and the customer would
-  // get the quote twice.
-  let updated;
-  try {
-    [updated] = await db
+    // Past this point the customer HAS the text. If bookkeeping fails we must not
+    // report a plain failure — the dispatcher would resend and the customer would
+    // get the quote twice.
+    let updated;
+    try {
+      [updated] = await db
+        .update(bookingsTable)
+        .set({
+          // Store what actually went out, link repair included — the dispatcher
+          // reads this back to see what the customer was told.
+          quoteMessage: content,
+          quoteSentAt: new Date(),
+          // Freeze the price at the moment of the promise. Every other total is
+          // recomputed from current settings, which is right for a draft but
+          // wrong for a commitment: if the owner edits their tax rate next month
+          // this booking must still show what the customer was told.
+          quoteSentTotals: computeQuoteTotals(company, booking),
+        })
+        .where(
+          and(
+            eq(bookingsTable.id, booking.id),
+            eq(bookingsTable.companyId, company.id),
+          ),
+        )
+        .returning();
+
+      await db.insert(activityTable).values({
+        companyId: company.id,
+        type: "quote_sent",
+        message: `Quote texted to ${booking.customerName} at ${booking.customerPhone}.`,
+      });
+    } catch (err) {
+      logger.error(
+        { err, bookingId: booking.id, companyId: company.id },
+        "Quote text was delivered but recording it failed",
+      );
+      res.status(500).json({
+        error:
+          "The quote was texted to the customer, but we couldn't save it against " +
+          "this booking. Don't resend — they already have it.",
+      });
+      return;
+    }
+
+    res.json(SendQuoteResponse.parse(serializeBooking(company, updated!)));
+  },
+);
+
+// Owner reviewed a booking after a timezone change and says the displayed
+// time is right as-is. Idempotent: confirming an unflagged booking is a no-op.
+router.post(
+  "/bookings/:id/confirm-time",
+  requireRole("owner", "dispatcher"),
+  async (req, res): Promise<void> => {
+    const params = ConfirmBookingTimeParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ error: params.error.message });
+      return;
+    }
+    const company = await getCompanyForUser(req.userId!);
+    if (!company) {
+      res.status(404).json({ error: "Booking not found" });
+      return;
+    }
+    const [booking] = await db
       .update(bookingsTable)
-      .set({
-        // Store what actually went out, link repair included — the dispatcher
-        // reads this back to see what the customer was told.
-        quoteMessage: content,
-        quoteSentAt: new Date(),
-        // Freeze the price at the moment of the promise. Every other total is
-        // recomputed from current settings, which is right for a draft but
-        // wrong for a commitment: if the owner edits their tax rate next month
-        // this booking must still show what the customer was told.
-        quoteSentTotals: computeQuoteTotals(company, booking),
-      })
+      .set({ needsTimeReview: false, timeReviewPreviousTimezone: null })
       .where(
         and(
-          eq(bookingsTable.id, booking.id),
+          eq(bookingsTable.id, params.data.id),
           eq(bookingsTable.companyId, company.id),
         ),
       )
       .returning();
-
-    await db.insert(activityTable).values({
-      companyId: company.id,
-      type: "quote_sent",
-      message: `Quote texted to ${booking.customerName} at ${booking.customerPhone}.`,
-    });
-  } catch (err) {
-    logger.error(
-      { err, bookingId: booking.id, companyId: company.id },
-      "Quote text was delivered but recording it failed",
+    if (!booking) {
+      res.status(404).json({ error: "Booking not found" });
+      return;
+    }
+    res.json(
+      ConfirmBookingTimeResponse.parse(serializeBooking(company, booking)),
     );
-    res.status(500).json({
-      error:
-        "The quote was texted to the customer, but we couldn't save it against " +
-        "this booking. Don't resend — they already have it.",
-    });
-    return;
-  }
-
-  res.json(SendQuoteResponse.parse(serializeBooking(company, updated!)));
-});
-
-// Owner reviewed a booking after a timezone change and says the displayed
-// time is right as-is. Idempotent: confirming an unflagged booking is a no-op.
-router.post("/bookings/:id/confirm-time", async (req, res): Promise<void> => {
-  const params = ConfirmBookingTimeParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
-  }
-  const company = await getCompanyForUser(req.userId!);
-  if (!company) {
-    res.status(404).json({ error: "Booking not found" });
-    return;
-  }
-  const [booking] = await db
-    .update(bookingsTable)
-    .set({ needsTimeReview: false, timeReviewPreviousTimezone: null })
-    .where(
-      and(
-        eq(bookingsTable.id, params.data.id),
-        eq(bookingsTable.companyId, company.id),
-      ),
-    )
-    .returning();
-  if (!booking) {
-    res.status(404).json({ error: "Booking not found" });
-    return;
-  }
-  res.json(
-    ConfirmBookingTimeResponse.parse(serializeBooking(company, booking)),
-  );
-});
+  },
+);
 
 // After a reschedule, text the customer the new time so the appointment in
 // their head (or an earlier quote text) doesn't win over the one on file.
 router.post(
   "/bookings/:id/send-reschedule-text",
+  requireRole("owner", "dispatcher"),
   async (req, res): Promise<void> => {
     const params = SendRescheduleTextParams.safeParse(req.params);
     if (!params.success) {
@@ -566,133 +782,140 @@ router.post(
   },
 );
 
-router.post("/bookings/:id/sync-jobber", async (req, res): Promise<void> => {
-  const params = SyncBookingToJobberParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
-  }
-  const company = await getCompanyForUser(req.userId!);
-  if (!company) {
-    res.status(404).json({ error: "Booking not found" });
-    return;
-  }
-  if (company.jobberNeedsReauth) {
-    res.status(409).json({
-      error:
-        "Jobber authorization has expired — reconnect Jobber to keep syncing.",
-    });
-    return;
-  }
-  if (!company.jobberConnected || !company.jobberRefreshToken) {
-    res.status(400).json({ error: "Connect Jobber before syncing bookings" });
-    return;
-  }
+router.post(
+  "/bookings/:id/sync-jobber",
+  requireRole("owner", "dispatcher"),
+  async (req, res): Promise<void> => {
+    const params = SyncBookingToJobberParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ error: params.error.message });
+      return;
+    }
+    const company = await getCompanyForUser(req.userId!);
+    if (!company) {
+      res.status(404).json({ error: "Booking not found" });
+      return;
+    }
+    if (company.jobberNeedsReauth) {
+      res.status(409).json({
+        error:
+          "Jobber authorization has expired — reconnect Jobber to keep syncing.",
+      });
+      return;
+    }
+    if (!company.jobberConnected || !company.jobberRefreshToken) {
+      res.status(400).json({ error: "Connect Jobber before syncing bookings" });
+      return;
+    }
 
-  const [existing] = await db
-    .select()
-    .from(bookingsTable)
-    .where(
-      and(
-        eq(bookingsTable.id, params.data.id),
-        eq(bookingsTable.companyId, company.id),
-      ),
-    );
-  if (!existing) {
-    res.status(404).json({ error: "Booking not found" });
-    return;
-  }
-  if (existing.jobberSynced) {
-    res.json(
-      SyncBookingToJobberResponse.parse(serializeBooking(company, existing)),
-    );
-    return;
-  }
-
-  // Wizard answers extracted from the call, mapped into the Jobber request note
-  let extractedAnswers: Array<{ field: string; value: string }> = [];
-  if (existing.callId) {
-    const [call] = await db
+    const [existing] = await db
       .select()
-      .from(callsTable)
-      .where(eq(callsTable.id, existing.callId));
-    extractedAnswers =
-      (call?.extractedAnswers as typeof extractedAnswers) ?? [];
-  }
+      .from(bookingsTable)
+      .where(
+        and(
+          eq(bookingsTable.id, params.data.id),
+          eq(bookingsTable.companyId, company.id),
+        ),
+      );
+    if (!existing) {
+      res.status(404).json({ error: "Booking not found" });
+      return;
+    }
+    if (existing.jobberSynced) {
+      res.json(
+        SyncBookingToJobberResponse.parse(serializeBooking(company, existing)),
+      );
+      return;
+    }
 
-  try {
-    const accessToken = await getValidAccessToken(company);
-    const client = await createJobberClient(accessToken, {
-      name: existing.customerName,
-      phone: existing.customerPhone,
-    });
-    const scheduled = existing.scheduledFor.toLocaleString("en-US", {
-      dateStyle: "full",
-      timeStyle: "short",
-    });
-    const request = await createJobberRequest(accessToken, {
-      clientId: client.id,
-      title: `${existing.service} — ${existing.customerName} (requested ${scheduled})`,
-      address: existing.customerAddress,
-    });
+    // Wizard answers extracted from the call, mapped into the Jobber request note
+    let extractedAnswers: Array<{ field: string; value: string }> = [];
+    if (existing.callId) {
+      const [call] = await db
+        .select()
+        .from(callsTable)
+        .where(eq(callsTable.id, existing.callId));
+      extractedAnswers =
+        (call?.extractedAnswers as typeof extractedAnswers) ?? [];
+    }
 
-    const noteLines = [
-      `Booking captured by the Book My Cleaning AI receptionist.`,
-      `Service: ${existing.service}`,
-      `Requested time: ${scheduled}`,
-      `Phone: ${existing.customerPhone}`,
-      ...(existing.customerAddress
-        ? [`Address: ${existing.customerAddress}`]
-        : []),
-      ...extractedAnswers.map((a) => `${a.field}: ${a.value}`),
-    ];
-    await tryAttachRequestNote(accessToken, request.id, noteLines.join("\n"));
-
-    const [booking] = await db
-      .update(bookingsTable)
-      .set({
-        jobberSynced: true,
-        jobberJobId: request.id,
-        jobberClientId: client.id,
-        jobberWebUri: request.jobberWebUri,
-        jobberSyncError: null,
-        jobberSyncErrorAt: null,
-      })
-      .where(eq(bookingsTable.id, existing.id))
-      .returning();
-
-    await db.insert(activityTable).values({
-      companyId: company.id,
-      type: "jobber_synced",
-      message: `Booking for ${booking!.customerName} synced to Jobber as a work request.`,
-    });
-
-    res.json(
-      SyncBookingToJobberResponse.parse(serializeBooking(company, booking!)),
-    );
-  } catch (err) {
-    logger.error({ err }, "Jobber sync failed");
-    const errorMessage = err instanceof Error ? err.message : "Unknown error";
     try {
-      await db
+      const accessToken = await getValidAccessToken(company);
+      const client = await createJobberClient(accessToken, {
+        name: existing.customerName,
+        phone: existing.customerPhone,
+      });
+      const scheduled = existing.scheduledFor.toLocaleString("en-US", {
+        dateStyle: "full",
+        timeStyle: "short",
+      });
+      const request = await createJobberRequest(accessToken, {
+        clientId: client.id,
+        title: `${existing.service} — ${existing.customerName} (requested ${scheduled})`,
+        address: existing.customerAddress,
+      });
+
+      const noteLines = [
+        `Booking captured by the Book My Cleaning AI receptionist.`,
+        `Service: ${existing.service}`,
+        `Requested time: ${scheduled}`,
+        `Phone: ${existing.customerPhone}`,
+        ...(existing.customerAddress
+          ? [`Address: ${existing.customerAddress}`]
+          : []),
+        ...extractedAnswers.map((a) => `${a.field}: ${a.value}`),
+      ];
+      await tryAttachRequestNote(accessToken, request.id, noteLines.join("\n"));
+
+      const [booking] = await db
         .update(bookingsTable)
-        .set({ jobberSyncError: errorMessage, jobberSyncErrorAt: new Date() })
-        .where(eq(bookingsTable.id, existing.id));
+        .set({
+          jobberSynced: true,
+          jobberJobId: request.id,
+          jobberClientId: client.id,
+          jobberWebUri: request.jobberWebUri,
+          jobberSyncError: null,
+          jobberSyncErrorAt: null,
+        })
+        .where(eq(bookingsTable.id, existing.id))
+        .returning();
+
       await db.insert(activityTable).values({
         companyId: company.id,
-        type: "jobber_sync_failed",
-        message: `Jobber sync failed for ${existing.customerName}'s booking: ${errorMessage}`,
+        type: "jobber_synced",
+        message: `Booking for ${booking!.customerName} synced to Jobber as a work request.`,
       });
-    } catch (recordErr) {
-      logger.error({ err: recordErr }, "Failed to record Jobber sync failure");
+
+      res.json(
+        SyncBookingToJobberResponse.parse(serializeBooking(company, booking!)),
+      );
+    } catch (err) {
+      logger.error({ err }, "Jobber sync failed");
+      const errorMessage = err instanceof Error ? err.message : "Unknown error";
+      try {
+        await db
+          .update(bookingsTable)
+          .set({ jobberSyncError: errorMessage, jobberSyncErrorAt: new Date() })
+          .where(eq(bookingsTable.id, existing.id));
+        await db.insert(activityTable).values({
+          companyId: company.id,
+          type: "jobber_sync_failed",
+          message: `Jobber sync failed for ${existing.customerName}'s booking: ${errorMessage}`,
+        });
+      } catch (recordErr) {
+        logger.error(
+          { err: recordErr },
+          "Failed to record Jobber sync failure",
+        );
+      }
+      res.status(502).json({
+        error:
+          err instanceof Error
+            ? `Jobber sync failed: ${err.message}`
+            : "Jobber sync failed",
+      });
     }
-    res.status(502).json({
-      error:
-        err instanceof Error
-          ? `Jobber sync failed: ${err.message}`
-          : "Jobber sync failed",
-    });
-  }
-});
+  },
+);
 
 export default router;
