@@ -5,6 +5,7 @@
  * Book My Cleaning — AI receptionist for Jobber cleaning companies
  * OpenAPI spec version: 0.1.0
  */
+import type { QuoteTotals } from './quoteTotals';
 
 export interface QuotePreview {
   message: string;
@@ -13,4 +14,5 @@ export interface QuotePreview {
   blockedReason?: string | null;
   /** @nullable */
   fromNumber?: string | null;
+  totals?: QuoteTotals;
 }

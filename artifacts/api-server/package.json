@@ -13,6 +13,7 @@
     "@clerk/express": "^2.1.49",
     "@clerk/shared": "^4.25.10",
     "@workspace/api-zod": "workspace:*",
+    "@workspace/pricing": "workspace:*",
     "@workspace/db": "workspace:*",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",

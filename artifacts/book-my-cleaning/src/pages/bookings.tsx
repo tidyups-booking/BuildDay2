@@ -60,11 +60,69 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import {
+  QuoteCalculator,
+  emptyQuoteDraft,
+  type QuoteDraft,
+} from "@/components/QuoteCalculator";
+import { companyQuoteRates } from "@/lib/rates";
 
 type BookingStatus = "pending" | "confirmed" | "completed" | "canceled";
 
+/** Quotes always show cents, matching the printed estimates. */
+/**
+ * The headline number on a booking card.
+ *
+ * Once a quote has been texted, that price is what the customer was promised,
+ * so it wins over anything recomputed from today's rates. If the two have since
+ * diverged — the owner changed a rate, or the dispatcher re-priced the job —
+ * say so, because the fix is to send an updated quote, not to quietly show a
+ * number the customer has never seen.
+ */
+function BookingPrice({ booking }: { booking: Booking }) {
+  const sent = booking.quoteSentTotals;
+  const current = booking.quoteTotals;
+
+  if (sent) {
+    const changed = Math.abs(sent.total - current.total) >= 0.01;
+    return (
+      <div className="text-right">
+        <span
+          className="text-lg font-bold text-foreground tabular-nums block"
+          title={`Quoted to the customer: subtotal ${formatMoney(sent.subtotal)} + tax & fees`}
+        >
+          {formatMoney(sent.total)}
+        </span>
+        {changed && (
+          <span
+            className="text-[11px] text-amber-400"
+            title={`Now prices at ${formatMoney(current.total)}. Send an updated quote to change what the customer owes.`}
+          >
+            now {formatMoney(current.total)}
+          </span>
+        )}
+      </div>
+    );
+  }
+
+  if (current.subtotal <= 0) return null;
+  return (
+    <span
+      className="text-lg font-bold text-foreground tabular-nums"
+      title={`Subtotal ${formatMoney(current.subtotal)} + tax & fees`}
+    >
+      {formatMoney(current.total)}
+    </span>
+  );
+}
+
 function formatMoney(amount: number): string {
-  return Number.isInteger(amount) ? `$${amount}` : `$${amount.toFixed(2)}`;
+  const sign = amount < 0 ? "-" : "";
+  return `${sign}$${Math.abs(amount).toFixed(2)}`;
+}
+
+function formatRate(rate: number): string {
+  return `${Number(rate.toFixed(2))}%`;
 }
 
 export function BookingsPage() {
@@ -186,11 +244,7 @@ export function BookingsPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  {booking.quotedAmount != null && (
-                    <span className="text-lg font-bold text-foreground tabular-nums">
-                      {formatMoney(booking.quotedAmount)}
-                    </span>
-                  )}
+                  <BookingPrice booking={booking} />
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button
@@ -397,10 +451,54 @@ function QuoteDialog({
           <LoadingSpinner className="my-8" />
         ) : (
           <div className="space-y-4">
-            {booking.quotedAmount == null && (
+            {booking.quoteTotals.subtotal === 0 && (
               <div className="text-sm text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-lg p-3">
-                No price set yet. Close this and use <strong>Edit &amp; reschedule</strong> to add
-                one, or type the amount straight into the message below.
+                No price set yet. Close this and use <strong>Edit &amp; reschedule</strong> to
+                price the job, or type the amount straight into the message below.
+              </div>
+            )}
+            {preview?.totals && preview.totals.subtotal > 0 && (
+              <div className="rounded-lg border border-border bg-secondary/40 p-3 space-y-1 text-sm">
+                {preview.totals.lineItems.map((item, i) => (
+                  <div key={i} className="flex justify-between gap-4 text-muted-foreground">
+                    <span>
+                      {item.quantity === 1
+                        ? item.name
+                        : `${item.name} — ${item.quantity} x ${formatMoney(item.unitPrice)}`}
+                    </span>
+                    <span className="tabular-nums">
+                      {formatMoney(Number((item.quantity * item.unitPrice).toFixed(2)))}
+                    </span>
+                  </div>
+                ))}
+                <div className="flex justify-between gap-4 border-t border-border/60 pt-1 mt-1">
+                  <span>Subtotal</span>
+                  <span className="tabular-nums">{formatMoney(preview.totals.subtotal)}</span>
+                </div>
+                {preview.totals.taxRate > 0 && (
+                  <div className="flex justify-between gap-4 text-muted-foreground">
+                    <span>
+                      {preview.totals.taxLabel} ({formatRate(preview.totals.taxRate)})
+                    </span>
+                    <span className="tabular-nums">
+                      {formatMoney(preview.totals.taxAmount)}
+                    </span>
+                  </div>
+                )}
+                {preview.totals.feesRate > 0 && (
+                  <div className="flex justify-between gap-4 text-muted-foreground">
+                    <span>
+                      {preview.totals.feesLabel} ({formatRate(preview.totals.feesRate)})
+                    </span>
+                    <span className="tabular-nums">
+                      {formatMoney(preview.totals.feesAmount)}
+                    </span>
+                  </div>
+                )}
+                <div className="flex justify-between gap-4 font-semibold text-foreground">
+                  <span>Total</span>
+                  <span className="tabular-nums">{formatMoney(preview.totals.total)}</span>
+                </div>
               </div>
             )}
             {blocked && (
@@ -462,6 +560,8 @@ function BookingFormDialog({
   const { toast } = useToast();
   const createBooking = useCreateBooking();
   const updateBooking = useUpdateBooking();
+  const { data: company } = useGetCompany();
+  const rates = companyQuoteRates(company);
   const isEdit = booking != null;
 
   const [customerName, setCustomerName] = useState(booking?.customerName ?? "");
@@ -473,8 +573,18 @@ function BookingFormDialog({
       ? isoToZonedInput(booking.scheduledFor, timeZone)
       : defaultScheduledFor(timeZone),
   );
-  const [quotedAmount, setQuotedAmount] = useState(
-    booking?.quotedAmount != null ? String(booking.quotedAmount) : "",
+  const [quote, setQuote] = useState<QuoteDraft>(
+    booking
+      ? {
+          hours: booking.quoteHours ?? null,
+          crewLabel: booking.quoteCrewLabel ?? null,
+          hourlyRate: booking.quoteHourlyRate ?? null,
+          fuelSurcharge: booking.quoteFuelSurcharge ?? null,
+          discountAmount: booking.quoteDiscountAmount ?? null,
+          referralSource: booking.quoteReferralSource ?? null,
+          deposit: booking.quoteDeposit ?? null,
+        }
+      : emptyQuoteDraft,
   );
   const [quoteNotes, setQuoteNotes] = useState(booking?.quoteNotes ?? "");
 
@@ -493,11 +603,11 @@ function BookingFormDialog({
       });
       return;
     }
-    const amount = quotedAmount.trim() === "" ? null : Number(quotedAmount);
-    if (amount != null && (Number.isNaN(amount) || amount < 0)) {
+    const priced = quote.hours != null && quote.hours > 0 && quote.hourlyRate != null;
+    if (quote.hourlyRate != null && quote.hourlyRate < 0) {
       toast({
-        title: "Check the price",
-        description: "Enter a number, or leave it blank.",
+        title: "Check the rate",
+        description: "An hourly rate can't be negative.",
         variant: "destructive",
       });
       return;
@@ -509,7 +619,16 @@ function BookingFormDialog({
       customerAddress: customerAddress.trim() || null,
       service: service.trim(),
       scheduledFor: whenIso,
-      quotedAmount: amount,
+      quoteHours: quote.hours,
+      quoteCrewLabel: quote.crewLabel,
+      quoteHourlyRate: quote.hourlyRate,
+      quoteFuelSurcharge: quote.fuelSurcharge,
+      quoteDiscountAmount: quote.discountAmount,
+      quoteReferralSource: quote.referralSource,
+      // Clear any flat price once the calculator has been used, so there is
+      // only ever one answer to "what does this job cost?".
+      quotedAmount: priced ? null : (booking?.quotedAmount ?? null),
+      quoteDeposit: quote.deposit,
       quoteNotes: quoteNotes.trim() || null,
     };
 
@@ -618,23 +737,15 @@ function BookingFormDialog({
                 onChange={(e) => setScheduledFor(e.target.value)}
               />
             </div>
-            <div>
-              <Label htmlFor="b-amount" className="mb-2 block">
-                Quote <span className="text-muted-foreground font-normal">(optional)</span>
-              </Label>
-              <div className="relative">
-                <DollarSign className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  id="b-amount"
-                  inputMode="decimal"
-                  className="pl-9"
-                  value={quotedAmount}
-                  onChange={(e) => setQuotedAmount(e.target.value)}
-                  placeholder="320"
-                />
-              </div>
-            </div>
           </div>
+
+          <QuoteCalculator
+            value={quote}
+            onChange={setQuote}
+            rates={rates}
+            serviceName={service}
+            flatAmount={booking?.quotedAmount ?? null}
+          />
 
           <div>
             <Label htmlFor="b-notes" className="mb-2 block">

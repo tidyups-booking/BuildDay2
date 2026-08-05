@@ -38,6 +38,15 @@ export const GetCompanyResponse = zod.object({
   "quoConnected": zod.boolean(),
   "quoWorkspaceName": zod.string().nullish(),
   "quoKeyLast4": zod.string().nullish(),
+  "quoteRateSolo": zod.number().optional(),
+  "quoteRateTeam": zod.number().optional(),
+  "quoteFuelSurcharge": zod.number().optional(),
+  "quoteTaxLabel": zod.string().optional(),
+  "quoteTaxRate": zod.number().optional(),
+  "quoteFeesLabel": zod.string().optional(),
+  "quoteFeesRate": zod.number().optional(),
+  "quoteDepositAmount": zod.number().optional(),
+  "quoteDepositEmail": zod.string().nullish(),
   "watchedNumbers": zod.array(zod.object({
   "id": zod.string(),
   "phoneNumber": zod.string(),
@@ -88,6 +97,15 @@ export const CreateCompanyResponse = zod.object({
   "quoConnected": zod.boolean(),
   "quoWorkspaceName": zod.string().nullish(),
   "quoKeyLast4": zod.string().nullish(),
+  "quoteRateSolo": zod.number().optional(),
+  "quoteRateTeam": zod.number().optional(),
+  "quoteFuelSurcharge": zod.number().optional(),
+  "quoteTaxLabel": zod.string().optional(),
+  "quoteTaxRate": zod.number().optional(),
+  "quoteFeesLabel": zod.string().optional(),
+  "quoteFeesRate": zod.number().optional(),
+  "quoteDepositAmount": zod.number().optional(),
+  "quoteDepositEmail": zod.string().nullish(),
   "watchedNumbers": zod.array(zod.object({
   "id": zod.string(),
   "phoneNumber": zod.string(),
@@ -115,6 +133,28 @@ export const CreateCompanyResponse = zod.object({
 /**
  * @summary Update company settings / receptionist configuration
  */
+export const updateCompanyBodyQuoteRateSoloMin = 0;
+export const updateCompanyBodyQuoteRateSoloMax = 10000;
+
+export const updateCompanyBodyQuoteRateTeamMin = 0;
+export const updateCompanyBodyQuoteRateTeamMax = 10000;
+
+export const updateCompanyBodyQuoteFuelSurchargeMin = 0;
+export const updateCompanyBodyQuoteFuelSurchargeMax = 10000;
+
+
+export const updateCompanyBodyQuoteTaxRateMin = 0;
+export const updateCompanyBodyQuoteTaxRateMax = 100;
+
+
+export const updateCompanyBodyQuoteFeesRateMin = 0;
+export const updateCompanyBodyQuoteFeesRateMax = 100;
+
+export const updateCompanyBodyQuoteDepositAmountMin = 0;
+export const updateCompanyBodyQuoteDepositAmountMax = 1000000;
+
+
+
 export const UpdateCompanyBody = zod.object({
   "name": zod.string().optional(),
   "greeting": zod.string().optional(),
@@ -123,7 +163,16 @@ export const UpdateCompanyBody = zod.object({
   "question": zod.string(),
   "answer": zod.string()
 })).optional(),
-  "ringThroughNumber": zod.string().optional()
+  "ringThroughNumber": zod.string().optional(),
+  "quoteRateSolo": zod.number().min(updateCompanyBodyQuoteRateSoloMin).max(updateCompanyBodyQuoteRateSoloMax).optional(),
+  "quoteRateTeam": zod.number().min(updateCompanyBodyQuoteRateTeamMin).max(updateCompanyBodyQuoteRateTeamMax).optional(),
+  "quoteFuelSurcharge": zod.number().min(updateCompanyBodyQuoteFuelSurchargeMin).max(updateCompanyBodyQuoteFuelSurchargeMax).optional(),
+  "quoteTaxLabel": zod.string().min(1).optional(),
+  "quoteTaxRate": zod.number().min(updateCompanyBodyQuoteTaxRateMin).max(updateCompanyBodyQuoteTaxRateMax).optional(),
+  "quoteFeesLabel": zod.string().min(1).optional(),
+  "quoteFeesRate": zod.number().min(updateCompanyBodyQuoteFeesRateMin).max(updateCompanyBodyQuoteFeesRateMax).optional(),
+  "quoteDepositAmount": zod.number().min(updateCompanyBodyQuoteDepositAmountMin).max(updateCompanyBodyQuoteDepositAmountMax).optional(),
+  "quoteDepositEmail": zod.string().nullish()
 })
 
 export const UpdateCompanyResponse = zod.object({
@@ -145,6 +194,15 @@ export const UpdateCompanyResponse = zod.object({
   "quoConnected": zod.boolean(),
   "quoWorkspaceName": zod.string().nullish(),
   "quoKeyLast4": zod.string().nullish(),
+  "quoteRateSolo": zod.number().optional(),
+  "quoteRateTeam": zod.number().optional(),
+  "quoteFuelSurcharge": zod.number().optional(),
+  "quoteTaxLabel": zod.string().optional(),
+  "quoteTaxRate": zod.number().optional(),
+  "quoteFeesLabel": zod.string().optional(),
+  "quoteFeesRate": zod.number().optional(),
+  "quoteDepositAmount": zod.number().optional(),
+  "quoteDepositEmail": zod.string().nullish(),
   "watchedNumbers": zod.array(zod.object({
   "id": zod.string(),
   "phoneNumber": zod.string(),
@@ -199,6 +257,15 @@ export const DisconnectJobberResponse = zod.object({
   "quoConnected": zod.boolean(),
   "quoWorkspaceName": zod.string().nullish(),
   "quoKeyLast4": zod.string().nullish(),
+  "quoteRateSolo": zod.number().optional(),
+  "quoteRateTeam": zod.number().optional(),
+  "quoteFuelSurcharge": zod.number().optional(),
+  "quoteTaxLabel": zod.string().optional(),
+  "quoteTaxRate": zod.number().optional(),
+  "quoteFeesLabel": zod.string().optional(),
+  "quoteFeesRate": zod.number().optional(),
+  "quoteDepositAmount": zod.number().optional(),
+  "quoteDepositEmail": zod.string().nullish(),
   "watchedNumbers": zod.array(zod.object({
   "id": zod.string(),
   "phoneNumber": zod.string(),
@@ -245,6 +312,15 @@ export const GoLiveResponse = zod.object({
   "quoConnected": zod.boolean(),
   "quoWorkspaceName": zod.string().nullish(),
   "quoKeyLast4": zod.string().nullish(),
+  "quoteRateSolo": zod.number().optional(),
+  "quoteRateTeam": zod.number().optional(),
+  "quoteFuelSurcharge": zod.number().optional(),
+  "quoteTaxLabel": zod.string().optional(),
+  "quoteTaxRate": zod.number().optional(),
+  "quoteFeesLabel": zod.string().optional(),
+  "quoteFeesRate": zod.number().optional(),
+  "quoteDepositAmount": zod.number().optional(),
+  "quoteDepositEmail": zod.string().nullish(),
   "watchedNumbers": zod.array(zod.object({
   "id": zod.string(),
   "phoneNumber": zod.string(),
@@ -295,6 +371,15 @@ export const SetJobberSkippedResponse = zod.object({
   "quoConnected": zod.boolean(),
   "quoWorkspaceName": zod.string().nullish(),
   "quoKeyLast4": zod.string().nullish(),
+  "quoteRateSolo": zod.number().optional(),
+  "quoteRateTeam": zod.number().optional(),
+  "quoteFuelSurcharge": zod.number().optional(),
+  "quoteTaxLabel": zod.string().optional(),
+  "quoteTaxRate": zod.number().optional(),
+  "quoteFeesLabel": zod.string().optional(),
+  "quoteFeesRate": zod.number().optional(),
+  "quoteDepositAmount": zod.number().optional(),
+  "quoteDepositEmail": zod.string().nullish(),
   "watchedNumbers": zod.array(zod.object({
   "id": zod.string(),
   "phoneNumber": zod.string(),
@@ -345,6 +430,15 @@ export const ConnectQuoResponse = zod.object({
   "quoConnected": zod.boolean(),
   "quoWorkspaceName": zod.string().nullish(),
   "quoKeyLast4": zod.string().nullish(),
+  "quoteRateSolo": zod.number().optional(),
+  "quoteRateTeam": zod.number().optional(),
+  "quoteFuelSurcharge": zod.number().optional(),
+  "quoteTaxLabel": zod.string().optional(),
+  "quoteTaxRate": zod.number().optional(),
+  "quoteFeesLabel": zod.string().optional(),
+  "quoteFeesRate": zod.number().optional(),
+  "quoteDepositAmount": zod.number().optional(),
+  "quoteDepositEmail": zod.string().nullish(),
   "watchedNumbers": zod.array(zod.object({
   "id": zod.string(),
   "phoneNumber": zod.string(),
@@ -391,6 +485,15 @@ export const DisconnectQuoResponse = zod.object({
   "quoConnected": zod.boolean(),
   "quoWorkspaceName": zod.string().nullish(),
   "quoKeyLast4": zod.string().nullish(),
+  "quoteRateSolo": zod.number().optional(),
+  "quoteRateTeam": zod.number().optional(),
+  "quoteFuelSurcharge": zod.number().optional(),
+  "quoteTaxLabel": zod.string().optional(),
+  "quoteTaxRate": zod.number().optional(),
+  "quoteFeesLabel": zod.string().optional(),
+  "quoteFeesRate": zod.number().optional(),
+  "quoteDepositAmount": zod.number().optional(),
+  "quoteDepositEmail": zod.string().nullish(),
   "watchedNumbers": zod.array(zod.object({
   "id": zod.string(),
   "phoneNumber": zod.string(),
@@ -453,6 +556,15 @@ export const SelectQuoNumbersResponse = zod.object({
   "quoConnected": zod.boolean(),
   "quoWorkspaceName": zod.string().nullish(),
   "quoKeyLast4": zod.string().nullish(),
+  "quoteRateSolo": zod.number().optional(),
+  "quoteRateTeam": zod.number().optional(),
+  "quoteFuelSurcharge": zod.number().optional(),
+  "quoteTaxLabel": zod.string().optional(),
+  "quoteTaxRate": zod.number().optional(),
+  "quoteFeesLabel": zod.string().optional(),
+  "quoteFeesRate": zod.number().optional(),
+  "quoteDepositAmount": zod.number().optional(),
+  "quoteDepositEmail": zod.string().nullish(),
   "watchedNumbers": zod.array(zod.object({
   "id": zod.string(),
   "phoneNumber": zod.string(),
@@ -684,6 +796,10 @@ export const SimulateTestCallResponse = zod.object({
 /**
  * @summary List bookings created from calls
  */
+
+
+
+
 export const ListBookingsResponseItem = zod.object({
   "id": zod.int(),
   "callId": zod.int().nullish(),
@@ -693,10 +809,51 @@ export const ListBookingsResponseItem = zod.object({
   "service": zod.string(),
   "scheduledFor": zod.string(),
   "status": zod.enum(['pending', 'confirmed', 'completed', 'canceled']),
+  "quoteHours": zod.number().nullish(),
+  "quoteCrewLabel": zod.string().nullish(),
+  "quoteHourlyRate": zod.number().nullish(),
+  "quoteFuelSurcharge": zod.number().nullish(),
+  "quoteDiscountAmount": zod.number().nullish(),
+  "quoteReferralSource": zod.string().nullish(),
   "quotedAmount": zod.number().nullish(),
+  "quoteDeposit": zod.number().nullish(),
   "quoteNotes": zod.string().nullish(),
   "quoteMessage": zod.string().nullish(),
   "quoteSentAt": zod.string().nullish(),
+  "quoteTotals": zod.object({
+  "lineItems": zod.array(zod.object({
+  "name": zod.string().min(1),
+  "quantity": zod.number(),
+  "unitPrice": zod.number()
+})),
+  "subtotal": zod.number(),
+  "taxLabel": zod.string(),
+  "taxRate": zod.number(),
+  "taxAmount": zod.number(),
+  "feesLabel": zod.string(),
+  "feesRate": zod.number(),
+  "feesAmount": zod.number(),
+  "total": zod.number(),
+  "deposit": zod.number(),
+  "depositEmail": zod.string().nullish()
+}),
+  "quoteSentTotals": zod.union([zod.object({
+  "lineItems": zod.array(zod.object({
+  "name": zod.string().min(1),
+  "quantity": zod.number(),
+  "unitPrice": zod.number()
+})),
+  "subtotal": zod.number(),
+  "taxLabel": zod.string(),
+  "taxRate": zod.number(),
+  "taxAmount": zod.number(),
+  "feesLabel": zod.string(),
+  "feesRate": zod.number(),
+  "feesAmount": zod.number(),
+  "total": zod.number(),
+  "deposit": zod.number(),
+  "depositEmail": zod.string().nullish()
+}),zod.null()]).optional(),
   "jobberSynced": zod.boolean(),
   "jobberJobId": zod.string().nullish(),
   "jobberClientId": zod.string().nullish(),
@@ -714,7 +871,27 @@ export const ListBookingsResponse = zod.array(ListBookingsResponseItem)
 
 
 
+export const createBookingBodyQuoteHoursMin = 0;
+export const createBookingBodyQuoteHoursMax = 24;
+
+export const createBookingBodyQuoteCrewLabelMax = 60;
+
+export const createBookingBodyQuoteHourlyRateMin = 0;
+export const createBookingBodyQuoteHourlyRateMax = 10000;
+
+export const createBookingBodyQuoteFuelSurchargeMin = 0;
+export const createBookingBodyQuoteFuelSurchargeMax = 10000;
+
+export const createBookingBodyQuoteDiscountAmountMin = 0;
+export const createBookingBodyQuoteDiscountAmountMax = 100000;
+
+export const createBookingBodyQuoteReferralSourceMax = 60;
+
 export const createBookingBodyQuotedAmountMin = 0;
+export const createBookingBodyQuotedAmountMax = 1000000;
+
+export const createBookingBodyQuoteDepositMin = 0;
+export const createBookingBodyQuoteDepositMax = 1000000;
 
 
 
@@ -725,9 +902,20 @@ export const CreateBookingBody = zod.object({
   "service": zod.string().min(1),
   "scheduledFor": zod.string(),
   "status": zod.enum(['pending', 'confirmed', 'completed', 'canceled']).optional(),
-  "quotedAmount": zod.number().min(createBookingBodyQuotedAmountMin).nullish(),
+  "quoteHours": zod.number().min(createBookingBodyQuoteHoursMin).max(createBookingBodyQuoteHoursMax).nullish(),
+  "quoteCrewLabel": zod.string().max(createBookingBodyQuoteCrewLabelMax).nullish(),
+  "quoteHourlyRate": zod.number().min(createBookingBodyQuoteHourlyRateMin).max(createBookingBodyQuoteHourlyRateMax).nullish(),
+  "quoteFuelSurcharge": zod.number().min(createBookingBodyQuoteFuelSurchargeMin).max(createBookingBodyQuoteFuelSurchargeMax).nullish(),
+  "quoteDiscountAmount": zod.number().min(createBookingBodyQuoteDiscountAmountMin).max(createBookingBodyQuoteDiscountAmountMax).nullish(),
+  "quoteReferralSource": zod.string().max(createBookingBodyQuoteReferralSourceMax).nullish(),
+  "quotedAmount": zod.number().min(createBookingBodyQuotedAmountMin).max(createBookingBodyQuotedAmountMax).nullish(),
+  "quoteDeposit": zod.number().min(createBookingBodyQuoteDepositMin).max(createBookingBodyQuoteDepositMax).nullish(),
   "quoteNotes": zod.string().nullish()
 })
+
+
+
+
 
 export const CreateBookingResponse = zod.object({
   "id": zod.int(),
@@ -738,10 +926,51 @@ export const CreateBookingResponse = zod.object({
   "service": zod.string(),
   "scheduledFor": zod.string(),
   "status": zod.enum(['pending', 'confirmed', 'completed', 'canceled']),
+  "quoteHours": zod.number().nullish(),
+  "quoteCrewLabel": zod.string().nullish(),
+  "quoteHourlyRate": zod.number().nullish(),
+  "quoteFuelSurcharge": zod.number().nullish(),
+  "quoteDiscountAmount": zod.number().nullish(),
+  "quoteReferralSource": zod.string().nullish(),
   "quotedAmount": zod.number().nullish(),
+  "quoteDeposit": zod.number().nullish(),
   "quoteNotes": zod.string().nullish(),
   "quoteMessage": zod.string().nullish(),
   "quoteSentAt": zod.string().nullish(),
+  "quoteTotals": zod.object({
+  "lineItems": zod.array(zod.object({
+  "name": zod.string().min(1),
+  "quantity": zod.number(),
+  "unitPrice": zod.number()
+})),
+  "subtotal": zod.number(),
+  "taxLabel": zod.string(),
+  "taxRate": zod.number(),
+  "taxAmount": zod.number(),
+  "feesLabel": zod.string(),
+  "feesRate": zod.number(),
+  "feesAmount": zod.number(),
+  "total": zod.number(),
+  "deposit": zod.number(),
+  "depositEmail": zod.string().nullish()
+}),
+  "quoteSentTotals": zod.union([zod.object({
+  "lineItems": zod.array(zod.object({
+  "name": zod.string().min(1),
+  "quantity": zod.number(),
+  "unitPrice": zod.number()
+})),
+  "subtotal": zod.number(),
+  "taxLabel": zod.string(),
+  "taxRate": zod.number(),
+  "taxAmount": zod.number(),
+  "feesLabel": zod.string(),
+  "feesRate": zod.number(),
+  "feesAmount": zod.number(),
+  "total": zod.number(),
+  "deposit": zod.number(),
+  "depositEmail": zod.string().nullish()
+}),zod.null()]).optional(),
   "jobberSynced": zod.boolean(),
   "jobberJobId": zod.string().nullish(),
   "jobberClientId": zod.string().nullish(),
@@ -759,11 +988,31 @@ export const GetQuotePreviewParams = zod.object({
   "id": zod.coerce.number().int()
 })
 
+
+
+
 export const GetQuotePreviewResponse = zod.object({
   "message": zod.string(),
   "canSend": zod.boolean(),
   "blockedReason": zod.string().nullish(),
-  "fromNumber": zod.string().nullish()
+  "fromNumber": zod.string().nullish(),
+  "totals": zod.object({
+  "lineItems": zod.array(zod.object({
+  "name": zod.string().min(1),
+  "quantity": zod.number(),
+  "unitPrice": zod.number()
+})),
+  "subtotal": zod.number(),
+  "taxLabel": zod.string(),
+  "taxRate": zod.number(),
+  "taxAmount": zod.number(),
+  "feesLabel": zod.string(),
+  "feesRate": zod.number(),
+  "feesAmount": zod.number(),
+  "total": zod.number(),
+  "deposit": zod.number(),
+  "depositEmail": zod.string().nullish()
+}).optional()
 })
 
 
@@ -782,6 +1031,10 @@ export const SendQuoteBody = zod.object({
   "message": zod.string().min(1).max(sendQuoteBodyMessageMax)
 })
 
+
+
+
+
 export const SendQuoteResponse = zod.object({
   "id": zod.int(),
   "callId": zod.int().nullish(),
@@ -791,10 +1044,51 @@ export const SendQuoteResponse = zod.object({
   "service": zod.string(),
   "scheduledFor": zod.string(),
   "status": zod.enum(['pending', 'confirmed', 'completed', 'canceled']),
+  "quoteHours": zod.number().nullish(),
+  "quoteCrewLabel": zod.string().nullish(),
+  "quoteHourlyRate": zod.number().nullish(),
+  "quoteFuelSurcharge": zod.number().nullish(),
+  "quoteDiscountAmount": zod.number().nullish(),
+  "quoteReferralSource": zod.string().nullish(),
   "quotedAmount": zod.number().nullish(),
+  "quoteDeposit": zod.number().nullish(),
   "quoteNotes": zod.string().nullish(),
   "quoteMessage": zod.string().nullish(),
   "quoteSentAt": zod.string().nullish(),
+  "quoteTotals": zod.object({
+  "lineItems": zod.array(zod.object({
+  "name": zod.string().min(1),
+  "quantity": zod.number(),
+  "unitPrice": zod.number()
+})),
+  "subtotal": zod.number(),
+  "taxLabel": zod.string(),
+  "taxRate": zod.number(),
+  "taxAmount": zod.number(),
+  "feesLabel": zod.string(),
+  "feesRate": zod.number(),
+  "feesAmount": zod.number(),
+  "total": zod.number(),
+  "deposit": zod.number(),
+  "depositEmail": zod.string().nullish()
+}),
+  "quoteSentTotals": zod.union([zod.object({
+  "lineItems": zod.array(zod.object({
+  "name": zod.string().min(1),
+  "quantity": zod.number(),
+  "unitPrice": zod.number()
+})),
+  "subtotal": zod.number(),
+  "taxLabel": zod.string(),
+  "taxRate": zod.number(),
+  "taxAmount": zod.number(),
+  "feesLabel": zod.string(),
+  "feesRate": zod.number(),
+  "feesAmount": zod.number(),
+  "total": zod.number(),
+  "deposit": zod.number(),
+  "depositEmail": zod.string().nullish()
+}),zod.null()]).optional(),
   "jobberSynced": zod.boolean(),
   "jobberJobId": zod.string().nullish(),
   "jobberClientId": zod.string().nullish(),
@@ -812,7 +1106,27 @@ export const UpdateBookingParams = zod.object({
 
 
 
+export const updateBookingBodyQuoteHoursMin = 0;
+export const updateBookingBodyQuoteHoursMax = 24;
+
+export const updateBookingBodyQuoteCrewLabelMax = 60;
+
+export const updateBookingBodyQuoteHourlyRateMin = 0;
+export const updateBookingBodyQuoteHourlyRateMax = 10000;
+
+export const updateBookingBodyQuoteFuelSurchargeMin = 0;
+export const updateBookingBodyQuoteFuelSurchargeMax = 10000;
+
+export const updateBookingBodyQuoteDiscountAmountMin = 0;
+export const updateBookingBodyQuoteDiscountAmountMax = 100000;
+
+export const updateBookingBodyQuoteReferralSourceMax = 60;
+
 export const updateBookingBodyQuotedAmountMin = 0;
+export const updateBookingBodyQuotedAmountMax = 1000000;
+
+export const updateBookingBodyQuoteDepositMin = 0;
+export const updateBookingBodyQuoteDepositMax = 1000000;
 
 
 
@@ -823,9 +1137,20 @@ export const UpdateBookingBody = zod.object({
   "customerPhone": zod.string().min(1).optional(),
   "customerAddress": zod.string().nullish(),
   "service": zod.string().min(1).optional(),
-  "quotedAmount": zod.number().min(updateBookingBodyQuotedAmountMin).nullish(),
+  "quoteHours": zod.number().min(updateBookingBodyQuoteHoursMin).max(updateBookingBodyQuoteHoursMax).nullish(),
+  "quoteCrewLabel": zod.string().max(updateBookingBodyQuoteCrewLabelMax).nullish(),
+  "quoteHourlyRate": zod.number().min(updateBookingBodyQuoteHourlyRateMin).max(updateBookingBodyQuoteHourlyRateMax).nullish(),
+  "quoteFuelSurcharge": zod.number().min(updateBookingBodyQuoteFuelSurchargeMin).max(updateBookingBodyQuoteFuelSurchargeMax).nullish(),
+  "quoteDiscountAmount": zod.number().min(updateBookingBodyQuoteDiscountAmountMin).max(updateBookingBodyQuoteDiscountAmountMax).nullish(),
+  "quoteReferralSource": zod.string().max(updateBookingBodyQuoteReferralSourceMax).nullish(),
+  "quotedAmount": zod.number().min(updateBookingBodyQuotedAmountMin).max(updateBookingBodyQuotedAmountMax).nullish(),
+  "quoteDeposit": zod.number().min(updateBookingBodyQuoteDepositMin).max(updateBookingBodyQuoteDepositMax).nullish(),
   "quoteNotes": zod.string().nullish()
 })
+
+
+
+
 
 export const UpdateBookingResponse = zod.object({
   "id": zod.int(),
@@ -836,10 +1161,51 @@ export const UpdateBookingResponse = zod.object({
   "service": zod.string(),
   "scheduledFor": zod.string(),
   "status": zod.enum(['pending', 'confirmed', 'completed', 'canceled']),
+  "quoteHours": zod.number().nullish(),
+  "quoteCrewLabel": zod.string().nullish(),
+  "quoteHourlyRate": zod.number().nullish(),
+  "quoteFuelSurcharge": zod.number().nullish(),
+  "quoteDiscountAmount": zod.number().nullish(),
+  "quoteReferralSource": zod.string().nullish(),
   "quotedAmount": zod.number().nullish(),
+  "quoteDeposit": zod.number().nullish(),
   "quoteNotes": zod.string().nullish(),
   "quoteMessage": zod.string().nullish(),
   "quoteSentAt": zod.string().nullish(),
+  "quoteTotals": zod.object({
+  "lineItems": zod.array(zod.object({
+  "name": zod.string().min(1),
+  "quantity": zod.number(),
+  "unitPrice": zod.number()
+})),
+  "subtotal": zod.number(),
+  "taxLabel": zod.string(),
+  "taxRate": zod.number(),
+  "taxAmount": zod.number(),
+  "feesLabel": zod.string(),
+  "feesRate": zod.number(),
+  "feesAmount": zod.number(),
+  "total": zod.number(),
+  "deposit": zod.number(),
+  "depositEmail": zod.string().nullish()
+}),
+  "quoteSentTotals": zod.union([zod.object({
+  "lineItems": zod.array(zod.object({
+  "name": zod.string().min(1),
+  "quantity": zod.number(),
+  "unitPrice": zod.number()
+})),
+  "subtotal": zod.number(),
+  "taxLabel": zod.string(),
+  "taxRate": zod.number(),
+  "taxAmount": zod.number(),
+  "feesLabel": zod.string(),
+  "feesRate": zod.number(),
+  "feesAmount": zod.number(),
+  "total": zod.number(),
+  "deposit": zod.number(),
+  "depositEmail": zod.string().nullish()
+}),zod.null()]).optional(),
   "jobberSynced": zod.boolean(),
   "jobberJobId": zod.string().nullish(),
   "jobberClientId": zod.string().nullish(),
@@ -857,6 +1223,10 @@ export const SyncBookingToJobberParams = zod.object({
   "id": zod.coerce.number().int()
 })
 
+
+
+
+
 export const SyncBookingToJobberResponse = zod.object({
   "id": zod.int(),
   "callId": zod.int().nullish(),
@@ -866,10 +1236,51 @@ export const SyncBookingToJobberResponse = zod.object({
   "service": zod.string(),
   "scheduledFor": zod.string(),
   "status": zod.enum(['pending', 'confirmed', 'completed', 'canceled']),
+  "quoteHours": zod.number().nullish(),
+  "quoteCrewLabel": zod.string().nullish(),
+  "quoteHourlyRate": zod.number().nullish(),
+  "quoteFuelSurcharge": zod.number().nullish(),
+  "quoteDiscountAmount": zod.number().nullish(),
+  "quoteReferralSource": zod.string().nullish(),
   "quotedAmount": zod.number().nullish(),
+  "quoteDeposit": zod.number().nullish(),
   "quoteNotes": zod.string().nullish(),
   "quoteMessage": zod.string().nullish(),
   "quoteSentAt": zod.string().nullish(),
+  "quoteTotals": zod.object({
+  "lineItems": zod.array(zod.object({
+  "name": zod.string().min(1),
+  "quantity": zod.number(),
+  "unitPrice": zod.number()
+})),
+  "subtotal": zod.number(),
+  "taxLabel": zod.string(),
+  "taxRate": zod.number(),
+  "taxAmount": zod.number(),
+  "feesLabel": zod.string(),
+  "feesRate": zod.number(),
+  "feesAmount": zod.number(),
+  "total": zod.number(),
+  "deposit": zod.number(),
+  "depositEmail": zod.string().nullish()
+}),
+  "quoteSentTotals": zod.union([zod.object({
+  "lineItems": zod.array(zod.object({
+  "name": zod.string().min(1),
+  "quantity": zod.number(),
+  "unitPrice": zod.number()
+})),
+  "subtotal": zod.number(),
+  "taxLabel": zod.string(),
+  "taxRate": zod.number(),
+  "taxAmount": zod.number(),
+  "feesLabel": zod.string(),
+  "feesRate": zod.number(),
+  "feesAmount": zod.number(),
+  "total": zod.number(),
+  "deposit": zod.number(),
+  "depositEmail": zod.string().nullish()
+}),zod.null()]).optional(),
   "jobberSynced": zod.boolean(),
   "jobberJobId": zod.string().nullish(),
   "jobberClientId": zod.string().nullish(),

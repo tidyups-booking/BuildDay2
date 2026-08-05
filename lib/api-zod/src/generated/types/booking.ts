@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { BookingStatus } from './bookingStatus';
+import type { QuoteTotals } from './quoteTotals';
 
 export interface Booking {
   id: number;
@@ -19,13 +20,29 @@ export interface Booking {
   scheduledFor: string;
   status: BookingStatus;
   /** @nullable */
+  quoteHours?: number | null;
+  /** @nullable */
+  quoteCrewLabel?: string | null;
+  /** @nullable */
+  quoteHourlyRate?: number | null;
+  /** @nullable */
+  quoteFuelSurcharge?: number | null;
+  /** @nullable */
+  quoteDiscountAmount?: number | null;
+  /** @nullable */
+  quoteReferralSource?: string | null;
+  /** @nullable */
   quotedAmount?: number | null;
+  /** @nullable */
+  quoteDeposit?: number | null;
   /** @nullable */
   quoteNotes?: string | null;
   /** @nullable */
   quoteMessage?: string | null;
   /** @nullable */
   quoteSentAt?: string | null;
+  quoteTotals: QuoteTotals;
+  quoteSentTotals?: QuoteTotals | null;
   jobberSynced: boolean;
   /** @nullable */
   jobberJobId?: string | null;

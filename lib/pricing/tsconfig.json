@@ -5,9 +5,7 @@
     "declarationMap": true,
     "emitDeclarationOnly": true,
     "outDir": "dist",
-    "rootDir": "src",
-    "types": ["node"]
+    "rootDir": "src"
   },
-  "include": ["src"],
-  "references": [{ "path": "../pricing" }]
+  "include": ["src"]
 }

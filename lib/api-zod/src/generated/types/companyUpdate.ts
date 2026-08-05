@@ -13,4 +13,40 @@ export interface CompanyUpdate {
   collectFields?: string[];
   customQuestions?: CustomQuestion[];
   ringThroughNumber?: string;
+  /**
+     * @minimum 0
+     * @maximum 10000
+     */
+  quoteRateSolo?: number;
+  /**
+     * @minimum 0
+     * @maximum 10000
+     */
+  quoteRateTeam?: number;
+  /**
+     * @minimum 0
+     * @maximum 10000
+     */
+  quoteFuelSurcharge?: number;
+  /** @minLength 1 */
+  quoteTaxLabel?: string;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  quoteTaxRate?: number;
+  /** @minLength 1 */
+  quoteFeesLabel?: string;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  quoteFeesRate?: number;
+  /**
+     * @minimum 0
+     * @maximum 1000000
+     */
+  quoteDepositAmount?: number;
+  /** @nullable */
+  quoteDepositEmail?: string | null;
 }

@@ -31,6 +31,16 @@ export interface Company {
   quoWorkspaceName?: string | null;
   /** @nullable */
   quoKeyLast4?: string | null;
+  quoteRateSolo?: number;
+  quoteRateTeam?: number;
+  quoteFuelSurcharge?: number;
+  quoteTaxLabel?: string;
+  quoteTaxRate?: number;
+  quoteFeesLabel?: string;
+  quoteFeesRate?: number;
+  quoteDepositAmount?: number;
+  /** @nullable */
+  quoteDepositEmail?: string | null;
   watchedNumbers: WatchedNumber[];
   isLive: boolean;
   setupStatus: SetupStatus;

@@ -25,7 +25,7 @@ import {
 import { requireAuth } from "../middlewares/requireAuth";
 import { getCompanyForUser, companyQuoKey } from "../lib/company";
 import { listPhoneNumbers, sendMessage, toE164 } from "../lib/quo";
-import { buildQuoteMessage } from "../lib/quotes";
+import { buildQuoteMessage, computeQuoteTotals } from "../lib/quotes";
 import type { Company } from "@workspace/db";
 import {
   getValidAccessToken,
@@ -39,7 +39,7 @@ const router: IRouter = Router();
 
 router.use(requireAuth);
 
-function serializeBooking(b: Booking) {
+function serializeBooking(company: Company, b: Booking) {
   return {
     ...b,
     scheduledFor: b.scheduledFor.toISOString(),
@@ -48,6 +48,11 @@ function serializeBooking(b: Booking) {
     quoteSentAt: b.quoteSentAt ? b.quoteSentAt.toISOString() : null,
     jobberSyncErrorAt: b.jobberSyncErrorAt ? b.jobberSyncErrorAt.toISOString() : null,
     createdAt: b.createdAt.toISOString(),
+    // Derived so the dispatcher's card and the customer's text can never show
+    // different totals.
+    quoteTotals: computeQuoteTotals(company, b),
+    // The frozen copy of whatever was actually texted, if anything was.
+    quoteSentTotals: b.quoteSentTotals ?? null,
   };
 }
 
@@ -62,7 +67,9 @@ router.get("/bookings", async (req, res): Promise<void> => {
     .from(bookingsTable)
     .where(eq(bookingsTable.companyId, company.id))
     .orderBy(desc(bookingsTable.createdAt));
-  res.json(ListBookingsResponse.parse(bookings.map(serializeBooking)));
+  res.json(
+    ListBookingsResponse.parse(bookings.map((b) => serializeBooking(company, b))),
+  );
 });
 
 router.patch("/bookings/:id", async (req, res): Promise<void> => {
@@ -88,7 +95,17 @@ router.patch("/bookings/:id", async (req, res): Promise<void> => {
   if (d.customerPhone !== undefined) updates.customerPhone = d.customerPhone;
   if (d.customerAddress !== undefined) updates.customerAddress = d.customerAddress;
   if (d.service !== undefined) updates.service = d.service;
+  if (d.quoteHours !== undefined) updates.quoteHours = d.quoteHours;
+  if (d.quoteCrewLabel !== undefined) updates.quoteCrewLabel = d.quoteCrewLabel;
+  if (d.quoteHourlyRate !== undefined) updates.quoteHourlyRate = d.quoteHourlyRate;
+  if (d.quoteFuelSurcharge !== undefined)
+    updates.quoteFuelSurcharge = d.quoteFuelSurcharge;
+  if (d.quoteDiscountAmount !== undefined)
+    updates.quoteDiscountAmount = d.quoteDiscountAmount;
+  if (d.quoteReferralSource !== undefined)
+    updates.quoteReferralSource = d.quoteReferralSource;
   if (d.quotedAmount !== undefined) updates.quotedAmount = d.quotedAmount;
+  if (d.quoteDeposit !== undefined) updates.quoteDeposit = d.quoteDeposit;
   if (d.quoteNotes !== undefined) updates.quoteNotes = d.quoteNotes;
   if (d.scheduledFor !== undefined) {
     const when = new Date(d.scheduledFor);
@@ -117,7 +134,7 @@ router.patch("/bookings/:id", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Booking not found" });
     return;
   }
-  res.json(UpdateBookingResponse.parse(serializeBooking(booking)));
+  res.json(UpdateBookingResponse.parse(serializeBooking(company, booking)));
 });
 
 router.post("/bookings", async (req, res): Promise<void> => {
@@ -149,7 +166,14 @@ router.post("/bookings", async (req, res): Promise<void> => {
       service: parsed.data.service,
       scheduledFor: when,
       status: parsed.data.status ?? "pending",
+      quoteHours: parsed.data.quoteHours ?? null,
+      quoteCrewLabel: parsed.data.quoteCrewLabel ?? null,
+      quoteHourlyRate: parsed.data.quoteHourlyRate ?? null,
+      quoteFuelSurcharge: parsed.data.quoteFuelSurcharge ?? null,
+      quoteDiscountAmount: parsed.data.quoteDiscountAmount ?? null,
+      quoteReferralSource: parsed.data.quoteReferralSource ?? null,
       quotedAmount: parsed.data.quotedAmount ?? null,
+      quoteDeposit: parsed.data.quoteDeposit ?? null,
       quoteNotes: parsed.data.quoteNotes ?? null,
     })
     .returning();
@@ -160,7 +184,9 @@ router.post("/bookings", async (req, res): Promise<void> => {
     message: `Booking added by hand for ${booking!.customerName} — ${booking!.service}.`,
   });
 
-  res.status(201).json(CreateBookingResponse.parse(serializeBooking(booking!)));
+  res
+    .status(201)
+    .json(CreateBookingResponse.parse(serializeBooking(company, booking!)));
 });
 
 /**
@@ -272,6 +298,9 @@ router.get("/bookings/:id/quote-preview", async (req, res): Promise<void> => {
             ? null
             : "This customer's phone number isn't a number we can text.",
       fromNumber: "from" in sender ? sender.from : null,
+      // Shown beside the draft so the dispatcher can check the maths against
+      // the estimate before it goes to the customer.
+      totals: computeQuoteTotals(company, booking),
     }),
   );
 });
@@ -340,7 +369,15 @@ router.post("/bookings/:id/send-quote", async (req, res): Promise<void> => {
   try {
     [updated] = await db
       .update(bookingsTable)
-      .set({ quoteMessage: parsed.data.message, quoteSentAt: new Date() })
+      .set({
+        quoteMessage: parsed.data.message,
+        quoteSentAt: new Date(),
+        // Freeze the price at the moment of the promise. Every other total is
+        // recomputed from current settings, which is right for a draft but
+        // wrong for a commitment: if the owner edits their tax rate next month
+        // this booking must still show what the customer was told.
+        quoteSentTotals: computeQuoteTotals(company, booking),
+      })
       .where(
         and(
           eq(bookingsTable.id, booking.id),
@@ -367,7 +404,7 @@ router.post("/bookings/:id/send-quote", async (req, res): Promise<void> => {
     return;
   }
 
-  res.json(SendQuoteResponse.parse(serializeBooking(updated!)));
+  res.json(SendQuoteResponse.parse(serializeBooking(company, updated!)));
 });
 
 router.post("/bookings/:id/sync-jobber", async (req, res): Promise<void> => {
@@ -406,7 +443,7 @@ router.post("/bookings/:id/sync-jobber", async (req, res): Promise<void> => {
     return;
   }
   if (existing.jobberSynced) {
-    res.json(SyncBookingToJobberResponse.parse(serializeBooking(existing)));
+    res.json(SyncBookingToJobberResponse.parse(serializeBooking(company, existing)));
     return;
   }
 
@@ -465,7 +502,7 @@ router.post("/bookings/:id/sync-jobber", async (req, res): Promise<void> => {
       message: `Booking for ${booking!.customerName} synced to Jobber as a work request.`,
     });
 
-    res.json(SyncBookingToJobberResponse.parse(serializeBooking(booking!)));
+    res.json(SyncBookingToJobberResponse.parse(serializeBooking(company, booking!)));
   } catch (err) {
     logger.error({ err }, "Jobber sync failed");
     const errorMessage = err instanceof Error ? err.message : "Unknown error";

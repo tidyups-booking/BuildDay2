@@ -43,7 +43,8 @@ export function SettingsPage() {
           <ReceptionistSettings company={company} />
         </TabsContent>
 
-        <TabsContent value="services">
+        <TabsContent value="services" className="space-y-6">
+          <QuotePricingSettings company={company} />
           <ServicesSettings />
         </TabsContent>
       </Tabs>
@@ -233,6 +234,214 @@ function ReceptionistSettings({ company }: { company: any }) {
           {update.isPending ? "Saving..." : "Save AI Configuration"}
         </Button>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Defined at module scope, not inside the settings component: a component
+ * declared during render is a new type every keystroke, so React would remount
+ * the input and the field would lose focus after every character.
+ */
+function MoneyField({
+  id,
+  label,
+  value,
+  onValueChange,
+  hint,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onValueChange: (next: string) => void;
+  hint?: string;
+}) {
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={id}>{label}</Label>
+      <div className="relative">
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+          $
+        </span>
+        <Input
+          id={id}
+          inputMode="decimal"
+          className="pl-7"
+          value={value}
+          onChange={(e) => onValueChange(e.target.value)}
+        />
+      </div>
+      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+    </div>
+  );
+}
+
+/**
+ * The numbers behind every quote. These are per-company on purpose: hourly
+ * rates differ by market, and sales tax is jurisdictional — Alberta's 5% GST is
+ * not Ontario's 13% HST.
+ */
+function QuotePricingSettings({ company }: { company: any }) {
+  const update = useUpdateCompany();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const [form, setForm] = useState({
+    quoteRateSolo: String(company.quoteRateSolo ?? 52.5),
+    quoteRateTeam: String(company.quoteRateTeam ?? 105),
+    quoteFuelSurcharge: String(company.quoteFuelSurcharge ?? 12.5),
+    quoteTaxLabel: company.quoteTaxLabel ?? "Alberta Tax",
+    quoteTaxRate: String(company.quoteTaxRate ?? 5),
+    quoteFeesLabel: company.quoteFeesLabel ?? "Fees & Supplies",
+    quoteFeesRate: String(company.quoteFeesRate ?? 7.5),
+    quoteDepositAmount: String(company.quoteDepositAmount ?? 0),
+    quoteDepositEmail: company.quoteDepositEmail ?? "",
+  });
+
+  const set = (patch: Partial<typeof form>) => setForm((f) => ({ ...f, ...patch }));
+
+  const numbers = {
+    quoteRateSolo: Number(form.quoteRateSolo),
+    quoteRateTeam: Number(form.quoteRateTeam),
+    quoteFuelSurcharge: Number(form.quoteFuelSurcharge),
+    quoteTaxRate: Number(form.quoteTaxRate),
+    quoteFeesRate: Number(form.quoteFeesRate),
+    quoteDepositAmount: Number(form.quoteDepositAmount),
+  };
+  const badNumber = Object.values(numbers).some((n) => Number.isNaN(n) || n < 0);
+  const badPercent = numbers.quoteTaxRate > 100 || numbers.quoteFeesRate > 100;
+
+  const handleSave = () => {
+    if (badNumber || badPercent) {
+      toast({
+        title: "Check those numbers",
+        description: badPercent
+          ? "Tax and fees are percentages, so they can't be over 100."
+          : "Rates and amounts must be zero or more.",
+        variant: "destructive",
+      });
+      return;
+    }
+    update.mutate(
+      {
+        data: {
+          ...numbers,
+          quoteTaxLabel: form.quoteTaxLabel.trim() || "Tax",
+          quoteFeesLabel: form.quoteFeesLabel.trim() || "Fees",
+          quoteDepositEmail: form.quoteDepositEmail.trim() || null,
+        },
+      },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getGetCompanyQueryKey() });
+          toast({ title: "Saved", description: "Quote pricing updated." });
+        },
+        onError: (error: any) => {
+          toast({
+            title: "Couldn't save that",
+            description: error?.message || "Please try again.",
+            variant: "destructive",
+          });
+        },
+      },
+    );
+  };
+
+  return (
+    <div className="bg-card border border-border rounded-xl p-6 shadow-sm max-w-3xl space-y-6">
+      <div>
+        <h3 className="font-serif font-bold text-lg">Quote pricing</h3>
+        <p className="text-sm text-muted-foreground mt-1">
+          Jobs are priced by the hour. These rates fill in the quote builder, and tax and
+          fees are added on top of every quote.
+        </p>
+      </div>
+
+      <div className="grid sm:grid-cols-3 gap-4">
+        <MoneyField
+          id="rate-solo"
+          label="1 cleaner ($/hr)"
+          value={form.quoteRateSolo}
+          onValueChange={(v) => set({ quoteRateSolo: v })}
+        />
+        <MoneyField
+          id="rate-team"
+          label="2 cleaners ($/hr)"
+          value={form.quoteRateTeam}
+          onValueChange={(v) => set({ quoteRateTeam: v })}
+        />
+        <MoneyField
+          id="fuel"
+          label="Fuel surcharge"
+          value={form.quoteFuelSurcharge}
+          onValueChange={(v) => set({ quoteFuelSurcharge: v })}
+          hint="Added to each job; can be changed per quote."
+        />
+      </div>
+
+      <div className="grid sm:grid-cols-2 gap-4 pt-4 border-t border-border">
+        <div className="space-y-2">
+          <Label htmlFor="tax-label">Tax name</Label>
+          <Input
+            id="tax-label"
+            value={form.quoteTaxLabel}
+            onChange={(e) => set({ quoteTaxLabel: e.target.value })}
+            placeholder="Alberta Tax"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="tax-rate">Tax rate (%)</Label>
+          <Input
+            id="tax-rate"
+            inputMode="decimal"
+            value={form.quoteTaxRate}
+            onChange={(e) => set({ quoteTaxRate: e.target.value })}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="fees-label">Fees name</Label>
+          <Input
+            id="fees-label"
+            value={form.quoteFeesLabel}
+            onChange={(e) => set({ quoteFeesLabel: e.target.value })}
+            placeholder="Fees & Supplies"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="fees-rate">Fees rate (%)</Label>
+          <Input
+            id="fees-rate"
+            inputMode="decimal"
+            value={form.quoteFeesRate}
+            onChange={(e) => set({ quoteFeesRate: e.target.value })}
+          />
+        </div>
+      </div>
+
+      <div className="grid sm:grid-cols-2 gap-4 pt-4 border-t border-border">
+        <MoneyField
+          id="deposit"
+          label="Default deposit"
+          value={form.quoteDepositAmount}
+          onValueChange={(v) => set({ quoteDepositAmount: v })}
+          hint="Set 0 for no deposit. Can be changed per quote."
+        />
+        <div className="space-y-2">
+          <Label htmlFor="deposit-email">Send deposits to</Label>
+          <Input
+            id="deposit-email"
+            type="email"
+            value={form.quoteDepositEmail}
+            onChange={(e) => set({ quoteDepositEmail: e.target.value })}
+            placeholder="support@yourcompany.com"
+          />
+          <p className="text-xs text-muted-foreground">Included in the quote text.</p>
+        </div>
+      </div>
+
+      <Button onClick={handleSave} disabled={update.isPending}>
+        {update.isPending ? "Saving..." : "Save pricing"}
+      </Button>
     </div>
   );
 }

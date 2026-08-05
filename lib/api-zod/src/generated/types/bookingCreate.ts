@@ -20,9 +20,50 @@ export interface BookingCreate {
   status?: BookingCreateStatus;
   /**
      * @minimum 0
+     * @maximum 24
+     * @nullable
+     */
+  quoteHours?: number | null;
+  /**
+     * @maxLength 60
+     * @nullable
+     */
+  quoteCrewLabel?: string | null;
+  /**
+     * @minimum 0
+     * @maximum 10000
+     * @nullable
+     */
+  quoteHourlyRate?: number | null;
+  /**
+     * @minimum 0
+     * @maximum 10000
+     * @nullable
+     */
+  quoteFuelSurcharge?: number | null;
+  /**
+     * @minimum 0
+     * @maximum 100000
+     * @nullable
+     */
+  quoteDiscountAmount?: number | null;
+  /**
+     * @maxLength 60
+     * @nullable
+     */
+  quoteReferralSource?: string | null;
+  /**
+     * @minimum 0
+     * @maximum 1000000
      * @nullable
      */
   quotedAmount?: number | null;
+  /**
+     * @minimum 0
+     * @maximum 1000000
+     * @nullable
+     */
+  quoteDeposit?: number | null;
   /** @nullable */
   quoteNotes?: string | null;
 }

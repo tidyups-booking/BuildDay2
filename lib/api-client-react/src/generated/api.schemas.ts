@@ -24,6 +24,42 @@ export interface CompanyUpdate {
   collectFields?: string[];
   customQuestions?: CustomQuestion[];
   ringThroughNumber?: string;
+  /**
+     * @minimum 0
+     * @maximum 10000
+     */
+  quoteRateSolo?: number;
+  /**
+     * @minimum 0
+     * @maximum 10000
+     */
+  quoteRateTeam?: number;
+  /**
+     * @minimum 0
+     * @maximum 10000
+     */
+  quoteFuelSurcharge?: number;
+  /** @minLength 1 */
+  quoteTaxLabel?: string;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  quoteTaxRate?: number;
+  /** @minLength 1 */
+  quoteFeesLabel?: string;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  quoteFeesRate?: number;
+  /**
+     * @minimum 0
+     * @maximum 1000000
+     */
+  quoteDepositAmount?: number;
+  /** @nullable */
+  quoteDepositEmail?: string | null;
 }
 
 export interface ConnectQuoInput {
@@ -85,6 +121,16 @@ export interface Company {
   quoWorkspaceName?: string | null;
   /** @nullable */
   quoKeyLast4?: string | null;
+  quoteRateSolo?: number;
+  quoteRateTeam?: number;
+  quoteFuelSurcharge?: number;
+  quoteTaxLabel?: string;
+  quoteTaxRate?: number;
+  quoteFeesLabel?: string;
+  quoteFeesRate?: number;
+  quoteDepositAmount?: number;
+  /** @nullable */
+  quoteDepositEmail?: string | null;
   watchedNumbers: WatchedNumber[];
   isLive: boolean;
   setupStatus: SetupStatus;
@@ -254,6 +300,28 @@ export const BookingStatus = {
   canceled: 'canceled',
 } as const;
 
+export interface QuoteLineItem {
+  /** @minLength 1 */
+  name: string;
+  quantity: number;
+  unitPrice: number;
+}
+
+export interface QuoteTotals {
+  lineItems: QuoteLineItem[];
+  subtotal: number;
+  taxLabel: string;
+  taxRate: number;
+  taxAmount: number;
+  feesLabel: string;
+  feesRate: number;
+  feesAmount: number;
+  total: number;
+  deposit: number;
+  /** @nullable */
+  depositEmail?: string | null;
+}
+
 export interface Booking {
   id: number;
   /** @nullable */
@@ -266,13 +334,29 @@ export interface Booking {
   scheduledFor: string;
   status: BookingStatus;
   /** @nullable */
+  quoteHours?: number | null;
+  /** @nullable */
+  quoteCrewLabel?: string | null;
+  /** @nullable */
+  quoteHourlyRate?: number | null;
+  /** @nullable */
+  quoteFuelSurcharge?: number | null;
+  /** @nullable */
+  quoteDiscountAmount?: number | null;
+  /** @nullable */
+  quoteReferralSource?: string | null;
+  /** @nullable */
   quotedAmount?: number | null;
+  /** @nullable */
+  quoteDeposit?: number | null;
   /** @nullable */
   quoteNotes?: string | null;
   /** @nullable */
   quoteMessage?: string | null;
   /** @nullable */
   quoteSentAt?: string | null;
+  quoteTotals: QuoteTotals;
+  quoteSentTotals?: QuoteTotals | null;
   jobberSynced: boolean;
   /** @nullable */
   jobberJobId?: string | null;
@@ -310,9 +394,50 @@ export interface BookingUpdate {
   service?: string;
   /**
      * @minimum 0
+     * @maximum 24
+     * @nullable
+     */
+  quoteHours?: number | null;
+  /**
+     * @maxLength 60
+     * @nullable
+     */
+  quoteCrewLabel?: string | null;
+  /**
+     * @minimum 0
+     * @maximum 10000
+     * @nullable
+     */
+  quoteHourlyRate?: number | null;
+  /**
+     * @minimum 0
+     * @maximum 10000
+     * @nullable
+     */
+  quoteFuelSurcharge?: number | null;
+  /**
+     * @minimum 0
+     * @maximum 100000
+     * @nullable
+     */
+  quoteDiscountAmount?: number | null;
+  /**
+     * @maxLength 60
+     * @nullable
+     */
+  quoteReferralSource?: string | null;
+  /**
+     * @minimum 0
+     * @maximum 1000000
      * @nullable
      */
   quotedAmount?: number | null;
+  /**
+     * @minimum 0
+     * @maximum 1000000
+     * @nullable
+     */
+  quoteDeposit?: number | null;
   /** @nullable */
   quoteNotes?: string | null;
 }
@@ -340,9 +465,50 @@ export interface BookingCreate {
   status?: BookingCreateStatus;
   /**
      * @minimum 0
+     * @maximum 24
+     * @nullable
+     */
+  quoteHours?: number | null;
+  /**
+     * @maxLength 60
+     * @nullable
+     */
+  quoteCrewLabel?: string | null;
+  /**
+     * @minimum 0
+     * @maximum 10000
+     * @nullable
+     */
+  quoteHourlyRate?: number | null;
+  /**
+     * @minimum 0
+     * @maximum 10000
+     * @nullable
+     */
+  quoteFuelSurcharge?: number | null;
+  /**
+     * @minimum 0
+     * @maximum 100000
+     * @nullable
+     */
+  quoteDiscountAmount?: number | null;
+  /**
+     * @maxLength 60
+     * @nullable
+     */
+  quoteReferralSource?: string | null;
+  /**
+     * @minimum 0
+     * @maximum 1000000
      * @nullable
      */
   quotedAmount?: number | null;
+  /**
+     * @minimum 0
+     * @maximum 1000000
+     * @nullable
+     */
+  quoteDeposit?: number | null;
   /** @nullable */
   quoteNotes?: string | null;
 }
@@ -354,6 +520,7 @@ export interface QuotePreview {
   blockedReason?: string | null;
   /** @nullable */
   fromNumber?: string | null;
+  totals?: QuoteTotals;
 }
 
 export interface SendQuoteInput {

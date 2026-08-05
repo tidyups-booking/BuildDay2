@@ -5,6 +5,7 @@ import {
   boolean,
   timestamp,
   jsonb,
+  doublePrecision,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -33,6 +34,23 @@ export const companiesTable = pgTable("companies", {
   // IANA zone used when writing appointment times into customer-facing text.
   // Without this a quote would quote UTC and promise the wrong hour.
   timezone: text("timezone").notNull().default("America/Edmonton"),
+  // Quote maths. Jobs are priced by the hour, at a rate that depends on how
+  // many cleaners are sent. Defaults are Tidyups' real numbers.
+  quoteRateSolo: doublePrecision("quote_rate_solo").notNull().default(52.5),
+  quoteRateTeam: doublePrecision("quote_rate_team").notNull().default(105),
+  quoteFuelSurcharge: doublePrecision("quote_fuel_surcharge").notNull().default(12.5),
+  // Tax and fees go on top of the subtotal, and the rates are jurisdictional —
+  // Alberta's 5% GST is not Ontario's 13% HST — so they belong to the company,
+  // not the codebase.
+  quoteTaxLabel: text("quote_tax_label").notNull().default("Alberta Tax"),
+  quoteTaxRate: doublePrecision("quote_tax_rate").notNull().default(5),
+  quoteFeesLabel: text("quote_fees_label").notNull().default("Fees & Supplies"),
+  quoteFeesRate: doublePrecision("quote_fees_rate").notNull().default(7.5),
+  // Default deposit asked for up front. Per-quote overrides live on the booking
+  // — the real quotes show this varying by job.
+  quoteDepositAmount: doublePrecision("quote_deposit_amount").notNull().default(0),
+  // Where the customer sends the deposit. Named in the quote text itself.
+  quoteDepositEmail: text("quote_deposit_email"),
   // Jobber OAuth tokens — real OAuth with PKCE
   jobberConnected: boolean("jobber_connected").notNull().default(false),
   // Jobber is optional. A company that explicitly skips it runs standalone:
