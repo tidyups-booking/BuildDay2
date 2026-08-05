@@ -49,6 +49,8 @@ export interface Company {
   quoConnected: boolean;
   /** @nullable */
   quoWorkspaceName?: string | null;
+  /** @nullable */
+  quoKeyLast4?: string | null;
   watchedNumbers: QuoNumber[];
   isLive: boolean;
   setupStatus: SetupStatus;
@@ -68,6 +70,14 @@ export interface CompanyUpdate {
   customQuestions?: CustomQuestion[];
   /** @nullable */
   ringThroughNumber?: string | null;
+}
+
+export interface ConnectQuoInput {
+  /**
+     * A Quo workspace API key from the company's own Quo account
+     * @minLength 10
+     */
+  apiKey: string;
 }
 
 export interface QuoNumberSelection {

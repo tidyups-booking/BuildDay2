@@ -16,7 +16,7 @@ import {
   SimulateTestCallResponse,
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/requireAuth";
-import { getCompanyForUser } from "../lib/company";
+import { getCompanyForUser, companyQuoKey } from "../lib/company";
 import { buildSimulatedCall } from "../lib/simulateCall";
 import { backfillCalls } from "../lib/quoIngest";
 import { listPhoneNumbers } from "../lib/quo";
@@ -85,11 +85,16 @@ router.post("/calls/sync", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Connect Quo and choose lines first" });
     return;
   }
+  const quoKey = companyQuoKey(company);
+  if (!quoKey) {
+    res.status(400).json({ error: "Reconnect your Quo account to sync calls" });
+    return;
+  }
 
   try {
-    const numbers = await listPhoneNumbers();
+    const numbers = await listPhoneNumbers(quoKey);
     const ourNumbers = new Set(numbers.map((n) => n.number));
-    const result = await backfillCalls(company, ourNumbers);
+    const result = await backfillCalls(quoKey, company, ourNumbers);
     res.json(
       SyncCallsFromQuoResponse.parse({
         ...result,

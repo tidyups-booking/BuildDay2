@@ -10,6 +10,7 @@ import {
 import { z } from "zod/v4";
 import * as quo from "../lib/quo";
 import { upsertCall, applyTranscript } from "../lib/quoIngest";
+import { companyQuoKey } from "../lib/company";
 
 const router: IRouter = Router();
 
@@ -155,6 +156,16 @@ router.post("/webhooks/quo", async (req, res): Promise<void> => {
     return;
   }
 
+  const apiKey = companyQuoKey(company);
+  if (!apiKey) {
+    req.log.warn(
+      { companyId: company.id },
+      "Quo event for a company with no usable API key; asking for reconnect",
+    );
+    res.sendStatus(200);
+    return;
+  }
+
   try {
     const object = parsed.data.data?.object as
       | (Record<string, unknown> & {
@@ -170,7 +181,7 @@ router.post("/webhooks/quo", async (req, res): Promise<void> => {
       return;
     }
 
-    const numbers = await quo.listPhoneNumbers();
+    const numbers = await quo.listPhoneNumbers(apiKey);
     const ourNumbers = new Set(numbers.map((n) => n.number));
 
     // Only ingest calls on lines this company actually claimed, so a webhook
@@ -178,7 +189,7 @@ router.post("/webhooks/quo", async (req, res): Promise<void> => {
     const call =
       object?.direction && object?.phoneNumberId
         ? (object as unknown as quo.QuoCall)
-        : await quo.getCall(callId);
+        : await quo.getCall(apiKey, callId);
     if (!call) {
       res.sendStatus(200);
       return;
@@ -198,7 +209,7 @@ router.post("/webhooks/quo", async (req, res): Promise<void> => {
       parsed.data.type === "call.transcript.completed" ||
       parsed.data.type === "call.summary.completed"
     ) {
-      await applyTranscript(company, callId, ourNumbers);
+      await applyTranscript(apiKey, company, callId, ourNumbers);
     }
 
     res.sendStatus(200);

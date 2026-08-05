@@ -16,27 +16,24 @@ export class QuoError extends Error {
   }
 }
 
-export function getQuoApiKey(): string | undefined {
-  const key = process.env.QUO_API_KEY?.trim();
-  return key && key.length > 0 ? key : undefined;
-}
-
-export function requireQuoApiKey(): string {
-  const key = getQuoApiKey();
-  if (!key) {
-    throw new QuoError("QUO_API_KEY is not configured", 503);
-  }
-  return key;
-}
-
+/**
+ * Every call is made with a specific company's workspace key. There is no
+ * shared fallback: a company that has not connected Quo simply cannot make
+ * Quo calls, which keeps one tenant's key from ever serving another's request.
+ */
 async function quoRequest<T>(
+  apiKey: string,
   path: string,
   init: RequestInit = {},
 ): Promise<T> {
+  if (!apiKey) {
+    throw new QuoError("This company has not connected a Quo account", 503);
+  }
   const res = await fetch(`${QUO_BASE_URL}${path}`, {
     ...init,
     headers: {
-      Authorization: requireQuoApiKey(),
+      // Quo expects the raw key, not a Bearer token.
+      Authorization: apiKey,
       "Content-Type": "application/json",
       ...(init.headers ?? {}),
     },
@@ -110,14 +107,23 @@ export type QuoWebhookRecord = {
 
 // --- Endpoints -------------------------------------------------------------
 
-export async function listPhoneNumbers(): Promise<QuoPhoneNumber[]> {
-  const res = await quoRequest<{ data: QuoPhoneNumber[] }>("/phone-numbers");
+export async function listPhoneNumbers(
+  apiKey: string,
+): Promise<QuoPhoneNumber[]> {
+  const res = await quoRequest<{ data: QuoPhoneNumber[] }>(
+    apiKey,
+    "/phone-numbers");
   return res.data ?? [];
 }
 
-export async function getCall(callId: string): Promise<QuoCall | null> {
+export async function getCall(
+  apiKey: string,
+  callId: string,
+): Promise<QuoCall | null> {
   try {
-    const res = await quoRequest<{ data: QuoCall }>(`/calls/${callId}`);
+    const res = await quoRequest<{ data: QuoCall }>(
+    apiKey,
+    `/calls/${callId}`);
     return res.data ?? null;
   } catch (err) {
     if (err instanceof QuoError && err.status === 404) return null;
@@ -126,11 +132,13 @@ export async function getCall(callId: string): Promise<QuoCall | null> {
 }
 
 export async function getTranscript(
+  apiKey: string,
   callId: string,
 ): Promise<QuoTranscript | null> {
   try {
     const res = await quoRequest<{ data: QuoTranscript }>(
-      `/call-transcripts/${callId}`,
+    apiKey,
+    `/call-transcripts/${callId}`,
     );
     return res.data ?? null;
   } catch (err) {
@@ -139,10 +147,14 @@ export async function getTranscript(
   }
 }
 
-export async function getSummary(callId: string): Promise<QuoSummary | null> {
+export async function getSummary(
+  apiKey: string,
+  callId: string,
+): Promise<QuoSummary | null> {
   try {
     const res = await quoRequest<{ data: QuoSummary }>(
-      `/call-summaries/${callId}`,
+    apiKey,
+    `/call-summaries/${callId}`,
     );
     return res.data ?? null;
   } catch (err) {
@@ -152,6 +164,7 @@ export async function getSummary(callId: string): Promise<QuoSummary | null> {
 }
 
 export async function listConversations(
+  apiKey: string,
   phoneNumberIds: string[],
   maxResults = 50,
 ): Promise<
@@ -172,7 +185,7 @@ export async function listConversations(
       participants: string[];
       lastActivityAt: string | null;
     }>;
-  }>(`/conversations?${params.toString()}`);
+  }>(apiKey, `/conversations?${params.toString()}`);
   return res.data ?? [];
 }
 
@@ -181,6 +194,7 @@ export async function listConversations(
  * calls are enumerated per conversation.
  */
 export async function listCallsWithParticipant(
+  apiKey: string,
   phoneNumberId: string,
   participant: string,
   maxResults = 10,
@@ -191,22 +205,30 @@ export async function listCallsWithParticipant(
     maxResults: String(maxResults),
   });
   const res = await quoRequest<{ data: QuoCall[] }>(
+    apiKey,
     `/calls?${params.toString()}`,
   );
   return res.data ?? [];
 }
 
-export async function listWebhooks(): Promise<QuoWebhookRecord[]> {
-  const res = await quoRequest<{ data: QuoWebhookRecord[] }>("/webhooks");
+export async function listWebhooks(
+  apiKey: string,
+): Promise<QuoWebhookRecord[]> {
+  const res = await quoRequest<{ data: QuoWebhookRecord[] }>(
+    apiKey,
+    "/webhooks");
   return res.data ?? [];
 }
 
 export async function createCallWebhook(
+  apiKey: string,
   url: string,
   resourceIds: string[],
   label: string,
 ): Promise<QuoWebhookRecord> {
-  const res = await quoRequest<{ data: QuoWebhookRecord }>("/webhooks/calls", {
+  const res = await quoRequest<{ data: QuoWebhookRecord }>(
+    apiKey,
+    "/webhooks/calls", {
     method: "POST",
     body: JSON.stringify({
       url,
@@ -220,11 +242,13 @@ export async function createCallWebhook(
 }
 
 export async function createTranscriptWebhook(
+  apiKey: string,
   url: string,
   resourceIds: string[],
   label: string,
 ): Promise<QuoWebhookRecord> {
   const res = await quoRequest<{ data: QuoWebhookRecord }>(
+    apiKey,
     "/webhooks/call-transcripts",
     {
       method: "POST",
@@ -241,11 +265,13 @@ export async function createTranscriptWebhook(
 }
 
 export async function createSummaryWebhook(
+  apiKey: string,
   url: string,
   resourceIds: string[],
   label: string,
 ): Promise<QuoWebhookRecord> {
   const res = await quoRequest<{ data: QuoWebhookRecord }>(
+    apiKey,
     "/webhooks/call-summaries",
     {
       method: "POST",
@@ -261,9 +287,11 @@ export async function createSummaryWebhook(
   return res.data;
 }
 
-export async function deleteWebhook(id: string): Promise<void> {
+export async function deleteWebhook(apiKey: string, id: string): Promise<void> {
   try {
-    await quoRequest<void>(`/webhooks/${id}`, { method: "DELETE" });
+    await quoRequest<void>(
+    apiKey,
+    `/webhooks/${id}`, { method: "DELETE" });
   } catch (err) {
     // A webhook already removed on Quo's side is not an error for us.
     if (err instanceof QuoError && err.status === 404) return;

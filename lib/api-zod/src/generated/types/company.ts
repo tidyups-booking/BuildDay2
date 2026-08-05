@@ -25,6 +25,8 @@ export interface Company {
   quoConnected: boolean;
   /** @nullable */
   quoWorkspaceName?: string | null;
+  /** @nullable */
+  quoKeyLast4?: string | null;
   watchedNumbers: QuoNumber[];
   isLive: boolean;
   setupStatus: SetupStatus;

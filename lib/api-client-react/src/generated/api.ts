@@ -28,6 +28,7 @@ import type {
   Company,
   CompanyInput,
   CompanyUpdate,
+  ConnectQuoInput,
   DashboardSummary,
   HealthStatus,
   ListCallsParams,
@@ -586,16 +587,16 @@ export const getConnectQuoUrl = () => {
 }
 
 /**
- * @summary Connect the Quo workspace using the configured API key
+ * @summary Connect this company's own Quo workspace with their API key
  */
-export const connectQuo = async ( options?: Parameters<typeof customFetch>[1]): Promise<Company> => {
+export const connectQuo = async (connectQuoInput: ConnectQuoInput, options?: Parameters<typeof customFetch>[1]): Promise<Company> => {
 
   return customFetch<Company>(getConnectQuoUrl(),
   {
     ...options,
-    method: 'POST'
-
-
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(connectQuoInput)
   }
 );}
 
@@ -604,8 +605,8 @@ export const connectQuo = async ( options?: Parameters<typeof customFetch>[1]): 
 
 
 export const getConnectQuoMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof connectQuo>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof connectQuo>>, TError,void, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof connectQuo>>, TError,{data: BodyType<ConnectQuoInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof connectQuo>>, TError,{data: BodyType<ConnectQuoInput>}, TContext> => {
 
 const mutationKey = ['connectQuo'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -617,10 +618,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof connectQuo>>, void> = () => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof connectQuo>>, {data: BodyType<ConnectQuoInput>}> = (props) => {
+          const {data} = props ?? {};
 
-
-          return  connectQuo(requestOptions)
+          return  connectQuo(data,requestOptions)
         }
 
 
@@ -631,18 +632,18 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type ConnectQuoMutationResult = NonNullable<Awaited<ReturnType<typeof connectQuo>>>
-
+    export type ConnectQuoMutationBody = BodyType<ConnectQuoInput>
     export type ConnectQuoMutationError = ErrorType<unknown>
 
     /**
- * @summary Connect the Quo workspace using the configured API key
+ * @summary Connect this company's own Quo workspace with their API key
  */
 export const useConnectQuo = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof connectQuo>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof connectQuo>>, TError,{data: BodyType<ConnectQuoInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof connectQuo>>,
         TError,
-        void,
+        {data: BodyType<ConnectQuoInput>},
         TContext
       > => {
       return useMutation(getConnectQuoMutationOptions(options));

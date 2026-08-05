@@ -34,6 +34,7 @@ export const GetCompanyResponse = zod.object({
   "jobberAccountName": zod.string().nullish(),
   "quoConnected": zod.boolean(),
   "quoWorkspaceName": zod.string().nullish(),
+  "quoKeyLast4": zod.string().nullish(),
   "watchedNumbers": zod.array(zod.object({
   "id": zod.string(),
   "phoneNumber": zod.string(),
@@ -81,6 +82,7 @@ export const CreateCompanyResponse = zod.object({
   "jobberAccountName": zod.string().nullish(),
   "quoConnected": zod.boolean(),
   "quoWorkspaceName": zod.string().nullish(),
+  "quoKeyLast4": zod.string().nullish(),
   "watchedNumbers": zod.array(zod.object({
   "id": zod.string(),
   "phoneNumber": zod.string(),
@@ -135,6 +137,7 @@ export const UpdateCompanyResponse = zod.object({
   "jobberAccountName": zod.string().nullish(),
   "quoConnected": zod.boolean(),
   "quoWorkspaceName": zod.string().nullish(),
+  "quoKeyLast4": zod.string().nullish(),
   "watchedNumbers": zod.array(zod.object({
   "id": zod.string(),
   "phoneNumber": zod.string(),
@@ -175,6 +178,7 @@ export const ConnectJobberResponse = zod.object({
   "jobberAccountName": zod.string().nullish(),
   "quoConnected": zod.boolean(),
   "quoWorkspaceName": zod.string().nullish(),
+  "quoKeyLast4": zod.string().nullish(),
   "watchedNumbers": zod.array(zod.object({
   "id": zod.string(),
   "phoneNumber": zod.string(),
@@ -215,6 +219,7 @@ export const DisconnectJobberResponse = zod.object({
   "jobberAccountName": zod.string().nullish(),
   "quoConnected": zod.boolean(),
   "quoWorkspaceName": zod.string().nullish(),
+  "quoKeyLast4": zod.string().nullish(),
   "watchedNumbers": zod.array(zod.object({
   "id": zod.string(),
   "phoneNumber": zod.string(),
@@ -255,6 +260,7 @@ export const GoLiveResponse = zod.object({
   "jobberAccountName": zod.string().nullish(),
   "quoConnected": zod.boolean(),
   "quoWorkspaceName": zod.string().nullish(),
+  "quoKeyLast4": zod.string().nullish(),
   "watchedNumbers": zod.array(zod.object({
   "id": zod.string(),
   "phoneNumber": zod.string(),
@@ -278,8 +284,16 @@ export const GoLiveResponse = zod.object({
 
 
 /**
- * @summary Connect the Quo workspace using the configured API key
+ * @summary Connect this company's own Quo workspace with their API key
  */
+export const connectQuoBodyApiKeyMin = 10;
+
+
+
+export const ConnectQuoBody = zod.object({
+  "apiKey": zod.string().min(connectQuoBodyApiKeyMin).describe('A Quo workspace API key from the company\'s own Quo account')
+})
+
 export const ConnectQuoResponse = zod.object({
   "id": zod.int(),
   "name": zod.string(),
@@ -295,6 +309,7 @@ export const ConnectQuoResponse = zod.object({
   "jobberAccountName": zod.string().nullish(),
   "quoConnected": zod.boolean(),
   "quoWorkspaceName": zod.string().nullish(),
+  "quoKeyLast4": zod.string().nullish(),
   "watchedNumbers": zod.array(zod.object({
   "id": zod.string(),
   "phoneNumber": zod.string(),
@@ -335,6 +350,7 @@ export const DisconnectQuoResponse = zod.object({
   "jobberAccountName": zod.string().nullish(),
   "quoConnected": zod.boolean(),
   "quoWorkspaceName": zod.string().nullish(),
+  "quoKeyLast4": zod.string().nullish(),
   "watchedNumbers": zod.array(zod.object({
   "id": zod.string(),
   "phoneNumber": zod.string(),
@@ -391,6 +407,7 @@ export const SelectQuoNumbersResponse = zod.object({
   "jobberAccountName": zod.string().nullish(),
   "quoConnected": zod.boolean(),
   "quoWorkspaceName": zod.string().nullish(),
+  "quoKeyLast4": zod.string().nullish(),
   "watchedNumbers": zod.array(zod.object({
   "id": zod.string(),
   "phoneNumber": zod.string(),

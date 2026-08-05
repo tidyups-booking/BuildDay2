@@ -10,10 +10,13 @@ Jobber OAuth is still **simulated** server-side (drop-in replaceable). Test call
 
 ### Quo integration
 
-- Auth is a workspace API key in `QUO_API_KEY` (raw value in the `Authorization` header — no `Bearer` prefix). Today one key serves the first customer; per-company keys are the next step for true multi-tenancy.
-- `POST /api/company/quo/connect` verifies the key, `GET/POST /api/quo/numbers` lists the workspace's real lines and records which ones the receptionist watches.
+- Each company connects **their own** Quo workspace. Quo has no OAuth flow, so the owner pastes a workspace API key (Quo settings → API) which is stored AES-256-GCM encrypted in `companies.quo_api_key_encrypted`; only the last four characters are ever returned to the browser. The encryption key is derived from `SESSION_SECRET` via HKDF, so rotating that secret forces every company to reconnect.
+- Every Quo client function takes the calling company's key as its first argument — there is no shared fallback, so one tenant's key can never serve another's request. The `QUO_API_KEY` secret is only for local scripts and manual probing.
+- Quo's Starter plan does **not** include AI call transcripts or summaries; companies need the Business plan for this product to work. Sona calls also consume credits (1 call = 100; 1,000 credits included per plan).
+- `POST /api/company/quo/connect` validates the pasted key against Quo before storing it, `GET/POST /api/quo/numbers` lists the workspace's real lines and records which ones the receptionist watches. A line already claimed by another company is rejected with 409.
 - Selecting lines registers three webhooks with Quo (calls, transcripts, summaries) pointing at `/api/webhooks/quo`. Their `whsec_...` signing keys are stored in `quo_webhooks`, because Quo only returns each key at creation time.
 - The webhook receiver verifies the svix-style HMAC signature against the **raw** request body. Its raw parser is mounted on the exact webhook path only — see `.agents/memory/express-raw-body-scope.md` for why a broader mount breaks every other route.
+- Deliveries are idempotent: each `webhook-id` is claimed in `quo_webhook_deliveries` before processing, so replays and retries of an already-handled event are acknowledged without side effects. Processing happens **before** the response — success returns 200, failure releases the claim and returns 500 so Quo retries. Events for a line the matched company does not watch are ignored.
 - Transcripts are **post-call**, not live. `call.ringing` shows a call in progress; the transcript arrives seconds after hangup via `call.transcript.completed`.
 - `POST /api/calls/sync` backfills history, since webhooks only cover calls made after setup.
 

@@ -15,6 +15,13 @@ import { Check, ChevronRight, Zap, Phone, Settings2, Users, Play, Loader2, Phone
 import { useToast } from "@/hooks/use-toast";
 import { Link, useLocation } from "wouter";
 
+/**
+ * Where we send companies who don't have Quo yet. Set VITE_QUO_AFFILIATE_URL to
+ * the PartnerStack referral link to earn commission on these signups.
+ */
+const QUO_SIGNUP_URL =
+  import.meta.env.VITE_QUO_AFFILIATE_URL ?? "https://my.quo.com/signup";
+
 export function SetupPage() {
   const { data: company, isLoading } = useGetCompany();
 
@@ -175,6 +182,7 @@ function PhoneStep({ company }: { company: any }) {
     },
   });
 
+  const [apiKey, setApiKey] = useState("");
   const [selected, setSelected] = useState<string[] | null>(null);
   const watched =
     selected ?? (numbers ?? []).filter((n) => n.watched).map((n) => n.id);
@@ -189,23 +197,41 @@ function PhoneStep({ company }: { company: any }) {
   const refreshCompany = () =>
     queryClient.invalidateQueries({ queryKey: getGetCompanyQueryKey() });
 
-  const handleConnect = () =>
-    connectQuo.mutate(undefined, {
-      onSuccess: () => {
-        refreshCompany();
-        queryClient.invalidateQueries({ queryKey: getListQuoNumbersQueryKey() });
-        toast({
-          title: "Quo connected",
-          description: "We can now see the phone lines in your workspace.",
-        });
+  const handleConnect = () => {
+    const key = apiKey.trim();
+    if (key.length < 10) {
+      toast({
+        variant: "destructive",
+        title: "That key looks too short",
+        description: "Copy the whole key from Quo settings → API.",
+      });
+      return;
+    }
+    connectQuo.mutate(
+      { data: { apiKey: key } },
+      {
+        onSuccess: () => {
+          setApiKey("");
+          refreshCompany();
+          queryClient.invalidateQueries({
+            queryKey: getListQuoNumbersQueryKey(),
+          });
+          toast({
+            title: "Quo connected",
+            description: "We can now see the phone lines in your workspace.",
+          });
+        },
+        onError: (err: any) =>
+          toast({
+            variant: "destructive",
+            title: "Couldn't connect Quo",
+            description:
+              err?.response?.data?.error ??
+              "Check that the API key is valid and still active.",
+          }),
       },
-      onError: () =>
-        toast({
-          variant: "destructive",
-          title: "Couldn't reach Quo",
-          description: "Check that the API key is valid and still active.",
-        }),
-    });
+    );
+  };
 
   const handleSave = () =>
     selectNumbers.mutate(
@@ -236,11 +262,48 @@ function PhoneStep({ company }: { company: any }) {
         <div className="bg-brand-pink/10 border border-brand-pink/20 rounded-xl p-4 flex gap-3 text-sm text-muted-foreground">
           <PhoneForwarded className="w-5 h-5 text-brand-pink shrink-0" />
           <p>
-            You already have phone lines in Quo with Sona answering them. Connect
-            your workspace and we'll pull each call's transcript and summary into
-            your dashboard — no new number needed.
+            Your phone lines live in Quo, with Sona answering them. Connect your
+            Quo workspace and we'll pull every call's transcript and summary
+            into your dashboard — no new number needed.
           </p>
         </div>
+
+        <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
+          <li>
+            No Quo account yet?{" "}
+            <a
+              href={QUO_SIGNUP_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="text-brand-pink underline underline-offset-4"
+            >
+              Start a free trial
+            </a>{" "}
+            — you'll need the Business plan for AI call transcripts.
+          </li>
+          <li>
+            In Quo, open <span className="text-foreground">Settings → API</span>{" "}
+            and create a key (workspace owners and admins only).
+          </li>
+          <li>Paste it below. We store it encrypted and never show it again.</li>
+        </ol>
+
+        <div className="space-y-2">
+          <Label htmlFor="quo-api-key">Quo API key</Label>
+          <Input
+            id="quo-api-key"
+            type="password"
+            autoComplete="off"
+            spellCheck={false}
+            placeholder="Paste your Quo API key"
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleConnect();
+            }}
+          />
+        </div>
+
         <Button onClick={handleConnect} disabled={connectQuo.isPending}>
           {connectQuo.isPending ? "Connecting..." : "Connect Quo Workspace"}
         </Button>

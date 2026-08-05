@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { eq, ne } from "drizzle-orm";
 import { db, companiesTable, quoWebhooksTable } from "@workspace/db";
 import {
+  ConnectQuoBody,
   ConnectQuoResponse,
   DisconnectQuoResponse,
   ListQuoNumbersResponse,
@@ -9,7 +10,12 @@ import {
   SelectQuoNumbersResponse,
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/requireAuth";
-import { getCompanyForUser, serializeCompany } from "../lib/company";
+import {
+  getCompanyForUser,
+  serializeCompany,
+  companyQuoKey,
+} from "../lib/company";
+import { encryptSecret } from "../lib/secretBox";
 import * as quo from "../lib/quo";
 import { publicWebhookUrl } from "../lib/publicUrl";
 
@@ -18,22 +24,40 @@ const router: IRouter = Router();
 router.use(requireAuth);
 
 router.post("/company/quo/connect", async (req, res): Promise<void> => {
+  const parsed = ConnectQuoBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Paste the API key from your Quo settings" });
+    return;
+  }
   const company = await getCompanyForUser(req.userId!);
   if (!company) {
     res.status(404).json({ error: "No company yet" });
     return;
   }
-  if (!quo.getQuoApiKey()) {
-    res.status(503).json({ error: "QUO_API_KEY is not configured" });
+
+  const apiKey = parsed.data.apiKey.trim();
+
+  // Prove the key works before storing it, so a typo fails here rather than
+  // silently breaking call ingestion later.
+  let numbers: quo.QuoPhoneNumber[];
+  try {
+    numbers = await quo.listPhoneNumbers(apiKey);
+  } catch (err) {
+    const status = err instanceof quo.QuoError ? err.status : 0;
+    req.log.warn({ status }, "Quo connect rejected the supplied key");
+    res.status(400).json({
+      error:
+        status === 401 || status === 403
+          ? "Quo rejected that API key. Copy it again from Quo settings → API."
+          : "Could not reach Quo with that API key. Try again in a moment.",
+    });
     return;
   }
 
-  let numbers: quo.QuoPhoneNumber[];
-  try {
-    numbers = await quo.listPhoneNumbers();
-  } catch (err) {
-    req.log.error({ err: (err as Error).message }, "Quo connect failed");
-    res.status(502).json({ error: "Could not reach Quo with the configured API key" });
+  if (numbers.length === 0) {
+    res.status(400).json({
+      error: "That Quo workspace has no phone numbers yet.",
+    });
     return;
   }
 
@@ -42,6 +66,8 @@ router.post("/company/quo/connect", async (req, res): Promise<void> => {
     .set({
       quoConnected: true,
       quoWorkspaceName: `${numbers.length} line${numbers.length === 1 ? "" : "s"}`,
+      quoApiKeyEncrypted: encryptSecret(apiKey),
+      quoKeyLast4: apiKey.slice(-4),
     })
     .where(eq(companiesTable.id, company.id))
     .returning();
@@ -56,18 +82,23 @@ router.post("/company/quo/disconnect", async (req, res): Promise<void> => {
     return;
   }
 
+  const apiKey = companyQuoKey(company);
   const hooks = await db
     .select()
     .from(quoWebhooksTable)
     .where(eq(quoWebhooksTable.companyId, company.id));
-  for (const hook of hooks) {
-    try {
-      await quo.deleteWebhook(hook.quoWebhookId);
-    } catch (err) {
-      req.log.warn(
-        { err: (err as Error).message, id: hook.quoWebhookId },
-        "Could not delete Quo webhook",
-      );
+  if (apiKey) {
+    for (const hook of hooks) {
+      try {
+        await quo.deleteWebhook(apiKey, hook.quoWebhookId);
+      } catch (err) {
+        // Best effort: the local record goes away regardless, and a leftover
+        // hook on Quo's side can no longer match a signing key here.
+        req.log.warn(
+          { err: (err as Error).message, id: hook.quoWebhookId },
+          "Could not delete Quo webhook",
+        );
+      }
     }
   }
   await db
@@ -76,7 +107,13 @@ router.post("/company/quo/disconnect", async (req, res): Promise<void> => {
 
   const [updated] = await db
     .update(companiesTable)
-    .set({ quoConnected: false, quoWorkspaceName: null, quoNumberIds: [] })
+    .set({
+      quoConnected: false,
+      quoWorkspaceName: null,
+      quoNumberIds: [],
+      quoApiKeyEncrypted: null,
+      quoKeyLast4: null,
+    })
     .where(eq(companiesTable.id, company.id))
     .returning();
 
@@ -85,13 +122,14 @@ router.post("/company/quo/disconnect", async (req, res): Promise<void> => {
 
 router.get("/quo/numbers", async (req, res): Promise<void> => {
   const company = await getCompanyForUser(req.userId!);
-  if (!company || !company.quoConnected) {
+  const listKey = company ? companyQuoKey(company) : null;
+  if (!company || !listKey) {
     res.json(ListQuoNumbersResponse.parse([]));
     return;
   }
 
   try {
-    const numbers = await quo.listPhoneNumbers();
+    const numbers = await quo.listPhoneNumbers(listKey);
     res.json(
       ListQuoNumbersResponse.parse(
         numbers.map((n) => ({
@@ -119,7 +157,8 @@ router.post("/quo/numbers", async (req, res): Promise<void> => {
     res.status(404).json({ error: "No company yet" });
     return;
   }
-  if (!company.quoConnected) {
+  const apiKey = companyQuoKey(company);
+  if (!apiKey) {
     res.status(400).json({ error: "Connect Quo before choosing lines" });
     return;
   }
@@ -151,7 +190,7 @@ router.post("/quo/numbers", async (req, res): Promise<void> => {
   // Verify the ids are real lines in the workspace rather than arbitrary input.
   let workspaceNumbers: quo.QuoPhoneNumber[];
   try {
-    workspaceNumbers = await quo.listPhoneNumbers();
+    workspaceNumbers = await quo.listPhoneNumbers(apiKey);
   } catch (err) {
     req.log.error({ err: (err as Error).message }, "Quo number list failed");
     res.status(502).json({ error: "Could not load numbers from Quo" });
@@ -172,9 +211,19 @@ router.post("/quo/numbers", async (req, res): Promise<void> => {
     const label = `bookmycleaning-${company.id}`;
     try {
       created = await Promise.all([
-        quo.createCallWebhook(url, numberIds, `${label}-calls`),
-        quo.createTranscriptWebhook(url, numberIds, `${label}-transcripts`),
-        quo.createSummaryWebhook(url, numberIds, `${label}-summaries`),
+        quo.createCallWebhook(apiKey, url, numberIds, `${label}-calls`),
+        quo.createTranscriptWebhook(
+          apiKey,
+          url,
+          numberIds,
+          `${label}-transcripts`,
+        ),
+        quo.createSummaryWebhook(
+          apiKey,
+          url,
+          numberIds,
+          `${label}-summaries`,
+        ),
       ]);
     } catch (err) {
       req.log.error(
@@ -183,7 +232,7 @@ router.post("/quo/numbers", async (req, res): Promise<void> => {
       );
       // Roll back any hooks that did get created before the failure.
       await Promise.allSettled(
-        created.map((w) => quo.deleteWebhook(w.id)),
+        created.map((w) => quo.deleteWebhook(apiKey, w.id)),
       );
       res.status(502).json({
         error: "Quo rejected the webhook registration for these lines",
@@ -223,7 +272,7 @@ router.post("/quo/numbers", async (req, res): Promise<void> => {
   // leaves a harmless duplicate on Quo's side rather than a gap in coverage.
   for (const hook of previous) {
     try {
-      await quo.deleteWebhook(hook.quoWebhookId);
+      await quo.deleteWebhook(apiKey, hook.quoWebhookId);
     } catch (err) {
       req.log.warn(
         { err: (err as Error).message, id: hook.quoWebhookId },

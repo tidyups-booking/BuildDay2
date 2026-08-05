@@ -21,6 +21,7 @@ export * from './callStatus';
 export * from './company';
 export * from './companyInput';
 export * from './companyUpdate';
+export * from './connectQuoInput';
 export * from './customQuestion';
 export * from './dashboardSummary';
 export * from './extractedAnswer';

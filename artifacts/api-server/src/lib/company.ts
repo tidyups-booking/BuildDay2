@@ -5,7 +5,8 @@ import {
   teamMembersTable,
   type Company,
 } from "@workspace/db";
-import { listPhoneNumbers } from "./quo";
+import { listPhoneNumbers, QuoError } from "./quo";
+import { decryptSecret } from "./secretBox";
 
 export async function getCompanyForUser(
   userId: string,
@@ -15,6 +16,26 @@ export async function getCompanyForUser(
     .from(companiesTable)
     .where(eq(companiesTable.ownerUserId, userId));
   return company;
+}
+
+/** The company's decrypted Quo key, or null if they have not connected one. */
+export function companyQuoKey(company: Company): string | null {
+  return decryptSecret(company.quoApiKeyEncrypted);
+}
+
+/**
+ * Same, but throws a 503-shaped QuoError when the key is missing or no longer
+ * decryptable, so routes surface "reconnect Quo" rather than a generic failure.
+ */
+export function requireCompanyQuoKey(company: Company): string {
+  const key = companyQuoKey(company);
+  if (!key) {
+    throw new QuoError(
+      "This company needs to reconnect its Quo account",
+      503,
+    );
+  }
+  return key;
 }
 
 export async function serializeCompany(company: Company) {
@@ -34,9 +55,10 @@ export async function serializeCompany(company: Company) {
     name: string;
     watched: boolean;
   }> = [];
-  if (company.quoConnected && company.quoNumberIds.length > 0) {
+  const quoKey = companyQuoKey(company);
+  if (quoKey && company.quoNumberIds.length > 0) {
     try {
-      const numbers = await listPhoneNumbers();
+      const numbers = await listPhoneNumbers(quoKey);
       watchedNumbers = numbers
         .filter((n) => company.quoNumberIds.includes(n.id))
         .map((n) => ({
@@ -77,6 +99,7 @@ export async function serializeCompany(company: Company) {
     jobberAccountName: company.jobberAccountName,
     quoConnected: company.quoConnected,
     quoWorkspaceName: company.quoWorkspaceName,
+    quoKeyLast4: company.quoKeyLast4,
     watchedNumbers,
     isLive: company.isLive,
     setupStatus: {

@@ -95,7 +95,7 @@ export async function upsertCall(
       callerPhone,
       status,
       startedAt,
-      durationSeconds: call.duration ?? 0,
+      durationSeconds: Math.round(call.duration ?? 0),
       isTest: false,
       quoCallId: call.id,
       quoPhoneNumberId: call.phoneNumberId,
@@ -144,11 +144,12 @@ export async function upsertCall(
  * pending booking when the conversation looks like a real job request.
  */
 export async function applyTranscript(
+  apiKey: string,
   company: Company,
   quoCallId: string,
   ourNumbers: Set<string>,
 ): Promise<boolean> {
-  const transcript = await quo.getTranscript(quoCallId);
+  const transcript = await quo.getTranscript(apiKey, quoCallId);
   if (!transcript?.dialogue?.length) return false;
 
   const [call] = await db
@@ -164,7 +165,7 @@ export async function applyTranscript(
 
   const segments = toTranscript(transcript.dialogue, ourNumbers);
   const answers = extractAnswers(segments);
-  const summary = summaryToText(await quo.getSummary(quoCallId));
+  const summary = summaryToText(await quo.getSummary(apiKey, quoCallId));
 
   const serviceRequested =
     answers.find((a) => a.field === "service type")?.value ?? null;
@@ -179,7 +180,12 @@ export async function applyTranscript(
       summary,
       serviceRequested,
       preferredTime,
-      durationSeconds: transcript.duration ?? call.durationSeconds,
+      // Quo reports transcript duration as a float (e.g. 134.42613); the
+      // column is an integer.
+      durationSeconds:
+        transcript.duration != null
+          ? Math.round(transcript.duration)
+          : call.durationSeconds,
     })
     .where(eq(callsTable.id, call.id));
 
@@ -237,13 +243,14 @@ export async function applyTranscript(
  * that happen after setup, so this fills in history.
  */
 export async function backfillCalls(
+  apiKey: string,
   company: Company,
   ourNumbers: Set<string>,
 ): Promise<{ callsImported: number; transcriptsImported: number }> {
   const watched = company.quoNumberIds;
   if (watched.length === 0) return { callsImported: 0, transcriptsImported: 0 };
 
-  const conversations = await quo.listConversations(watched, 50);
+  const conversations = await quo.listConversations(apiKey, watched, 50);
   let callsImported = 0;
   let transcriptsImported = 0;
 
@@ -254,6 +261,7 @@ export async function backfillCalls(
     let calls: quo.QuoCall[] = [];
     try {
       calls = await quo.listCallsWithParticipant(
+        apiKey,
         conv.phoneNumberId,
         participant,
         10,
@@ -269,7 +277,7 @@ export async function backfillCalls(
     for (const call of calls) {
       const { created } = await upsertCall(company, call, ourNumbers);
       if (created) callsImported += 1;
-      const applied = await applyTranscript(company, call.id, ourNumbers);
+      const applied = await applyTranscript(apiKey, company, call.id, ourNumbers);
       if (applied) transcriptsImported += 1;
     }
   }

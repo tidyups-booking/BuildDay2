@@ -31,6 +31,11 @@ export const companiesTable = pgTable("companies", {
   // by one company — enforced in the selection route, since Postgres cannot
   // express uniqueness across array elements without an exclusion constraint.
   quoNumberIds: text("quo_number_ids").array().notNull().default([]),
+  // The company's own Quo workspace API key, AES-256-GCM encrypted. Quo has no
+  // OAuth flow, so each company pastes a key generated in their Quo settings.
+  // Never returned to the browser — only `quoKeyLast4` is.
+  quoApiKeyEncrypted: text("quo_api_key_encrypted"),
+  quoKeyLast4: text("quo_key_last4"),
   receptionistConfigured: boolean("receptionist_configured")
     .notNull()
     .default(false),

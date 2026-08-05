@@ -117,7 +117,13 @@ paths:
     post:
       operationId: connectQuo
       tags: [phone]
-      summary: Connect the Quo workspace using the configured API key
+      summary: Connect this company's own Quo workspace with their API key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConnectQuoInput"
       responses:
         "200":
           description: Connected
@@ -469,6 +475,7 @@ components:
         jobberAccountName: { type: ["string", "null"] }
         quoConnected: { type: boolean }
         quoWorkspaceName: { type: ["string", "null"] }
+        quoKeyLast4: { type: ["string", "null"] }
         watchedNumbers:
           type: array
           items:
@@ -503,6 +510,14 @@ components:
         phoneNumber: { type: string }
         name: { type: string }
         watched: { type: boolean }
+    ConnectQuoInput:
+      type: object
+      required: [apiKey]
+      properties:
+        apiKey:
+          type: string
+          minLength: 10
+          description: A Quo workspace API key from the company's own Quo account
     QuoNumberSelection:
       type: object
       required: [numberIds]
