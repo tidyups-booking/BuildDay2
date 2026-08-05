@@ -112,7 +112,8 @@ export async function listPhoneNumbers(
 ): Promise<QuoPhoneNumber[]> {
   const res = await quoRequest<{ data: QuoPhoneNumber[] }>(
     apiKey,
-    "/phone-numbers");
+    "/phone-numbers",
+  );
   return res.data ?? [];
 }
 
@@ -121,9 +122,7 @@ export async function getCall(
   callId: string,
 ): Promise<QuoCall | null> {
   try {
-    const res = await quoRequest<{ data: QuoCall }>(
-    apiKey,
-    `/calls/${callId}`);
+    const res = await quoRequest<{ data: QuoCall }>(apiKey, `/calls/${callId}`);
     return res.data ?? null;
   } catch (err) {
     if (err instanceof QuoError && err.status === 404) return null;
@@ -137,8 +136,8 @@ export async function getTranscript(
 ): Promise<QuoTranscript | null> {
   try {
     const res = await quoRequest<{ data: QuoTranscript }>(
-    apiKey,
-    `/call-transcripts/${callId}`,
+      apiKey,
+      `/call-transcripts/${callId}`,
     );
     return res.data ?? null;
   } catch (err) {
@@ -153,8 +152,8 @@ export async function getSummary(
 ): Promise<QuoSummary | null> {
   try {
     const res = await quoRequest<{ data: QuoSummary }>(
-    apiKey,
-    `/call-summaries/${callId}`,
+      apiKey,
+      `/call-summaries/${callId}`,
     );
     return res.data ?? null;
   } catch (err) {
@@ -216,7 +215,8 @@ export async function listWebhooks(
 ): Promise<QuoWebhookRecord[]> {
   const res = await quoRequest<{ data: QuoWebhookRecord[] }>(
     apiKey,
-    "/webhooks");
+    "/webhooks",
+  );
   return res.data ?? [];
 }
 
@@ -228,16 +228,18 @@ export async function createCallWebhook(
 ): Promise<QuoWebhookRecord> {
   const res = await quoRequest<{ data: QuoWebhookRecord }>(
     apiKey,
-    "/webhooks/calls", {
-    method: "POST",
-    body: JSON.stringify({
-      url,
-      label,
-      resourceIds,
-      status: "enabled",
-      events: ["call.ringing", "call.completed", "call.recording.completed"],
-    }),
-  });
+    "/webhooks/calls",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        url,
+        label,
+        resourceIds,
+        status: "enabled",
+        events: ["call.ringing", "call.completed", "call.recording.completed"],
+      }),
+    },
+  );
   return res.data;
 }
 
@@ -335,9 +337,7 @@ export async function sendMessage(
 
 export async function deleteWebhook(apiKey: string, id: string): Promise<void> {
   try {
-    await quoRequest<void>(
-    apiKey,
-    `/webhooks/${id}`, { method: "DELETE" });
+    await quoRequest<void>(apiKey, `/webhooks/${id}`, { method: "DELETE" });
   } catch (err) {
     // A webhook already removed on Quo's side is not an error for us.
     if (err instanceof QuoError && err.status === 404) return;

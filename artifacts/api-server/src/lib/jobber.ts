@@ -122,9 +122,15 @@ export async function getValidAccessToken(company: Company): Promise<string> {
     throw new Error("Jobber is not connected for this company");
   }
   const accessToken = decryptJobberToken(company.jobberAccessToken);
-  if (!accessToken) throw new Error("Jobber access token could not be decrypted — reconnect Jobber");
+  if (!accessToken)
+    throw new Error(
+      "Jobber access token could not be decrypted — reconnect Jobber",
+    );
   const refreshToken = decryptJobberToken(company.jobberRefreshToken);
-  if (!refreshToken) throw new Error("Jobber refresh token could not be decrypted — reconnect Jobber");
+  if (!refreshToken)
+    throw new Error(
+      "Jobber refresh token could not be decrypted — reconnect Jobber",
+    );
 
   const expiresAt = company.jobberTokenExpiresAt?.getTime() ?? 0;
   const stillValid = expiresAt - Date.now() > 60_000;
@@ -155,7 +161,9 @@ export async function getValidAccessToken(company: Company): Promise<string> {
     .update(companiesTable)
     .set({
       jobberAccessToken: encryptJobberToken(tokens.access_token),
-      jobberRefreshToken: encryptJobberToken(tokens.refresh_token || refreshToken),
+      jobberRefreshToken: encryptJobberToken(
+        tokens.refresh_token || refreshToken,
+      ),
       jobberTokenExpiresAt: tokenExpiry(tokens.expires_in),
     })
     .where(eq(companiesTable.id, company.id));
@@ -321,10 +329,7 @@ export async function tryAttachRequestNote(
       }`,
       { subjectId: requestId, body: message },
     );
-    assertNoUserErrors(
-      "noteCreate",
-      data.noteCreate.userErrors,
-    );
+    assertNoUserErrors("noteCreate", data.noteCreate.userErrors);
     return true;
   } catch (err) {
     logger.warn({ err }, "Could not attach note to Jobber request");

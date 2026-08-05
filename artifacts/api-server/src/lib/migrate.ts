@@ -29,7 +29,7 @@ export async function runMigrations(): Promise<void> {
   const here = path.dirname(fileURLToPath(import.meta.url));
   const { existsSync } = await import("node:fs");
   const candidates = [
-    path.resolve(here, "..", "migrations"),                          // production dist/
+    path.resolve(here, "..", "migrations"), // production dist/
     path.resolve(here, "..", "..", "..", "lib", "db", "migrations"), // dev src/
   ];
   const migrationsFolder = candidates.find(existsSync);

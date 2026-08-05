@@ -26,7 +26,7 @@ Jobber OAuth is **real**: companies go through a proper OAuth 2.0 + PKCE flow. T
 - `JOBBER_CLIENT_ID` and `JOBBER_CLIENT_SECRET` must be set. The OAuth callback URL registered in the Jobber Developer Center must be `https://<domain>/api/company/jobber/callback`.
 - Sync (`POST /api/bookings/:id/sync-jobber`) calls `getValidAccessToken` which automatically refreshes when within 60 s of expiry. It then creates a Jobber `clientCreate` + `requestCreate` via GraphQL, attaches extracted wizard answers as a note, and stores the request ID + web URI.
 - Disconnect calls Jobber's `appDisconnect` mutation and clears all stored tokens.
-- **Jobber is optional.** The setup wizard offers Connect *or* Skip. Skipping sets `companies.jobber_skipped`, a deliberate choice distinct from "hasn't got round to it". Setup treats the step as resolved when a company is connected **or** skipped (`setupStatus.jobberResolved`), so skipping never leaves the wizard stuck. Connecting later clears the flag automatically; the app refuses to mark a connected company as skipped. Jobber sync controls are hidden for companies that aren't connected.
+- **Jobber is optional.** The setup wizard offers Connect _or_ Skip. Skipping sets `companies.jobber_skipped`, a deliberate choice distinct from "hasn't got round to it". Setup treats the step as resolved when a company is connected **or** skipped (`setupStatus.jobberResolved`), so skipping never leaves the wizard stuck. Connecting later clears the flag automatically; the app refuses to mark a connected company as skipped. Jobber sync controls are hidden for companies that aren't connected.
 
 ### Quoting and booking
 
@@ -39,6 +39,7 @@ Jobber OAuth is **real**: companies go through a proper OAuth 2.0 + PKCE flow. T
 ## Architecture
 
 pnpm monorepo:
+
 - `artifacts/book-my-cleaning` — React/Vite frontend at `/` (landing, Clerk sign-in/up, onboarding, `/setup` wizard, dashboard, calls, bookings, team, settings)
 - `artifacts/api-server` — Express 5 API at `/api`; Clerk auth (proxy middleware + `requireAuth` via `getAuth`); all data scoped to the company owned by the Clerk userId
 - `lib/api-spec/openapi.yaml` — API contract; codegen produces `lib/api-zod` (server validation) and `lib/api-client-react` (React Query hooks)

@@ -2,7 +2,13 @@ import { useEffect, useRef } from "react";
 import { ClerkProvider, SignIn, SignUp, Show, useClerk } from "@clerk/react";
 import { publishableKeyFromHost } from "@clerk/react/internal";
 import { dark } from "@clerk/themes";
-import { Switch, Route, useLocation, Router as WouterRouter, Redirect } from "wouter";
+import {
+  Switch,
+  Route,
+  useLocation,
+  Router as WouterRouter,
+  Redirect,
+} from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -60,10 +66,12 @@ const clerkAppearance = {
   },
   elements: {
     rootBox: "w-full flex justify-center",
-    cardBox: "bg-card rounded-2xl w-[440px] max-w-full overflow-hidden shadow-2xl border border-border",
+    cardBox:
+      "bg-card rounded-2xl w-[440px] max-w-full overflow-hidden shadow-2xl border border-border",
     card: "!shadow-none !border-0 !bg-transparent !rounded-none",
     footer: "!shadow-none !border-0 !bg-transparent !rounded-none pb-6",
-    headerTitle: "font-serif text-2xl font-extrabold tracking-tight text-foreground",
+    headerTitle:
+      "font-serif text-2xl font-extrabold tracking-tight text-foreground",
     headerSubtitle: "text-sm text-muted-foreground",
     socialButtonsBlockButtonText: "font-medium text-foreground",
     formFieldLabel: "text-sm font-medium text-foreground",
@@ -75,9 +83,12 @@ const clerkAppearance = {
     alertText: "text-sm font-medium",
     logoBox: "h-12 w-12 mx-auto mb-4",
     logoImage: "w-full h-full object-contain",
-    socialButtonsBlockButton: "border-border hover:bg-secondary/50 transition-colors",
-    formButtonPrimary: "bg-primary hover:opacity-90 text-primary-foreground font-bold shadow-sm transition-all rounded-full",
-    formFieldInput: "border-border focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all rounded-lg bg-input",
+    socialButtonsBlockButton:
+      "border-border hover:bg-secondary/50 transition-colors",
+    formButtonPrimary:
+      "bg-primary hover:opacity-90 text-primary-foreground font-bold shadow-sm transition-all rounded-full",
+    formFieldInput:
+      "border-border focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all rounded-lg bg-input",
     footerAction: "mt-4",
     dividerLine: "bg-border",
     alert: "border border-red-500/20 bg-red-500/10 text-red-500",
@@ -92,8 +103,12 @@ function SignInPage() {
     <div className="flex min-h-[100dvh] items-center justify-center bg-background px-4 relative overflow-hidden">
       <div className="absolute top-[-20%] left-[-10%] w-[40%] h-[40%] bg-brand-purple/20 rounded-full blur-[100px] pointer-events-none" />
       <div className="absolute bottom-[-20%] right-[-10%] w-[40%] h-[40%] bg-brand-pink/20 rounded-full blur-[100px] pointer-events-none" />
-      
-      <SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} />
+
+      <SignIn
+        routing="path"
+        path={`${basePath}/sign-in`}
+        signUpUrl={`${basePath}/sign-up`}
+      />
     </div>
   );
 }
@@ -104,7 +119,11 @@ function SignUpPage() {
       <div className="absolute top-[-20%] left-[-10%] w-[40%] h-[40%] bg-brand-purple/20 rounded-full blur-[100px] pointer-events-none" />
       <div className="absolute bottom-[-20%] right-[-10%] w-[40%] h-[40%] bg-brand-pink/20 rounded-full blur-[100px] pointer-events-none" />
 
-      <SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} />
+      <SignUp
+        routing="path"
+        path={`${basePath}/sign-up`}
+        signInUrl={`${basePath}/sign-in`}
+      />
     </div>
   );
 }
@@ -181,43 +200,64 @@ function ClerkProviderWithRoutes() {
             {/* Public: the customer following the link in their quote text has
                 no account and must never be bounced to a sign-in page. */}
             <Route path="/quote/:token" component={QuotePage} />
-            
-            <Route path="/onboarding" component={() => (
-              <Show when="signed-in" fallback={<Redirect to="/sign-in" />}>
-                <OnboardingPage />
-              </Show>
-            )} />
-            <Route path="/setup" component={() => (
-              <Show when="signed-in" fallback={<Redirect to="/sign-in" />}>
-                <SetupPage />
-              </Show>
-            )} />
-            <Route path="/dashboard" component={() => (
-              <Show when="signed-in" fallback={<Redirect to="/sign-in" />}>
-                <DashboardPage />
-              </Show>
-            )} />
-            <Route path="/calls" component={() => (
-              <Show when="signed-in" fallback={<Redirect to="/sign-in" />}>
-                <CallsPage />
-              </Show>
-            )} />
-            <Route path="/bookings" component={() => (
-              <Show when="signed-in" fallback={<Redirect to="/sign-in" />}>
-                <BookingsPage />
-              </Show>
-            )} />
-            <Route path="/team" component={() => (
-              <Show when="signed-in" fallback={<Redirect to="/sign-in" />}>
-                <TeamPage />
-              </Show>
-            )} />
-            <Route path="/settings" component={() => (
-              <Show when="signed-in" fallback={<Redirect to="/sign-in" />}>
-                <SettingsPage />
-              </Show>
-            )} />
-            
+
+            <Route
+              path="/onboarding"
+              component={() => (
+                <Show when="signed-in" fallback={<Redirect to="/sign-in" />}>
+                  <OnboardingPage />
+                </Show>
+              )}
+            />
+            <Route
+              path="/setup"
+              component={() => (
+                <Show when="signed-in" fallback={<Redirect to="/sign-in" />}>
+                  <SetupPage />
+                </Show>
+              )}
+            />
+            <Route
+              path="/dashboard"
+              component={() => (
+                <Show when="signed-in" fallback={<Redirect to="/sign-in" />}>
+                  <DashboardPage />
+                </Show>
+              )}
+            />
+            <Route
+              path="/calls"
+              component={() => (
+                <Show when="signed-in" fallback={<Redirect to="/sign-in" />}>
+                  <CallsPage />
+                </Show>
+              )}
+            />
+            <Route
+              path="/bookings"
+              component={() => (
+                <Show when="signed-in" fallback={<Redirect to="/sign-in" />}>
+                  <BookingsPage />
+                </Show>
+              )}
+            />
+            <Route
+              path="/team"
+              component={() => (
+                <Show when="signed-in" fallback={<Redirect to="/sign-in" />}>
+                  <TeamPage />
+                </Show>
+              )}
+            />
+            <Route
+              path="/settings"
+              component={() => (
+                <Show when="signed-in" fallback={<Redirect to="/sign-in" />}>
+                  <SettingsPage />
+                </Show>
+              )}
+            />
+
             <Route component={NotFound} />
           </Switch>
           <Toaster />

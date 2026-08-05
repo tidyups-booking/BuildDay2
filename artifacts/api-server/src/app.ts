@@ -10,7 +10,9 @@ import {
 } from "./middlewares/clerkProxyMiddleware";
 import router from "./routes";
 import quoWebhookRouter, { QUO_WEBHOOK_PATH } from "./routes/quoWebhook";
-import jobberWebhookRouter, { JOBBER_WEBHOOK_PATH } from "./routes/jobberWebhook";
+import jobberWebhookRouter, {
+  JOBBER_WEBHOOK_PATH,
+} from "./routes/jobberWebhook";
 import { WebhookHandlers } from "./lib/webhookHandlers";
 import { logger } from "./lib/logger";
 

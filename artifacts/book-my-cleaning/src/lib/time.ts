@@ -8,7 +8,9 @@
 
 const FALLBACK_TZ = "America/Edmonton";
 
-export function companyTimeZone(company: { timezone?: string | null } | undefined | null): string {
+export function companyTimeZone(
+  company: { timezone?: string | null } | undefined | null,
+): string {
   return company?.timezone || FALLBACK_TZ;
 }
 
@@ -25,7 +27,8 @@ function zoneOffsetMs(date: Date, timeZone: string): number {
     second: "2-digit",
   }).formatToParts(date);
 
-  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? "0");
+  const get = (type: string) =>
+    Number(parts.find((p) => p.type === type)?.value ?? "0");
   const asUtc = Date.UTC(
     get("year"),
     get("month") - 1,
@@ -41,7 +44,9 @@ function zoneOffsetMs(date: Date, timeZone: string): number {
 export function isoToZonedInput(iso: string, timeZone: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
-  return new Date(d.getTime() + zoneOffsetMs(d, timeZone)).toISOString().slice(0, 16);
+  return new Date(d.getTime() + zoneOffsetMs(d, timeZone))
+    .toISOString()
+    .slice(0, 16);
 }
 
 /**
@@ -53,7 +58,10 @@ export function isoToZonedInput(iso: string, timeZone: string): string {
  * made to deal with it. In the repeated autumn hour, which is genuinely
  * ambiguous, we deterministically take the first (still-daylight-saving) pass.
  */
-export function zonedInputToIso(wallClock: string, timeZone: string): string | null {
+export function zonedInputToIso(
+  wallClock: string,
+  timeZone: string,
+): string | null {
   const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(wallClock);
   if (!match) return null;
   const [, y, mo, d, h, mi] = match.map(Number) as unknown as number[];

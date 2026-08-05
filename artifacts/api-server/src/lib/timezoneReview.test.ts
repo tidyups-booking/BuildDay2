@@ -56,7 +56,11 @@ vi.mock("./logger", () => ({
 
 import { flagShiftedBookings } from "./timezoneReview";
 
-const booking = (id: number, isoInstant: string, needsTimeReview = false): Row => ({
+const booking = (
+  id: number,
+  isoInstant: string,
+  needsTimeReview = false,
+): Row => ({
   id,
   scheduledFor: new Date(isoInstant),
   needsTimeReview,
@@ -76,14 +80,22 @@ describe("flagShiftedBookings", () => {
   it("does not flag when both zones render the same wall clock (same offset)", async () => {
     // Phoenix vs Denver in January: both UTC-7.
     rows = [booking(1, WINTER)];
-    const count = await flagShiftedBookings(1, "America/Phoenix", "America/Denver");
+    const count = await flagShiftedBookings(
+      1,
+      "America/Phoenix",
+      "America/Denver",
+    );
     expect(count).toBe(0);
     expect(updateCalls).toHaveLength(0);
   });
 
   it("flags a DST-dependent pair only for bookings whose instant falls in the differing half", async () => {
     rows = [booking(1, WINTER), booking(2, SUMMER)];
-    const count = await flagShiftedBookings(1, "America/Phoenix", "America/Denver");
+    const count = await flagShiftedBookings(
+      1,
+      "America/Phoenix",
+      "America/Denver",
+    );
     expect(count).toBe(1);
     expect(updateCalls).toHaveLength(1);
     expect(updateCalls[0]!.ids).toEqual([2]); // only the summer booking shifted
@@ -96,7 +108,11 @@ describe("flagShiftedBookings", () => {
   it("flags every future booking for zones a fixed hour apart year-round", async () => {
     rows = [booking(1, WINTER), booking(2, SUMMER)];
     // Denver and Chicago are always one hour apart (both observe DST).
-    const count = await flagShiftedBookings(1, "America/Denver", "America/Chicago");
+    const count = await flagShiftedBookings(
+      1,
+      "America/Denver",
+      "America/Chicago",
+    );
     expect(count).toBe(2);
     expect(updateCalls[0]!.ids).toEqual([1, 2]);
   });
@@ -104,7 +120,11 @@ describe("flagShiftedBookings", () => {
   it("never flags when the timezone label changes but offsets always match", async () => {
     rows = [booking(1, WINTER), booking(2, SUMMER)];
     // Denver and Boise are the same offset all year.
-    const count = await flagShiftedBookings(1, "America/Denver", "America/Boise");
+    const count = await flagShiftedBookings(
+      1,
+      "America/Denver",
+      "America/Boise",
+    );
     expect(count).toBe(0);
     expect(updateCalls).toHaveLength(0);
   });
@@ -113,14 +133,22 @@ describe("flagShiftedBookings", () => {
     // Simulates a repeated switch: booking 1 was flagged during an earlier
     // change and must NOT have timeReviewPreviousTimezone overwritten.
     rows = [booking(1, SUMMER, true), booking(2, SUMMER)];
-    const count = await flagShiftedBookings(1, "America/Denver", "America/Phoenix");
+    const count = await flagShiftedBookings(
+      1,
+      "America/Denver",
+      "America/Phoenix",
+    );
     expect(count).toBe(1);
     expect(updateCalls[0]!.ids).toEqual([2]); // booking 1 untouched
   });
 
   it("returns 0 and issues no update when nothing shifts on a repeated switch", async () => {
     rows = [booking(1, SUMMER, true)];
-    const count = await flagShiftedBookings(1, "America/Denver", "America/Phoenix");
+    const count = await flagShiftedBookings(
+      1,
+      "America/Denver",
+      "America/Phoenix",
+    );
     expect(count).toBe(0);
     expect(updateCalls).toHaveLength(0);
   });

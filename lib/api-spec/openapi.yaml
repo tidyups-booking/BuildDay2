@@ -713,7 +713,20 @@ components:
         watched: { type: boolean }
     SetupStatus:
       type: object
-      required: [accountCreated, jobberConnected, jobberSkipped, jobberResolved, quoConnected, phoneProvisioned, receptionistConfigured, teamInvited, isLive, completedSteps, totalSteps]
+      required:
+        [
+          accountCreated,
+          jobberConnected,
+          jobberSkipped,
+          jobberResolved,
+          quoConnected,
+          phoneProvisioned,
+          receptionistConfigured,
+          teamInvited,
+          isLive,
+          completedSteps,
+          totalSteps,
+        ]
       properties:
         accountCreated: { type: boolean }
         jobberConnected: { type: boolean }
@@ -730,7 +743,23 @@ components:
         totalSteps: { type: integer }
     Company:
       type: object
-      required: [id, name, timezone, greeting, collectFields, customQuestions, jobberConnected, jobberSkipped, jobberNeedsReauth, quoConnected, watchedNumbers, isLive, setupStatus, createdAt]
+      required:
+        [
+          id,
+          name,
+          timezone,
+          greeting,
+          collectFields,
+          customQuestions,
+          jobberConnected,
+          jobberSkipped,
+          jobberNeedsReauth,
+          quoConnected,
+          watchedNumbers,
+          isLive,
+          setupStatus,
+          createdAt,
+        ]
       properties:
         id: { type: integer }
         name: { type: string }
@@ -845,7 +874,16 @@ components:
         value: { type: string }
     Call:
       type: object
-      required: [id, callerName, callerPhone, status, startedAt, durationSeconds, isTest]
+      required:
+        [
+          id,
+          callerName,
+          callerPhone,
+          status,
+          startedAt,
+          durationSeconds,
+          isTest,
+        ]
       properties:
         id: { type: integer }
         callerName: { type: string }
@@ -863,7 +901,18 @@ components:
         recordingUrl: { type: ["string", "null"] }
     CallDetail:
       type: object
-      required: [id, callerName, callerPhone, status, startedAt, durationSeconds, isTest, transcript, extractedAnswers]
+      required:
+        [
+          id,
+          callerName,
+          callerPhone,
+          status,
+          startedAt,
+          durationSeconds,
+          isTest,
+          transcript,
+          extractedAnswers,
+        ]
       properties:
         id: { type: integer }
         callerName: { type: string }
@@ -889,7 +938,19 @@ components:
             $ref: "#/components/schemas/ExtractedAnswer"
     Booking:
       type: object
-      required: [id, customerName, customerPhone, service, scheduledFor, status, quoteTotals, jobberSynced, needsTimeReview, createdAt]
+      required:
+        [
+          id,
+          customerName,
+          customerPhone,
+          service,
+          scheduledFor,
+          status,
+          quoteTotals,
+          jobberSynced,
+          needsTimeReview,
+          createdAt,
+        ]
       properties:
         id: { type: integer }
         callId: { type: ["integer", "null"] }
@@ -898,7 +959,8 @@ components:
         customerAddress: { type: ["string", "null"] }
         service: { type: string }
         scheduledFor: { type: string }
-        status: { type: string, enum: [pending, confirmed, completed, canceled] }
+        status:
+          { type: string, enum: [pending, confirmed, completed, canceled] }
         # How the job was priced: hours x crew rate, plus fuel, less any promo.
         quoteHours: { type: ["number", "null"] }
         quoteCrewLabel: { type: ["string", "null"] }
@@ -943,7 +1005,8 @@ components:
     BookingUpdate:
       type: object
       properties:
-        status: { type: string, enum: [pending, confirmed, completed, canceled] }
+        status:
+          { type: string, enum: [pending, confirmed, completed, canceled] }
         scheduledFor: { type: string }
         customerName: { type: string, minLength: 1 }
         customerPhone: { type: string, minLength: 1 }
@@ -953,9 +1016,12 @@ components:
         # not 5000 hours long, and no crew costs $1m an hour.
         quoteHours: { type: ["number", "null"], minimum: 0, maximum: 24 }
         quoteCrewLabel: { type: ["string", "null"], maxLength: 60 }
-        quoteHourlyRate: { type: ["number", "null"], minimum: 0, maximum: 10000 }
-        quoteFuelSurcharge: { type: ["number", "null"], minimum: 0, maximum: 10000 }
-        quoteDiscountAmount: { type: ["number", "null"], minimum: 0, maximum: 100000 }
+        quoteHourlyRate:
+          { type: ["number", "null"], minimum: 0, maximum: 10000 }
+        quoteFuelSurcharge:
+          { type: ["number", "null"], minimum: 0, maximum: 10000 }
+        quoteDiscountAmount:
+          { type: ["number", "null"], minimum: 0, maximum: 100000 }
         quoteReferralSource: { type: ["string", "null"], maxLength: 60 }
         quotedAmount: { type: ["number", "null"], minimum: 0, maximum: 1000000 }
         quoteDeposit: { type: ["number", "null"], minimum: 0, maximum: 1000000 }
@@ -969,12 +1035,16 @@ components:
         customerAddress: { type: ["string", "null"] }
         service: { type: string, minLength: 1 }
         scheduledFor: { type: string }
-        status: { type: string, enum: [pending, confirmed, completed, canceled] }
+        status:
+          { type: string, enum: [pending, confirmed, completed, canceled] }
         quoteHours: { type: ["number", "null"], minimum: 0, maximum: 24 }
         quoteCrewLabel: { type: ["string", "null"], maxLength: 60 }
-        quoteHourlyRate: { type: ["number", "null"], minimum: 0, maximum: 10000 }
-        quoteFuelSurcharge: { type: ["number", "null"], minimum: 0, maximum: 10000 }
-        quoteDiscountAmount: { type: ["number", "null"], minimum: 0, maximum: 100000 }
+        quoteHourlyRate:
+          { type: ["number", "null"], minimum: 0, maximum: 10000 }
+        quoteFuelSurcharge:
+          { type: ["number", "null"], minimum: 0, maximum: 10000 }
+        quoteDiscountAmount:
+          { type: ["number", "null"], minimum: 0, maximum: 100000 }
         quoteReferralSource: { type: ["string", "null"], maxLength: 60 }
         quotedAmount: { type: ["number", "null"], minimum: 0, maximum: 1000000 }
         quoteDeposit: { type: ["number", "null"], minimum: 0, maximum: 1000000 }
@@ -990,7 +1060,19 @@ components:
         unitPrice: { type: number }
     QuoteTotals:
       type: object
-      required: [lineItems, subtotal, taxLabel, taxRate, taxAmount, feesLabel, feesRate, feesAmount, total, deposit]
+      required:
+        [
+          lineItems,
+          subtotal,
+          taxLabel,
+          taxRate,
+          taxAmount,
+          feesLabel,
+          feesRate,
+          feesAmount,
+          total,
+          deposit,
+        ]
       properties:
         # Rebuilt from the pricing inputs; these are the rows on the estimate.
         lineItems:
@@ -1011,7 +1093,15 @@ components:
     # customer's own estimate and nothing else about the company or its jobs.
     PublicQuote:
       type: object
-      required: [companyName, customerName, service, scheduledForLabel, totals, approved]
+      required:
+        [
+          companyName,
+          customerName,
+          service,
+          scheduledForLabel,
+          totals,
+          approved,
+        ]
       properties:
         companyName: { type: string }
         customerName: { type: string }
@@ -1056,7 +1146,16 @@ components:
         skipped: { type: boolean }
     DashboardSummary:
       type: object
-      required: [callsToday, callsThisWeek, bookingsThisWeek, answeredRate, avgCallSeconds, pendingBookings, jobberSyncedCount]
+      required:
+        [
+          callsToday,
+          callsThisWeek,
+          bookingsThisWeek,
+          answeredRate,
+          avgCallSeconds,
+          pendingBookings,
+          jobberSyncedCount,
+        ]
       properties:
         callsToday: { type: integer }
         callsThisWeek: { type: integer }
@@ -1070,6 +1169,22 @@ components:
       required: [id, type, message, occurredAt]
       properties:
         id: { type: integer }
-        type: { type: string, enum: [call_answered, booking_created, jobber_synced, jobber_sync_failed, quote_sent, quote_approved, deposit_paid, test_call, team_invited, reschedule_texted] }
+        type:
+          {
+            type: string,
+            enum:
+              [
+                call_answered,
+                booking_created,
+                jobber_synced,
+                jobber_sync_failed,
+                quote_sent,
+                quote_approved,
+                deposit_paid,
+                test_call,
+                team_invited,
+                reschedule_texted,
+              ],
+          }
         message: { type: string }
         occurredAt: { type: string }

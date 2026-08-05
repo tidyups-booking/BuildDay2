@@ -14,7 +14,8 @@ function zoneOffsetMs(date: Date, timeZone: string): number {
     minute: "2-digit",
     second: "2-digit",
   }).formatToParts(date);
-  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? "0");
+  const get = (type: string) =>
+    Number(parts.find((p) => p.type === type)?.value ?? "0");
   const asUtc = Date.UTC(
     get("year"),
     get("month") - 1,

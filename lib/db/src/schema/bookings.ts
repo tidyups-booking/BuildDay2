@@ -13,7 +13,6 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { companiesTable } from "./companies";
 
-
 export const bookingsTable = pgTable("bookings", {
   id: serial("id").primaryKey(),
   companyId: integer("company_id")

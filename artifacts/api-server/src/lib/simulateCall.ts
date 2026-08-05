@@ -87,7 +87,8 @@ export function buildSimulatedCall(company: Company, services: Service[]) {
   };
 
   const greeting =
-    company.greeting || `Thanks for calling ${company.name}! How can I help you today?`;
+    company.greeting ||
+    `Thanks for calling ${company.name}! How can I help you today?`;
   say("ai", greeting);
   say(
     "caller",
@@ -109,9 +110,9 @@ export function buildSimulatedCall(company: Company, services: Service[]) {
       : ["name", "address", "preferred date"];
 
   for (const field of fields) {
-    const q =
-      FIELD_QUESTIONS[field] ?? `Could you tell me your ${field}?`;
-    const a = FIELD_ANSWERS[field]?.(ctx) ?? "Sure, I'll get back to you on that.";
+    const q = FIELD_QUESTIONS[field] ?? `Could you tell me your ${field}?`;
+    const a =
+      FIELD_ANSWERS[field]?.(ctx) ?? "Sure, I'll get back to you on that.";
     say("ai", q, 4);
     say("caller", a, 5);
     extractedAnswers.push({ field, value: a });

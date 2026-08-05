@@ -30,10 +30,7 @@ export function companyQuoKey(company: Company): string | null {
 export function requireCompanyQuoKey(company: Company): string {
   const key = companyQuoKey(company);
   if (!key) {
-    throw new QuoError(
-      "This company needs to reconnect its Quo account",
-      503,
-    );
+    throw new QuoError("This company needs to reconnect its Quo account", 503);
   }
   return key;
 }

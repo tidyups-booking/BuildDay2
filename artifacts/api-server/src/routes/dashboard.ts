@@ -45,12 +45,17 @@ router.get("/dashboard/summary", async (req, res): Promise<void> => {
 
   const callsToday = calls.filter((c) => c.startedAt >= startOfDay).length;
   const callsThisWeek = calls.filter((c) => c.startedAt >= weekAgo).length;
-  const bookingsThisWeek = bookings.filter((b) => b.createdAt >= weekAgo).length;
+  const bookingsThisWeek = bookings.filter(
+    (b) => b.createdAt >= weekAgo,
+  ).length;
   const answered = calls.filter((c) => c.status !== "missed").length;
-  const answeredRate = calls.length > 0 ? Math.round((answered / calls.length) * 100) / 100 : 0;
+  const answeredRate =
+    calls.length > 0 ? Math.round((answered / calls.length) * 100) / 100 : 0;
   const avgCallSeconds =
     calls.length > 0
-      ? Math.round(calls.reduce((s, c) => s + c.durationSeconds, 0) / calls.length)
+      ? Math.round(
+          calls.reduce((s, c) => s + c.durationSeconds, 0) / calls.length,
+        )
       : 0;
 
   res.json(

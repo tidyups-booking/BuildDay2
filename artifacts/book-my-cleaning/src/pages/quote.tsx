@@ -24,7 +24,11 @@ export default function QuotePage() {
   const token = params?.token ?? "";
   const queryClient = useQueryClient();
 
-  const { data: quote, isLoading, isError } = useGetPublicQuote(token, {
+  const {
+    data: quote,
+    isLoading,
+    isError,
+  } = useGetPublicQuote(token, {
     query: {
       queryKey: getGetPublicQuoteQueryKey(token),
       enabled: token.length > 0,
@@ -78,7 +82,8 @@ export default function QuotePage() {
     return (
       <Shell>
         <div className="flex items-center justify-center py-24 text-muted-foreground">
-          <Loader2 className="w-5 h-5 animate-spin mr-2" /> Loading your quote...
+          <Loader2 className="w-5 h-5 animate-spin mr-2" /> Loading your
+          quote...
         </div>
       </Shell>
     );
@@ -292,7 +297,10 @@ export default function QuotePage() {
                 <CheckCircle2 className="w-5 h-5 text-green-400 shrink-0" />
                 <div>
                   <div className="font-semibold text-green-300">
-                    Approved{quote.approvedAtLabel ? ` on ${quote.approvedAtLabel}` : ""}
+                    Approved
+                    {quote.approvedAtLabel
+                      ? ` on ${quote.approvedAtLabel}`
+                      : ""}
                   </div>
                   <div className="text-sm text-muted-foreground">
                     Thanks! We'll be in touch to confirm the details.

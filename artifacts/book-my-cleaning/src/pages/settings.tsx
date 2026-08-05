@@ -1,11 +1,18 @@
 import { useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { PageHeader, LoadingSpinner } from "@/components/ui/shared";
-import { 
-  useGetCompany, useUpdateCompany, getGetCompanyQueryKey,
-  useListServices, useCreateService, useUpdateService, useDeleteService, getListServicesQueryKey,
-  useConnectJobber, useDisconnectJobber,
-  Service
+import {
+  useGetCompany,
+  useUpdateCompany,
+  getGetCompanyQueryKey,
+  useListServices,
+  useCreateService,
+  useUpdateService,
+  useDeleteService,
+  getListServicesQueryKey,
+  useConnectJobber,
+  useDisconnectJobber,
+  Service,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -14,32 +21,57 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Plus, Trash2, Edit2, CheckCircle2 } from "lucide-react";
 
 export function SettingsPage() {
   const { data: company, isLoading } = useGetCompany();
 
   if (isLoading || !company) {
-    return <AppLayout><LoadingSpinner className="mt-20" /></AppLayout>;
+    return (
+      <AppLayout>
+        <LoadingSpinner className="mt-20" />
+      </AppLayout>
+    );
   }
 
   return (
     <AppLayout>
-      <PageHeader title="Settings" description="Manage your company profile and AI configuration." />
+      <PageHeader
+        title="Settings"
+        description="Manage your company profile and AI configuration."
+      />
 
       <Tabs defaultValue="general" className="w-full">
         <TabsList className="mb-6 w-full justify-start h-auto p-1 bg-secondary rounded-lg overflow-x-auto">
-          <TabsTrigger value="general" className="rounded-md px-4 py-2">General</TabsTrigger>
-          <TabsTrigger value="receptionist" className="rounded-md px-4 py-2">Receptionist</TabsTrigger>
-          <TabsTrigger value="services" className="rounded-md px-4 py-2">Services & Pricing</TabsTrigger>
+          <TabsTrigger value="general" className="rounded-md px-4 py-2">
+            General
+          </TabsTrigger>
+          <TabsTrigger value="receptionist" className="rounded-md px-4 py-2">
+            Receptionist
+          </TabsTrigger>
+          <TabsTrigger value="services" className="rounded-md px-4 py-2">
+            Services & Pricing
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="general">
           <GeneralSettings company={company} />
         </TabsContent>
-        
+
         <TabsContent value="receptionist">
           <ReceptionistSettings company={company} />
         </TabsContent>
@@ -67,19 +99,22 @@ function GeneralSettings({ company }: { company: any }) {
   const { toast } = useToast();
 
   const handleSave = () => {
-    update.mutate({ data: { name, timezone } }, {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getGetCompanyQueryKey() });
-        toast({ title: "Saved", description: "Company settings updated." });
+    update.mutate(
+      { data: { name, timezone } },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getGetCompanyQueryKey() });
+          toast({ title: "Saved", description: "Company settings updated." });
+        },
+        onError: (error: any) => {
+          toast({
+            title: "Couldn't save that",
+            description: error?.message || "Please try again.",
+            variant: "destructive",
+          });
+        },
       },
-      onError: (error: any) => {
-        toast({
-          title: "Couldn't save that",
-          description: error?.message || "Please try again.",
-          variant: "destructive",
-        });
-      },
-    });
+    );
   };
 
   const handleJobberAction = () => {
@@ -87,8 +122,11 @@ function GeneralSettings({ company }: { company: any }) {
       disconnectJobber.mutate(undefined, {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getGetCompanyQueryKey() });
-          toast({ title: "Disconnected", description: "Jobber account disconnected." });
-        }
+          toast({
+            title: "Disconnected",
+            description: "Jobber account disconnected.",
+          });
+        },
       });
     } else {
       connectJobber.mutate(undefined, {
@@ -100,7 +138,9 @@ function GeneralSettings({ company }: { company: any }) {
         onError: (error: any) => {
           toast({
             title: "Couldn't start Jobber connection",
-            description: error?.message || "Jobber API credentials may not be configured yet.",
+            description:
+              error?.message ||
+              "Jobber API credentials may not be configured yet.",
             variant: "destructive",
           });
         },
@@ -112,7 +152,7 @@ function GeneralSettings({ company }: { company: any }) {
     <div className="bg-card border border-border rounded-xl p-6 shadow-sm max-w-2xl space-y-6">
       <div className="space-y-2">
         <Label>Company Name</Label>
-        <Input value={name} onChange={e => setName(e.target.value)} />
+        <Input value={name} onChange={(e) => setName(e.target.value)} />
       </div>
 
       <div className="space-y-2">
@@ -130,7 +170,8 @@ function GeneralSettings({ company }: { company: any }) {
           </SelectContent>
         </Select>
         <p className="text-xs text-muted-foreground">
-          Booking times in the dashboard and in texted quotes are shown in this time zone.
+          Booking times in the dashboard and in texted quotes are shown in this
+          time zone.
         </p>
       </div>
 
@@ -141,34 +182,52 @@ function GeneralSettings({ company }: { company: any }) {
             <div className="font-medium text-muted-foreground flex items-center gap-2">
               Jobber Status
               {company.jobberConnected ? (
-                <span className="text-xs text-green-700 bg-green-500/100/10 px-2 py-0.5 rounded-full flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Connected</span>
+                <span className="text-xs text-green-700 bg-green-500/100/10 px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3" /> Connected
+                </span>
               ) : company.jobberSkipped ? (
-                <span className="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">Not used</span>
+                <span className="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
+                  Not used
+                </span>
               ) : (
-                <span className="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">Disconnected</span>
+                <span className="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
+                  Disconnected
+                </span>
               )}
             </div>
-            {company.jobberAccountName && <div className="text-sm text-muted-foreground mt-1">{company.jobberAccountName}</div>}
+            {company.jobberAccountName && (
+              <div className="text-sm text-muted-foreground mt-1">
+                {company.jobberAccountName}
+              </div>
+            )}
             {!company.jobberConnected && company.jobberSkipped && (
               <div className="text-sm text-muted-foreground mt-1">
-                You're quoting and booking inside Book My Cleaning. Connect any time to sync jobs across.
+                You're quoting and booking inside Book My Cleaning. Connect any
+                time to sync jobs across.
               </div>
             )}
           </div>
-          <Button 
-            variant={company.jobberConnected ? "outline" : "default"} 
-            size="sm" 
+          <Button
+            variant={company.jobberConnected ? "outline" : "default"}
+            size="sm"
             onClick={handleJobberAction}
             disabled={connectJobber.isPending || disconnectJobber.isPending}
           >
-            {connectJobber.isPending || disconnectJobber.isPending ? "Updating..." : company.jobberConnected ? "Disconnect" : "Connect Account"}
+            {connectJobber.isPending || disconnectJobber.isPending
+              ? "Updating..."
+              : company.jobberConnected
+                ? "Disconnect"
+                : "Connect Account"}
           </Button>
         </div>
       </div>
 
       <Button
         onClick={handleSave}
-        disabled={update.isPending || (name === company.name && timezone === company.timezone)}
+        disabled={
+          update.isPending ||
+          (name === company.name && timezone === company.timezone)
+        }
       >
         {update.isPending ? "Saving..." : "Save Changes"}
       </Button>
@@ -178,34 +237,47 @@ function GeneralSettings({ company }: { company: any }) {
 
 function ReceptionistSettings({ company }: { company: any }) {
   const [greeting, setGreeting] = useState(company.greeting || "");
-  const [ringThrough, setRingThrough] = useState(company.ringThroughNumber || "");
-  const [customQuestions, setCustomQuestions] = useState(company.customQuestions || []);
-  
+  const [ringThrough, setRingThrough] = useState(
+    company.ringThroughNumber || "",
+  );
+  const [customQuestions, setCustomQuestions] = useState(
+    company.customQuestions || [],
+  );
+
   const update = useUpdateCompany();
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   const handleSave = () => {
-    update.mutate({ data: { greeting, ringThroughNumber: ringThrough, customQuestions } }, {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getGetCompanyQueryKey() });
-        toast({ title: "Saved", description: "AI configuration updated." });
-      }
-    });
+    update.mutate(
+      { data: { greeting, ringThroughNumber: ringThrough, customQuestions } },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getGetCompanyQueryKey() });
+          toast({ title: "Saved", description: "AI configuration updated." });
+        },
+      },
+    );
   };
 
   const addQuestion = () => {
     setCustomQuestions([...customQuestions, { question: "", answer: "" }]);
   };
 
-  const updateQuestion = (index: number, field: 'question' | 'answer', value: string) => {
+  const updateQuestion = (
+    index: number,
+    field: "question" | "answer",
+    value: string,
+  ) => {
     const newQ = [...customQuestions];
     newQ[index][field] = value;
     setCustomQuestions(newQ);
   };
 
   const removeQuestion = (index: number) => {
-    setCustomQuestions(customQuestions.filter((_: any, i: number) => i !== index));
+    setCustomQuestions(
+      customQuestions.filter((_: any, i: number) => i !== index),
+    );
   };
 
   return (
@@ -214,17 +286,17 @@ function ReceptionistSettings({ company }: { company: any }) {
         <h3 className="font-serif font-bold text-lg">Basic Configuration</h3>
         <div className="space-y-2">
           <Label>Greeting Script</Label>
-          <Textarea 
-            value={greeting} 
-            onChange={e => setGreeting(e.target.value)} 
+          <Textarea
+            value={greeting}
+            onChange={(e) => setGreeting(e.target.value)}
             className="h-24 resize-none"
           />
         </div>
         <div className="space-y-2">
           <Label>Ring-through Number (Transfer Target)</Label>
-          <Input 
-            value={ringThrough} 
-            onChange={e => setRingThrough(e.target.value)} 
+          <Input
+            value={ringThrough}
+            onChange={(e) => setRingThrough(e.target.value)}
           />
         </div>
       </div>
@@ -232,26 +304,54 @@ function ReceptionistSettings({ company }: { company: any }) {
       <div className="pt-6 border-t border-border space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="font-serif font-bold text-lg">Custom Q&A</h3>
-          <Button variant="outline" size="sm" onClick={addQuestion} className="gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={addQuestion}
+            className="gap-2"
+          >
             <Plus className="w-4 h-4" /> Add Q&A
           </Button>
         </div>
-        <p className="text-sm text-muted-foreground">Train your AI with specific answers to common customer questions.</p>
+        <p className="text-sm text-muted-foreground">
+          Train your AI with specific answers to common customer questions.
+        </p>
 
         <div className="space-y-4">
           {customQuestions.map((q: any, i: number) => (
-            <div key={i} className="flex gap-4 items-start bg-secondary p-4 rounded-lg border border-border relative group">
+            <div
+              key={i}
+              className="flex gap-4 items-start bg-secondary p-4 rounded-lg border border-border relative group"
+            >
               <div className="flex-1 space-y-3">
                 <div>
                   <Label className="text-xs mb-1">If caller asks...</Label>
-                  <Input value={q.question} onChange={e => updateQuestion(i, 'question', e.target.value)} placeholder="e.g. Do you bring your own supplies?" />
+                  <Input
+                    value={q.question}
+                    onChange={(e) =>
+                      updateQuestion(i, "question", e.target.value)
+                    }
+                    placeholder="e.g. Do you bring your own supplies?"
+                  />
                 </div>
                 <div>
                   <Label className="text-xs mb-1">AI should answer...</Label>
-                  <Textarea value={q.answer} onChange={e => updateQuestion(i, 'answer', e.target.value)} placeholder="e.g. Yes, we provide all eco-friendly cleaning supplies." className="h-16 resize-none" />
+                  <Textarea
+                    value={q.answer}
+                    onChange={(e) =>
+                      updateQuestion(i, "answer", e.target.value)
+                    }
+                    placeholder="e.g. Yes, we provide all eco-friendly cleaning supplies."
+                    className="h-16 resize-none"
+                  />
                 </div>
               </div>
-              <Button variant="ghost" size="icon" className="text-red-400 hover:bg-red-500/10" onClick={() => removeQuestion(i)}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-red-400 hover:bg-red-500/10"
+                onClick={() => removeQuestion(i)}
+              >
                 <Trash2 className="w-4 h-4" />
               </Button>
             </div>
@@ -333,7 +433,8 @@ function QuotePricingSettings({ company }: { company: any }) {
     quoteDepositEmail: company.quoteDepositEmail ?? "",
   });
 
-  const set = (patch: Partial<typeof form>) => setForm((f) => ({ ...f, ...patch }));
+  const set = (patch: Partial<typeof form>) =>
+    setForm((f) => ({ ...f, ...patch }));
 
   const numbers = {
     quoteRateSolo: Number(form.quoteRateSolo),
@@ -343,7 +444,9 @@ function QuotePricingSettings({ company }: { company: any }) {
     quoteFeesRate: Number(form.quoteFeesRate),
     quoteDepositAmount: Number(form.quoteDepositAmount),
   };
-  const badNumber = Object.values(numbers).some((n) => Number.isNaN(n) || n < 0);
+  const badNumber = Object.values(numbers).some(
+    (n) => Number.isNaN(n) || n < 0,
+  );
   const badPercent = numbers.quoteTaxRate > 100 || numbers.quoteFeesRate > 100;
 
   const handleSave = () => {
@@ -387,8 +490,8 @@ function QuotePricingSettings({ company }: { company: any }) {
       <div>
         <h3 className="font-serif font-bold text-lg">Quote pricing</h3>
         <p className="text-sm text-muted-foreground mt-1">
-          Jobs are priced by the hour. These rates fill in the quote builder, and tax and
-          fees are added on top of every quote.
+          Jobs are priced by the hour. These rates fill in the quote builder,
+          and tax and fees are added on top of every quote.
         </p>
       </div>
 
@@ -470,7 +573,9 @@ function QuotePricingSettings({ company }: { company: any }) {
             onChange={(e) => set({ quoteDepositEmail: e.target.value })}
             placeholder="support@yourcompany.com"
           />
-          <p className="text-xs text-muted-foreground">Included in the quote text.</p>
+          <p className="text-xs text-muted-foreground">
+            Included in the quote text.
+          </p>
         </div>
       </div>
 
@@ -489,12 +594,17 @@ function ServicesSettings() {
 
   const handleDelete = (id: number) => {
     if (!confirm("Delete this service?")) return;
-    deleteService.mutate({ id }, {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getListServicesQueryKey() });
-        toast({ title: "Deleted", description: "Service removed." });
-      }
-    });
+    deleteService.mutate(
+      { id },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({
+            queryKey: getListServicesQueryKey(),
+          });
+          toast({ title: "Deleted", description: "Service removed." });
+        },
+      },
+    );
   };
 
   if (isLoading) return <LoadingSpinner />;
@@ -504,24 +614,47 @@ function ServicesSettings() {
       <div className="flex items-center justify-between">
         <div>
           <h3 className="font-serif font-bold text-lg">Services & Pricing</h3>
-          <p className="text-sm text-muted-foreground mt-1">The AI will use these to quote prices to callers.</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            The AI will use these to quote prices to callers.
+          </p>
         </div>
         <ServiceModal />
       </div>
 
       <div className="divide-y divide-gray-100 border border-border rounded-lg overflow-hidden">
         {services?.map((svc: Service) => (
-          <div key={svc.id} className="p-4 flex items-center justify-between hover:bg-secondary">
+          <div
+            key={svc.id}
+            className="p-4 flex items-center justify-between hover:bg-secondary"
+          >
             <div>
-              <div className="font-medium text-muted-foreground">{svc.name}</div>
-              {svc.description && <div className="text-sm text-muted-foreground mt-1">{svc.description}</div>}
+              <div className="font-medium text-muted-foreground">
+                {svc.name}
+              </div>
+              {svc.description && (
+                <div className="text-sm text-muted-foreground mt-1">
+                  {svc.description}
+                </div>
+              )}
               <div className="text-sm font-semibold text-green-400 mt-2">
                 ${svc.priceMin} - ${svc.priceMax}
               </div>
             </div>
             <div className="flex gap-2">
-              <ServiceModal service={svc} trigger={<Button variant="ghost" size="icon"><Edit2 className="w-4 h-4 text-muted-foreground" /></Button>} />
-              <Button variant="ghost" size="icon" onClick={() => handleDelete(svc.id)} disabled={deleteService.isPending}>
+              <ServiceModal
+                service={svc}
+                trigger={
+                  <Button variant="ghost" size="icon">
+                    <Edit2 className="w-4 h-4 text-muted-foreground" />
+                  </Button>
+                }
+              />
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => handleDelete(svc.id)}
+                disabled={deleteService.isPending}
+              >
                 <Trash2 className="w-4 h-4 text-red-400" />
               </Button>
             </div>
@@ -537,7 +670,13 @@ function ServicesSettings() {
   );
 }
 
-function ServiceModal({ service, trigger }: { service?: Service, trigger?: React.ReactNode }) {
+function ServiceModal({
+  service,
+  trigger,
+}: {
+  service?: Service;
+  trigger?: React.ReactNode;
+}) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(service?.name || "");
   const [description, setDescription] = useState(service?.description || "");
@@ -554,36 +693,50 @@ function ServiceModal({ service, trigger }: { service?: Service, trigger?: React
       name,
       description,
       priceMin: parseInt(priceMin) || 0,
-      priceMax: parseInt(priceMax) || 0
+      priceMax: parseInt(priceMax) || 0,
     };
 
     if (service) {
-      update.mutate({ id: service.id, data }, {
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getListServicesQueryKey() });
-          toast({ title: "Updated", description: "Service updated." });
-          setOpen(false);
-        }
-      });
+      update.mutate(
+        { id: service.id, data },
+        {
+          onSuccess: () => {
+            queryClient.invalidateQueries({
+              queryKey: getListServicesQueryKey(),
+            });
+            toast({ title: "Updated", description: "Service updated." });
+            setOpen(false);
+          },
+        },
+      );
     } else {
-      create.mutate({ data }, {
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getListServicesQueryKey() });
-          toast({ title: "Created", description: "Service added." });
-          setOpen(false);
-          setName("");
-          setDescription("");
-          setPriceMin("");
-          setPriceMax("");
-        }
-      });
+      create.mutate(
+        { data },
+        {
+          onSuccess: () => {
+            queryClient.invalidateQueries({
+              queryKey: getListServicesQueryKey(),
+            });
+            toast({ title: "Created", description: "Service added." });
+            setOpen(false);
+            setName("");
+            setDescription("");
+            setPriceMin("");
+            setPriceMax("");
+          },
+        },
+      );
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        {trigger || <Button className="gap-2"><Plus className="w-4 h-4" /> Add Service</Button>}
+        {trigger || (
+          <Button className="gap-2">
+            <Plus className="w-4 h-4" /> Add Service
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
@@ -592,23 +745,46 @@ function ServiceModal({ service, trigger }: { service?: Service, trigger?: React
         <div className="space-y-4 pt-4">
           <div className="space-y-2">
             <Label>Service Name</Label>
-            <Input value={name} onChange={e => setName(e.target.value)} placeholder="Deep Cleaning" />
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Deep Cleaning"
+            />
           </div>
           <div className="space-y-2">
             <Label>Description</Label>
-            <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Thorough cleaning including baseboards and inside appliances." className="resize-none" />
+            <Textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Thorough cleaning including baseboards and inside appliances."
+              className="resize-none"
+            />
           </div>
           <div className="flex gap-4">
             <div className="space-y-2 flex-1">
               <Label>Minimum Price ($)</Label>
-              <Input type="number" value={priceMin} onChange={e => setPriceMin(e.target.value)} placeholder="200" />
+              <Input
+                type="number"
+                value={priceMin}
+                onChange={(e) => setPriceMin(e.target.value)}
+                placeholder="200"
+              />
             </div>
             <div className="space-y-2 flex-1">
               <Label>Maximum Price ($)</Label>
-              <Input type="number" value={priceMax} onChange={e => setPriceMax(e.target.value)} placeholder="400" />
+              <Input
+                type="number"
+                value={priceMax}
+                onChange={(e) => setPriceMax(e.target.value)}
+                placeholder="400"
+              />
             </div>
           </div>
-          <Button onClick={handleSave} className="w-full mt-4" disabled={(service ? update.isPending : create.isPending) || !name}>
+          <Button
+            onClick={handleSave}
+            className="w-full mt-4"
+            disabled={(service ? update.isPending : create.isPending) || !name}
+          >
             {service ? "Update Service" : "Add Service"}
           </Button>
         </div>

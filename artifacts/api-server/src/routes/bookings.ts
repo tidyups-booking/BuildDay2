@@ -55,7 +55,9 @@ function serializeBooking(company: Company, b: Booking) {
     // Nullable: only set once a quote has actually gone out. Forgetting this
     // breaks every booking response, not just the one that was quoted.
     quoteSentAt: b.quoteSentAt ? b.quoteSentAt.toISOString() : null,
-    jobberSyncErrorAt: b.jobberSyncErrorAt ? b.jobberSyncErrorAt.toISOString() : null,
+    jobberSyncErrorAt: b.jobberSyncErrorAt
+      ? b.jobberSyncErrorAt.toISOString()
+      : null,
     createdAt: b.createdAt.toISOString(),
     // Derived so the dispatcher's card and the customer's text can never show
     // different totals.
@@ -83,7 +85,9 @@ router.get("/bookings", async (req, res): Promise<void> => {
     .where(eq(bookingsTable.companyId, company.id))
     .orderBy(desc(bookingsTable.createdAt));
   res.json(
-    ListBookingsResponse.parse(bookings.map((b) => serializeBooking(company, b))),
+    ListBookingsResponse.parse(
+      bookings.map((b) => serializeBooking(company, b)),
+    ),
   );
 });
 
@@ -108,11 +112,13 @@ router.patch("/bookings/:id", async (req, res): Promise<void> => {
   if (d.status !== undefined) updates.status = d.status;
   if (d.customerName !== undefined) updates.customerName = d.customerName;
   if (d.customerPhone !== undefined) updates.customerPhone = d.customerPhone;
-  if (d.customerAddress !== undefined) updates.customerAddress = d.customerAddress;
+  if (d.customerAddress !== undefined)
+    updates.customerAddress = d.customerAddress;
   if (d.service !== undefined) updates.service = d.service;
   if (d.quoteHours !== undefined) updates.quoteHours = d.quoteHours;
   if (d.quoteCrewLabel !== undefined) updates.quoteCrewLabel = d.quoteCrewLabel;
-  if (d.quoteHourlyRate !== undefined) updates.quoteHourlyRate = d.quoteHourlyRate;
+  if (d.quoteHourlyRate !== undefined)
+    updates.quoteHourlyRate = d.quoteHourlyRate;
   if (d.quoteFuelSurcharge !== undefined)
     updates.quoteFuelSurcharge = d.quoteFuelSurcharge;
   if (d.quoteDiscountAmount !== undefined)
@@ -253,7 +259,8 @@ async function resolveQuoteSender(
   } catch (err) {
     logger.warn({ err }, "Could not list Quo numbers for a quote");
     return {
-      blockedReason: "Couldn't reach Quo to find your number. Try again shortly.",
+      blockedReason:
+        "Couldn't reach Quo to find your number. Try again shortly.",
     };
   }
 
@@ -470,7 +477,9 @@ router.post("/bookings/:id/confirm-time", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Booking not found" });
     return;
   }
-  res.json(ConfirmBookingTimeResponse.parse(serializeBooking(company, booking)));
+  res.json(
+    ConfirmBookingTimeResponse.parse(serializeBooking(company, booking)),
+  );
 });
 
 // After a reschedule, text the customer the new time so the appointment in
@@ -570,7 +579,8 @@ router.post("/bookings/:id/sync-jobber", async (req, res): Promise<void> => {
   }
   if (company.jobberNeedsReauth) {
     res.status(409).json({
-      error: "Jobber authorization has expired — reconnect Jobber to keep syncing.",
+      error:
+        "Jobber authorization has expired — reconnect Jobber to keep syncing.",
     });
     return;
   }
@@ -593,7 +603,9 @@ router.post("/bookings/:id/sync-jobber", async (req, res): Promise<void> => {
     return;
   }
   if (existing.jobberSynced) {
-    res.json(SyncBookingToJobberResponse.parse(serializeBooking(company, existing)));
+    res.json(
+      SyncBookingToJobberResponse.parse(serializeBooking(company, existing)),
+    );
     return;
   }
 
@@ -604,7 +616,8 @@ router.post("/bookings/:id/sync-jobber", async (req, res): Promise<void> => {
       .select()
       .from(callsTable)
       .where(eq(callsTable.id, existing.callId));
-    extractedAnswers = (call?.extractedAnswers as typeof extractedAnswers) ?? [];
+    extractedAnswers =
+      (call?.extractedAnswers as typeof extractedAnswers) ?? [];
   }
 
   try {
@@ -628,7 +641,9 @@ router.post("/bookings/:id/sync-jobber", async (req, res): Promise<void> => {
       `Service: ${existing.service}`,
       `Requested time: ${scheduled}`,
       `Phone: ${existing.customerPhone}`,
-      ...(existing.customerAddress ? [`Address: ${existing.customerAddress}`] : []),
+      ...(existing.customerAddress
+        ? [`Address: ${existing.customerAddress}`]
+        : []),
       ...extractedAnswers.map((a) => `${a.field}: ${a.value}`),
     ];
     await tryAttachRequestNote(accessToken, request.id, noteLines.join("\n"));
@@ -652,7 +667,9 @@ router.post("/bookings/:id/sync-jobber", async (req, res): Promise<void> => {
       message: `Booking for ${booking!.customerName} synced to Jobber as a work request.`,
     });
 
-    res.json(SyncBookingToJobberResponse.parse(serializeBooking(company, booking!)));
+    res.json(
+      SyncBookingToJobberResponse.parse(serializeBooking(company, booking!)),
+    );
   } catch (err) {
     logger.error({ err }, "Jobber sync failed");
     const errorMessage = err instanceof Error ? err.message : "Unknown error";

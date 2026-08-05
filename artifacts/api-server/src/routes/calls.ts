@@ -154,7 +154,9 @@ router.post("/calls/simulate", async (req, res): Promise<void> => {
 
   // Create the booking that the AI extracted from the call
   const scheduledFor = new Date();
-  scheduledFor.setDate(scheduledFor.getDate() + 3 + Math.floor(Math.random() * 5));
+  scheduledFor.setDate(
+    scheduledFor.getDate() + 3 + Math.floor(Math.random() * 5),
+  );
   scheduledFor.setHours(10, 0, 0, 0);
 
   const [booking] = await db
@@ -206,7 +208,9 @@ router.post("/calls/simulate", async (req, res): Promise<void> => {
     },
   ]);
 
-  res.status(201).json(SimulateTestCallResponse.parse(serializeCallDetail(call!)));
+  res
+    .status(201)
+    .json(SimulateTestCallResponse.parse(serializeCallDetail(call!)));
 });
 
 export default router;

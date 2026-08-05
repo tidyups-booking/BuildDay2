@@ -218,12 +218,7 @@ router.post("/quo/numbers", async (req, res): Promise<void> => {
           numberIds,
           `${label}-transcripts`,
         ),
-        quo.createSummaryWebhook(
-          apiKey,
-          url,
-          numberIds,
-          `${label}-summaries`,
-        ),
+        quo.createSummaryWebhook(apiKey, url, numberIds, `${label}-summaries`),
       ]);
     } catch (err) {
       req.log.error(

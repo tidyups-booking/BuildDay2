@@ -31,11 +31,23 @@ function toTranscript(
 }
 
 const FIELD_PATTERNS: Array<{ field: string; re: RegExp }> = [
-  { field: "address", re: /\b(\d{1,6}\s+[A-Za-z][A-Za-z0-9.'\- ]{3,40}(?:street|st|avenue|ave|road|rd|drive|dr|lane|ln|court|ct|way|boulevard|blvd|terrace|place|pl)\b)/i },
+  {
+    field: "address",
+    re: /\b(\d{1,6}\s+[A-Za-z][A-Za-z0-9.'\- ]{3,40}(?:street|st|avenue|ave|road|rd|drive|dr|lane|ln|court|ct|way|boulevard|blvd|terrace|place|pl)\b)/i,
+  },
   { field: "home size", re: /\b(\d\s*(?:bed|bedroom|br)\b[^.!?]{0,40})/i },
-  { field: "pets", re: /\b((?:no pets|one dog|a dog|two dogs|a cat|cats?|dogs?)[^.!?]{0,30})/i },
-  { field: "preferred date", re: /\b((?:next |this )?(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|today)[^.!?]{0,30})/i },
-  { field: "service type", re: /\b((?:deep|move[- ]?out|move[- ]?in|standard|recurring|post[- ]construction|airbnb)[a-z ]{0,20}clean(?:ing)?)/i },
+  {
+    field: "pets",
+    re: /\b((?:no pets|one dog|a dog|two dogs|a cat|cats?|dogs?)[^.!?]{0,30})/i,
+  },
+  {
+    field: "preferred date",
+    re: /\b((?:next |this )?(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|today)[^.!?]{0,30})/i,
+  },
+  {
+    field: "service type",
+    re: /\b((?:deep|move[- ]?out|move[- ]?in|standard|recurring|post[- ]construction|airbnb)[a-z ]{0,20}clean(?:ing)?)/i,
+  },
   { field: "budget", re: /(\$\s?\d{2,5}(?:\s?-\s?\$?\d{2,5})?)/ },
 ];
 
@@ -194,9 +206,7 @@ export async function applyTranscript(
   // Only open a booking when the caller actually described a job: either they
   // named a service, or they gave both where and when. Two arbitrary matches
   // (say, pets plus a budget) is not a booking.
-  const looksLikeJob = Boolean(
-    serviceRequested || (address && preferredTime),
-  );
+  const looksLikeJob = Boolean(serviceRequested || (address && preferredTime));
 
   if (looksLikeJob) {
     // `bookings.call_id` is unique, so a concurrent transcript and summary
@@ -277,7 +287,12 @@ export async function backfillCalls(
     for (const call of calls) {
       const { created } = await upsertCall(company, call, ourNumbers);
       if (created) callsImported += 1;
-      const applied = await applyTranscript(apiKey, company, call.id, ourNumbers);
+      const applied = await applyTranscript(
+        apiKey,
+        company,
+        call.id,
+        ourNumbers,
+      );
       if (applied) transcriptsImported += 1;
     }
   }

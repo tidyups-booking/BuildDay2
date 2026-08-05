@@ -1,5 +1,13 @@
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, PhoneCall, CalendarCheck, Users, Settings, LogOut, CheckCircle2 } from "lucide-react";
+import {
+  LayoutDashboard,
+  PhoneCall,
+  CalendarCheck,
+  Users,
+  Settings,
+  LogOut,
+  CheckCircle2,
+} from "lucide-react";
 import { useClerk } from "@clerk/react";
 import { Company } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
@@ -33,11 +41,14 @@ export function Sidebar({ company }: SidebarProps) {
       </div>
 
       <div className="p-4 flex-1 flex flex-col gap-1 overflow-y-auto">
-        <div className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-2 px-2 mt-4">Menu</div>
-        
+        <div className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-2 px-2 mt-4">
+          Menu
+        </div>
+
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = location === item.href || location.startsWith(`${item.href}/`);
+          const isActive =
+            location === item.href || location.startsWith(`${item.href}/`);
           return (
             <Link key={item.href} href={item.href}>
               <div
@@ -47,7 +58,9 @@ export function Sidebar({ company }: SidebarProps) {
                     : "text-muted-foreground hover:bg-white/5 hover:text-white"
                 }`}
               >
-                <Icon className={`w-4 h-4 ${isActive ? "text-brand-pink" : "text-muted-foreground"}`} />
+                <Icon
+                  className={`w-4 h-4 ${isActive ? "text-brand-pink" : "text-muted-foreground"}`}
+                />
                 {item.label}
               </div>
             </Link>
@@ -57,18 +70,28 @@ export function Sidebar({ company }: SidebarProps) {
         {/* Setup Progress Nudge */}
         {company && !company.isLive && (
           <div className="mt-8 bg-brand-purple/10 rounded-xl p-4 border border-brand-purple/20">
-            <div className="text-sm font-bold text-white mb-1">Setup Progress</div>
+            <div className="text-sm font-bold text-white mb-1">
+              Setup Progress
+            </div>
             <div className="flex items-center justify-between text-xs text-brand-purple mb-2 font-medium">
-              <span>{company.setupStatus.completedSteps} of {company.setupStatus.totalSteps} steps</span>
+              <span>
+                {company.setupStatus.completedSteps} of{" "}
+                {company.setupStatus.totalSteps} steps
+              </span>
             </div>
             <div className="h-1.5 w-full bg-black/40 rounded-full overflow-hidden mb-3">
-              <div 
-                className="h-full bg-brand-purple rounded-full transition-all" 
-                style={{ width: `${(company.setupStatus.completedSteps / company.setupStatus.totalSteps) * 100}%` }}
+              <div
+                className="h-full bg-brand-purple rounded-full transition-all"
+                style={{
+                  width: `${(company.setupStatus.completedSteps / company.setupStatus.totalSteps) * 100}%`,
+                }}
               />
             </div>
             <Link href="/setup">
-              <Button size="sm" className="w-full h-8 text-xs bg-white text-black hover:bg-white/90 border-0 font-bold">
+              <Button
+                size="sm"
+                className="w-full h-8 text-xs bg-white text-black hover:bg-white/90 border-0 font-bold"
+              >
                 Continue Setup
               </Button>
             </Link>

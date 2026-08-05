@@ -32,7 +32,13 @@ export const emptyQuoteDraft: QuoteDraft = {
   deposit: null,
 };
 
-const REFERRAL_SOURCES = ["Google", "Facebook", "Instagram", "TikTok", "Referral"];
+const REFERRAL_SOURCES = [
+  "Google",
+  "Facebook",
+  "Instagram",
+  "TikTok",
+  "Referral",
+];
 const DISCOUNTS = [10, 20];
 const WHOLE_HOURS = [1, 2, 3, 4, 5];
 
@@ -110,7 +116,8 @@ export function QuoteCalculator({
   const wholeHours = Math.floor(hours);
   const hasHalfHour = hours % 1 === 0.5;
 
-  const pickHours = (whole: number) => set({ hours: whole + (hasHalfHour ? 0.5 : 0) });
+  const pickHours = (whole: number) =>
+    set({ hours: whole + (hasHalfHour ? 0.5 : 0) });
   const toggleHalfHour = () =>
     set({ hours: Math.max(wholeHours, 1) + (hasHalfHour ? 0 : 0.5) });
 
@@ -150,7 +157,11 @@ export function QuoteCalculator({
       <div className="flex items-center gap-2 flex-wrap">
         <span className="text-sm text-muted-foreground mr-1">Hours:</span>
         {WHOLE_HOURS.map((h) => (
-          <Chip key={h} selected={wholeHours === h} onClick={() => pickHours(h)}>
+          <Chip
+            key={h}
+            selected={wholeHours === h}
+            onClick={() => pickHours(h)}
+          >
             {h}
           </Chip>
         ))}
@@ -203,7 +214,10 @@ export function QuoteCalculator({
             const raw = e.target.value.trim();
             const parsed = raw === "" ? null : Number(raw);
             set({
-              hourlyRate: parsed != null && Number.isNaN(parsed) ? value.hourlyRate : parsed,
+              hourlyRate:
+                parsed != null && Number.isNaN(parsed)
+                  ? value.hourlyRate
+                  : parsed,
               // Typing over a preset makes it a custom rate.
               crewLabel:
                 parsed === rates.rateSolo
@@ -218,14 +232,19 @@ export function QuoteCalculator({
       </div>
 
       <div>
-        <p className="text-sm text-muted-foreground mb-2">How did they hear about us?</p>
+        <p className="text-sm text-muted-foreground mb-2">
+          How did they hear about us?
+        </p>
         <div className="flex items-center gap-2 flex-wrap">
           {REFERRAL_SOURCES.map((source) => (
             <Chip
               key={source}
               selected={value.referralSource === source}
               onClick={() =>
-                set({ referralSource: value.referralSource === source ? null : source })
+                set({
+                  referralSource:
+                    value.referralSource === source ? null : source,
+                })
               }
             >
               {source}
@@ -240,7 +259,9 @@ export function QuoteCalculator({
             key={amount}
             selected={value.discountAmount === amount}
             onClick={() =>
-              set({ discountAmount: value.discountAmount === amount ? null : amount })
+              set({
+                discountAmount: value.discountAmount === amount ? null : amount,
+              })
             }
           >
             &minus;${amount} off
@@ -252,7 +273,10 @@ export function QuoteCalculator({
           label above the wrong box. */}
       <div className="flex items-center gap-x-6 gap-y-3 flex-wrap">
         <div className="flex items-center gap-2">
-          <Label htmlFor="q-fuel" className="text-sm text-muted-foreground font-normal">
+          <Label
+            htmlFor="q-fuel"
+            className="text-sm text-muted-foreground font-normal"
+          >
             Fuel surcharge $
           </Label>
           <Input
@@ -266,13 +290,18 @@ export function QuoteCalculator({
               const parsed = raw === "" ? null : Number(raw);
               set({
                 fuelSurcharge:
-                  parsed != null && Number.isNaN(parsed) ? value.fuelSurcharge : parsed,
+                  parsed != null && Number.isNaN(parsed)
+                    ? value.fuelSurcharge
+                    : parsed,
               });
             }}
           />
         </div>
         <div className="flex items-center gap-2">
-          <Label htmlFor="q-deposit" className="text-sm text-muted-foreground font-normal">
+          <Label
+            htmlFor="q-deposit"
+            className="text-sm text-muted-foreground font-normal"
+          >
             Deposit $
           </Label>
           <Input
@@ -285,7 +314,10 @@ export function QuoteCalculator({
               const raw = e.target.value.trim();
               const parsed = raw === "" ? null : Number(raw);
               set({
-                deposit: parsed != null && Number.isNaN(parsed) ? value.deposit : parsed,
+                deposit:
+                  parsed != null && Number.isNaN(parsed)
+                    ? value.deposit
+                    : parsed,
               });
             }}
           />
@@ -324,7 +356,11 @@ export function QuoteCalculator({
             )}
             <Row strong label="Total" value={formatMoney(totals.total)} />
             {totals.deposit > 0 && (
-              <Row muted label="Deposit up front" value={formatMoney(totals.deposit)} />
+              <Row
+                muted
+                label="Deposit up front"
+                value={formatMoney(totals.deposit)}
+              />
             )}
           </div>
         </div>

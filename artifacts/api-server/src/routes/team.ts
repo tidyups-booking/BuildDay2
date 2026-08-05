@@ -54,7 +54,9 @@ router.post("/team", async (req, res): Promise<void> => {
     message: `${parsed.data.name} was invited as a ${parsed.data.role}.`,
   });
 
-  res.status(201).json(InviteTeamMemberResponse.parse(serializeMember(member!)));
+  res
+    .status(201)
+    .json(InviteTeamMemberResponse.parse(serializeMember(member!)));
 });
 
 router.delete("/team/:id", async (req, res): Promise<void> => {

@@ -18,7 +18,14 @@ async function resolveZodV4(workspaceRoot) {
     const entries = await readdir(pnpmStore);
     const zodDir = entries.find((e) => e.startsWith("zod@"));
     if (zodDir) {
-      const candidate = path.join(pnpmStore, zodDir, "node_modules", "zod", "v4", "index.js");
+      const candidate = path.join(
+        pnpmStore,
+        zodDir,
+        "node_modules",
+        "zod",
+        "v4",
+        "index.js",
+      );
       return candidate;
     }
   } catch {
@@ -138,7 +145,7 @@ async function buildAll() {
     sourcemap: "linked",
     plugins: [
       // pino relies on workers to handle logging, instead of externalizing it we use a plugin to handle it
-      esbuildPluginPino({ transports: ["pino-pretty"] })
+      esbuildPluginPino({ transports: ["pino-pretty"] }),
     ],
     // Make sure packages that are cjs only (e.g. express) but are bundled continue to work in our esm output file
     banner: {

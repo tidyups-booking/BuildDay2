@@ -86,7 +86,8 @@ const DEPOSIT_CURRENCY = "cad";
 
 /** The deposit the customer owes, in cents, or null when nothing is due. */
 function depositCents(company: Company, booking: Booking): number | null {
-  const totals = booking.quoteSentTotals ?? computeQuoteTotals(company, booking);
+  const totals =
+    booking.quoteSentTotals ?? computeQuoteTotals(company, booking);
   // Fall back to the full total when the company takes no deposit, so the pay
   // button still collects something rather than erroring on a $0 session.
   const amount = totals.deposit > 0 ? totals.deposit : totals.total;
@@ -199,7 +200,8 @@ async function buildPublicQuote(company: Company, booking: Booking) {
   // Prefer the frozen copy: this is the page the customer was sent to, so it
   // must show the price they were promised even if the company's rates have
   // moved since.
-  const totals = booking.quoteSentTotals ?? computeQuoteTotals(company, booking);
+  const totals =
+    booking.quoteSentTotals ?? computeQuoteTotals(company, booking);
 
   return {
     companyName: company.name,
@@ -207,7 +209,10 @@ async function buildPublicQuote(company: Company, booking: Booking) {
     customerAddress: booking.customerAddress,
     service: booking.service,
     serviceDescription: service?.description ?? null,
-    scheduledForLabel: formatAppointment(booking.scheduledFor, company.timezone),
+    scheduledForLabel: formatAppointment(
+      booking.scheduledFor,
+      company.timezone,
+    ),
     totals,
     notes: booking.quoteNotes,
     sentAtLabel: booking.quoteSentAt

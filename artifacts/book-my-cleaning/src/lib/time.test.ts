@@ -7,11 +7,15 @@ const PHOENIX = "America/Phoenix";
 
 describe("zonedInputToIso", () => {
   it("converts a standard-time wall clock (MST, UTC-7)", () => {
-    expect(zonedInputToIso("2026-01-15T09:00", DENVER)).toBe("2026-01-15T16:00:00.000Z");
+    expect(zonedInputToIso("2026-01-15T09:00", DENVER)).toBe(
+      "2026-01-15T16:00:00.000Z",
+    );
   });
 
   it("converts a daylight-time wall clock (MDT, UTC-6)", () => {
-    expect(zonedInputToIso("2026-07-15T09:00", DENVER)).toBe("2026-07-15T15:00:00.000Z");
+    expect(zonedInputToIso("2026-07-15T09:00", DENVER)).toBe(
+      "2026-07-15T15:00:00.000Z",
+    );
   });
 
   it("returns null for the nonexistent spring-forward hour", () => {
@@ -20,18 +24,26 @@ describe("zonedInputToIso", () => {
   });
 
   it("accepts times just outside the skipped hour", () => {
-    expect(zonedInputToIso("2026-03-08T01:59", DENVER)).toBe("2026-03-08T08:59:00.000Z");
-    expect(zonedInputToIso("2026-03-08T03:00", DENVER)).toBe("2026-03-08T09:00:00.000Z");
+    expect(zonedInputToIso("2026-03-08T01:59", DENVER)).toBe(
+      "2026-03-08T08:59:00.000Z",
+    );
+    expect(zonedInputToIso("2026-03-08T03:00", DENVER)).toBe(
+      "2026-03-08T09:00:00.000Z",
+    );
   });
 
   it("keeps the spring-forward hour valid in a zone without DST", () => {
     // Phoenix never springs forward, so 02:30 exists there.
-    expect(zonedInputToIso("2026-03-08T02:30", PHOENIX)).toBe("2026-03-08T09:30:00.000Z");
+    expect(zonedInputToIso("2026-03-08T02:30", PHOENIX)).toBe(
+      "2026-03-08T09:30:00.000Z",
+    );
   });
 
   it("resolves the ambiguous fall-back hour to the first (daylight) pass", () => {
     // 01:30 happens twice on Nov 1 2026 in Denver; we take MDT (UTC-6).
-    expect(zonedInputToIso("2026-11-01T01:30", DENVER)).toBe("2026-11-01T07:30:00.000Z");
+    expect(zonedInputToIso("2026-11-01T01:30", DENVER)).toBe(
+      "2026-11-01T07:30:00.000Z",
+    );
   });
 
   it("rejects malformed input", () => {
@@ -41,7 +53,11 @@ describe("zonedInputToIso", () => {
 
 describe("isoToZonedInput", () => {
   it("round-trips with zonedInputToIso in both DST halves of the year", () => {
-    for (const wall of ["2026-01-15T09:00", "2026-07-15T09:00", "2026-03-08T03:30"]) {
+    for (const wall of [
+      "2026-01-15T09:00",
+      "2026-07-15T09:00",
+      "2026-03-08T03:30",
+    ]) {
       const iso = zonedInputToIso(wall, DENVER);
       expect(iso).not.toBeNull();
       expect(isoToZonedInput(iso!, DENVER)).toBe(wall);
@@ -54,8 +70,12 @@ describe("isoToZonedInput", () => {
       isoToZonedInput("2026-01-15T16:00:00.000Z", PHOENIX),
     );
     // Summer: Denver is UTC-6, Phoenix stays UTC-7 → one hour apart.
-    expect(isoToZonedInput("2026-07-15T15:00:00.000Z", DENVER)).toBe("2026-07-15T09:00");
-    expect(isoToZonedInput("2026-07-15T15:00:00.000Z", PHOENIX)).toBe("2026-07-15T08:00");
+    expect(isoToZonedInput("2026-07-15T15:00:00.000Z", DENVER)).toBe(
+      "2026-07-15T09:00",
+    );
+    expect(isoToZonedInput("2026-07-15T15:00:00.000Z", PHOENIX)).toBe(
+      "2026-07-15T08:00",
+    );
   });
 
   it("returns empty string for an invalid ISO", () => {

@@ -38,7 +38,9 @@ export const companiesTable = pgTable("companies", {
   // many cleaners are sent. Defaults are Tidyups' real numbers.
   quoteRateSolo: doublePrecision("quote_rate_solo").notNull().default(52.5),
   quoteRateTeam: doublePrecision("quote_rate_team").notNull().default(105),
-  quoteFuelSurcharge: doublePrecision("quote_fuel_surcharge").notNull().default(12.5),
+  quoteFuelSurcharge: doublePrecision("quote_fuel_surcharge")
+    .notNull()
+    .default(12.5),
   // Tax and fees go on top of the subtotal, and the rates are jurisdictional —
   // Alberta's 5% GST is not Ontario's 13% HST — so they belong to the company,
   // not the codebase.
@@ -48,7 +50,9 @@ export const companiesTable = pgTable("companies", {
   quoteFeesRate: doublePrecision("quote_fees_rate").notNull().default(7.5),
   // Default deposit asked for up front. Per-quote overrides live on the booking
   // — the real quotes show this varying by job.
-  quoteDepositAmount: doublePrecision("quote_deposit_amount").notNull().default(0),
+  quoteDepositAmount: doublePrecision("quote_deposit_amount")
+    .notNull()
+    .default(0),
   // Where the customer sends the deposit. Named in the quote text itself.
   quoteDepositEmail: text("quote_deposit_email"),
   // Jobber OAuth tokens — real OAuth with PKCE

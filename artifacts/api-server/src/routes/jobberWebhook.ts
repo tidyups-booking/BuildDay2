@@ -12,7 +12,11 @@ export const JOBBER_WEBHOOK_PATH = "/api/webhooks/jobber";
 
 // Jobber signs each delivery with HMAC-SHA256 over the raw request body using
 // the app's client secret, sent base64-encoded in X-Jobber-Hmac-SHA256.
-function verifySignature(rawBody: Buffer, signature: string, clientSecret: string): boolean {
+function verifySignature(
+  rawBody: Buffer,
+  signature: string,
+  clientSecret: string,
+): boolean {
   const expected = crypto
     .createHmac("sha256", clientSecret)
     .update(rawBody)
@@ -64,7 +68,10 @@ router.post("/webhooks/jobber", async (req, res): Promise<void> => {
 
   const parsed = payloadSchema.safeParse(payload);
   if (!parsed.success) {
-    req.log.warn({ errors: parsed.error.message }, "Unrecognized Jobber payload");
+    req.log.warn(
+      { errors: parsed.error.message },
+      "Unrecognized Jobber payload",
+    );
     res.sendStatus(202);
     return;
   }

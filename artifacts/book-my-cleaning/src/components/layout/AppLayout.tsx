@@ -19,7 +19,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     return <Redirect to="/onboarding" />;
   }
 
-  if (company && !company.setupStatus.accountCreated && location !== "/onboarding") {
+  if (
+    company &&
+    !company.setupStatus.accountCreated &&
+    location !== "/onboarding"
+  ) {
     return <Redirect to="/onboarding" />;
   }
 

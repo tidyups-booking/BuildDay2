@@ -1,6 +1,11 @@
 import { Router, type IRouter } from "express";
 import { eq, sql } from "drizzle-orm";
-import { db, companiesTable, teamMembersTable, activityTable } from "@workspace/db";
+import {
+  db,
+  companiesTable,
+  teamMembersTable,
+  activityTable,
+} from "@workspace/db";
 import {
   CreateCompanyBody,
   UpdateCompanyBody,
@@ -32,7 +37,9 @@ import crypto from "node:crypto";
 
 const router: IRouter = Router();
 
-function externalBaseUrl(req: { get(name: string): string | undefined }): string {
+function externalBaseUrl(req: {
+  get(name: string): string | undefined;
+}): string {
   const proto = req.get("x-forwarded-proto")?.split(",")[0] || "https";
   const host = req.get("x-forwarded-host")?.split(",")[0] || req.get("host");
   return `${proto}://${host}`;
@@ -47,9 +54,7 @@ router.get("/company/jobber/callback", async (req, res): Promise<void> => {
   // The frontend's BASE_PATH is forwarded in X-Forwarded-Prefix by the proxy;
   // we fall back to FRONTEND_BASE_PATH env var, then to the root.
   const frontendBase =
-    req.get("x-forwarded-prefix") ||
-    process.env.FRONTEND_BASE_PATH ||
-    "";
+    req.get("x-forwarded-prefix") || process.env.FRONTEND_BASE_PATH || "";
   const frontendOrigin = externalBaseUrl(req);
   const setupUrl = `${frontendOrigin}${frontendBase}/setup`;
 
@@ -125,14 +130,21 @@ router.post("/company", async (req, res): Promise<void> => {
     return;
   }
   // Same guard as PATCH: a bogus zone would silently skew every booking time.
-  if (parsed.data.timezone !== undefined && !isValidTimezone(parsed.data.timezone)) {
-    res.status(400).json({ error: `Unknown time zone: ${parsed.data.timezone}` });
+  if (
+    parsed.data.timezone !== undefined &&
+    !isValidTimezone(parsed.data.timezone)
+  ) {
+    res
+      .status(400)
+      .json({ error: `Unknown time zone: ${parsed.data.timezone}` });
     return;
   }
 
   const existing = await getCompanyForUser(req.userId!);
   if (existing) {
-    res.status(201).json(CreateCompanyResponse.parse(await serializeCompany(existing)));
+    res
+      .status(201)
+      .json(CreateCompanyResponse.parse(await serializeCompany(existing)));
     return;
   }
 
@@ -156,7 +168,9 @@ router.post("/company", async (req, res): Promise<void> => {
     status: "active",
   });
 
-  res.status(201).json(CreateCompanyResponse.parse(await serializeCompany(company!)));
+  res
+    .status(201)
+    .json(CreateCompanyResponse.parse(await serializeCompany(company!)));
 });
 
 /** True when the runtime's own timezone database knows this IANA zone. */
@@ -178,8 +192,13 @@ router.patch("/company", async (req, res): Promise<void> => {
   // The spec can only say "non-empty string"; a bogus zone like "America/Foo"
   // would silently make every rendered booking time wrong, so check it against
   // the runtime's own timezone database before storing it.
-  if (parsed.data.timezone !== undefined && !isValidTimezone(parsed.data.timezone)) {
-    res.status(400).json({ error: `Unknown time zone: ${parsed.data.timezone}` });
+  if (
+    parsed.data.timezone !== undefined &&
+    !isValidTimezone(parsed.data.timezone)
+  ) {
+    res
+      .status(400)
+      .json({ error: `Unknown time zone: ${parsed.data.timezone}` });
     return;
   }
   const company = await getCompanyForUser(req.userId!);
@@ -270,7 +289,10 @@ router.post("/company/jobber/disconnect", async (req, res): Promise<void> => {
       const accessToken = await getValidAccessToken(company);
       await disconnectJobberApp(accessToken);
     } catch (err) {
-      logger.warn({ err }, "Jobber appDisconnect failed; clearing tokens anyway");
+      logger.warn(
+        { err },
+        "Jobber appDisconnect failed; clearing tokens anyway",
+      );
     }
   }
   const [updated] = await db
