@@ -42,7 +42,33 @@ app.use(
 
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 
-app.use(cors({ credentials: true, origin: true }));
+// CORS: explicit allowlist of this app's own origins only. Reflecting every
+// origin (`origin: true`) with credentials enabled would let any website make
+// authenticated requests with the victim's session cookie and read responses.
+const allowedOrigins = new Set<string>(
+  [
+    ...(process.env.REPLIT_DOMAINS?.split(",") ?? []),
+    process.env.REPLIT_DEV_DOMAIN,
+  ]
+    .map((d) => d?.trim())
+    .filter((d): d is string => Boolean(d))
+    .map((d) => `https://${d}`),
+);
+
+app.use(
+  cors({
+    credentials: true,
+    origin: (origin, callback) => {
+      // Non-browser or same-origin requests carry no Origin header; allow
+      // them (no CORS headers are needed and none grant anything extra).
+      if (!origin || allowedOrigins.has(origin)) {
+        callback(null, true);
+      } else {
+        callback(null, false);
+      }
+    },
+  }),
+);
 
 // Quo signs webhooks over the exact bytes it sent, so this one route must see
 // the raw body. The raw parser is scoped to the webhook path only — mounting
