@@ -24,6 +24,8 @@ export interface CompanyUpdate {
   collectFields?: string[];
   customQuestions?: CustomQuestion[];
   ringThroughNumber?: string;
+  /** @minLength 1 */
+  timezone?: string;
   /**
      * @minimum 0
      * @maximum 10000

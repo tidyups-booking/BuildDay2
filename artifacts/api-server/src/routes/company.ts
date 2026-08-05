@@ -152,10 +152,27 @@ router.post("/company", async (req, res): Promise<void> => {
   res.status(201).json(CreateCompanyResponse.parse(await serializeCompany(company!)));
 });
 
+/** True when the runtime's own timezone database knows this IANA zone. */
+function isValidTimezone(tz: string): boolean {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: tz });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 router.patch("/company", async (req, res): Promise<void> => {
   const parsed = UpdateCompanyBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  // The spec can only say "non-empty string"; a bogus zone like "America/Foo"
+  // would silently make every rendered booking time wrong, so check it against
+  // the runtime's own timezone database before storing it.
+  if (parsed.data.timezone !== undefined && !isValidTimezone(parsed.data.timezone)) {
+    res.status(400).json({ error: `Unknown time zone: ${parsed.data.timezone}` });
     return;
   }
   const company = await getCompanyForUser(req.userId!);

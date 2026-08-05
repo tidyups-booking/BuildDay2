@@ -133,6 +133,7 @@ export const CreateCompanyResponse = zod.object({
 /**
  * @summary Update company settings / receptionist configuration
  */
+
 export const updateCompanyBodyQuoteRateSoloMin = 0;
 export const updateCompanyBodyQuoteRateSoloMax = 10000;
 
@@ -164,6 +165,7 @@ export const UpdateCompanyBody = zod.object({
   "answer": zod.string()
 })).optional(),
   "ringThroughNumber": zod.string().optional(),
+  "timezone": zod.string().min(1).optional(),
   "quoteRateSolo": zod.number().min(updateCompanyBodyQuoteRateSoloMin).max(updateCompanyBodyQuoteRateSoloMax).optional(),
   "quoteRateTeam": zod.number().min(updateCompanyBodyQuoteRateTeamMin).max(updateCompanyBodyQuoteRateTeamMax).optional(),
   "quoteFuelSurcharge": zod.number().min(updateCompanyBodyQuoteFuelSurchargeMin).max(updateCompanyBodyQuoteFuelSurchargeMax).optional(),

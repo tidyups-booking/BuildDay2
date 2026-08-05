@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Trash2, Edit2, CheckCircle2 } from "lucide-react";
 
 export function SettingsPage() {
@@ -52,8 +53,13 @@ export function SettingsPage() {
   );
 }
 
+// The browser's own IANA zone list. Computed once at module load — it can't
+// change mid-session and there are ~400 entries.
+const TIMEZONES: string[] = Intl.supportedValuesOf("timeZone");
+
 function GeneralSettings({ company }: { company: any }) {
   const [name, setName] = useState(company.name);
+  const [timezone, setTimezone] = useState(company.timezone);
   const update = useUpdateCompany();
   const connectJobber = useConnectJobber();
   const disconnectJobber = useDisconnectJobber();
@@ -61,11 +67,18 @@ function GeneralSettings({ company }: { company: any }) {
   const { toast } = useToast();
 
   const handleSave = () => {
-    update.mutate({ data: { name } }, {
+    update.mutate({ data: { name, timezone } }, {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getGetCompanyQueryKey() });
         toast({ title: "Saved", description: "Company settings updated." });
-      }
+      },
+      onError: (error: any) => {
+        toast({
+          title: "Couldn't save that",
+          description: error?.message || "Please try again.",
+          variant: "destructive",
+        });
+      },
     });
   };
 
@@ -102,6 +115,25 @@ function GeneralSettings({ company }: { company: any }) {
         <Input value={name} onChange={e => setName(e.target.value)} />
       </div>
 
+      <div className="space-y-2">
+        <Label>Time Zone</Label>
+        <Select value={timezone} onValueChange={setTimezone}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select a time zone" />
+          </SelectTrigger>
+          <SelectContent className="max-h-72">
+            {TIMEZONES.map((tz) => (
+              <SelectItem key={tz} value={tz}>
+                {tz.replace(/_/g, " ")}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-muted-foreground">
+          Booking times in the dashboard and in texted quotes are shown in this time zone.
+        </p>
+      </div>
+
       <div className="pt-4 border-t border-border">
         <Label className="mb-2 block">Jobber Integration</Label>
         <div className="flex items-center justify-between bg-secondary border border-border rounded-lg p-4">
@@ -134,7 +166,10 @@ function GeneralSettings({ company }: { company: any }) {
         </div>
       </div>
 
-      <Button onClick={handleSave} disabled={update.isPending || name === company.name}>
+      <Button
+        onClick={handleSave}
+        disabled={update.isPending || (name === company.name && timezone === company.timezone)}
+      >
         {update.isPending ? "Saving..." : "Save Changes"}
       </Button>
     </div>

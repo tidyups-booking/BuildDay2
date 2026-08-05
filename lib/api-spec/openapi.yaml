@@ -631,6 +631,9 @@ components:
           items:
             $ref: "#/components/schemas/CustomQuestion"
         ringThroughNumber: { type: string }
+        # IANA zone name, e.g. America/Edmonton. Validated server-side against
+        # the runtime's timezone database.
+        timezone: { type: string, minLength: 1 }
         quoteRateSolo: { type: number, minimum: 0, maximum: 10000 }
         quoteRateTeam: { type: number, minimum: 0, maximum: 10000 }
         quoteFuelSurcharge: { type: number, minimum: 0, maximum: 10000 }
