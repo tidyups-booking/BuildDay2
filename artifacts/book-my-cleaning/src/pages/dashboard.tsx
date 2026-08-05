@@ -1,11 +1,12 @@
-import { useGetDashboardSummary, useGetRecentActivity, ActivityItem, useGetCompany, useUpdateCompany, getGetCompanyQueryKey } from "@workspace/api-client-react";
+import { useGetDashboardSummary, useGetRecentActivity, ActivityItem, useGetCompany, useUpdateCompany, getGetCompanyQueryKey, useListBookings, getListBookingsQueryKey, useConfirmBookingTime, useUpdateBooking, Booking } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { PageHeader, LoadingSpinner } from "@/components/ui/shared";
 import { useToast } from "@/hooks/use-toast";
-import { PhoneIncoming, CalendarCheck, Clock, TrendingUp, PhoneMissed, CheckCircle2, UserPlus, PhoneForwarded, AlertCircle, MessageSquareText, ThumbsUp, CreditCard, Globe, X } from "lucide-react";
+import { PhoneIncoming, CalendarCheck, Clock, TrendingUp, PhoneMissed, CheckCircle2, UserPlus, PhoneForwarded, AlertCircle, MessageSquareText, ThumbsUp, CreditCard, Globe, X, CalendarClock } from "lucide-react";
 import { format } from "date-fns";
+import { companyTimeZone, formatZoned, isoToZonedInput, zonedInputToIso, zoneLabel } from "@/lib/time";
 
 export function DashboardPage() {
   const { data: summary, isLoading: isSummaryLoading } = useGetDashboardSummary();
@@ -35,6 +36,7 @@ export function DashboardPage() {
       />
 
       {company && <TimezoneNudge company={company} />}
+      {company && <BookingTimeReview company={company} />}
 
       {company && !company.isLive && (
         <div className="mb-8 bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-4">
@@ -191,6 +193,160 @@ function TimezoneNudge({ company }: { company: { id: number; timezone?: string |
       <button onClick={dismiss} aria-label="Dismiss" className="text-blue-400 hover:text-blue-600 shrink-0">
         <X className="w-4 h-4" />
       </button>
+    </div>
+  );
+}
+
+/**
+ * After a timezone switch, bookings whose displayed wall-clock hour shifted
+ * are flagged server-side. This panel walks the owner through each one:
+ * confirm the new displayed time, or adjust it in place. Times are always
+ * rendered in the *company* zone (see lib/time.ts).
+ */
+function BookingTimeReview({ company }: { company: { timezone?: string | null } }) {
+  const { data: bookings } = useListBookings();
+  const tz = companyTimeZone(company);
+
+  const flagged = (bookings ?? []).filter(
+    (b) =>
+      b.needsTimeReview &&
+      (b.status === "pending" || b.status === "confirmed") &&
+      new Date(b.scheduledFor).getTime() > Date.now(),
+  );
+  if (flagged.length === 0) return null;
+
+  return (
+    <div className="mb-8 bg-amber-50 border border-amber-200 rounded-xl overflow-hidden">
+      <div className="p-4 flex items-start gap-4">
+        <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0 mt-0.5">
+          <CalendarClock className="w-5 h-5 text-amber-600" />
+        </div>
+        <div>
+          <h3 className="font-semibold text-amber-900">
+            {flagged.length === 1 ? "1 booking shifted" : `${flagged.length} bookings shifted`} after your time zone change
+          </h3>
+          <p className="text-sm text-amber-800 mt-1">
+            These upcoming appointments now display at a different hour than before. Confirm each time is what you agreed with the customer, or adjust it.
+          </p>
+        </div>
+      </div>
+      <div className="divide-y divide-amber-200/70 border-t border-amber-200">
+        {flagged.map((b) => (
+          <ReviewRow key={b.id} booking={b} tz={tz} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ReviewRow({ booking, tz }: { booking: Booking; tz: string }) {
+  const [editing, setEditing] = useState(false);
+  const [wallClock, setWallClock] = useState(() => isoToZonedInput(booking.scheduledFor, tz));
+  const confirm = useConfirmBookingTime();
+  const update = useUpdateBooking();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const busy = confirm.isPending || update.isPending;
+
+  const refresh = () => queryClient.invalidateQueries({ queryKey: getListBookingsQueryKey() });
+
+  const onConfirm = () =>
+    confirm.mutate(
+      { id: booking.id },
+      {
+        onSuccess: refresh,
+        onError: (error: any) =>
+          toast({ title: "Couldn't confirm the time", description: error?.message || "Please try again.", variant: "destructive" }),
+      },
+    );
+
+  const onSave = () => {
+    const iso = zonedInputToIso(wallClock, tz);
+    if (!iso) {
+      toast({
+        title: "That time doesn't exist",
+        description: `Because of a daylight-saving change, that hour is skipped in ${tz.replace(/_/g, " ")}. Pick a different time.`,
+        variant: "destructive",
+      });
+      return;
+    }
+    update.mutate(
+      { id: booking.id, data: { scheduledFor: iso } },
+      {
+        onSuccess: () => {
+          refresh();
+          toast({ title: "Booking rescheduled", description: `${booking.customerName} is now booked for ${formatZoned(iso, tz)} ${zoneLabel(tz)}.` });
+        },
+        onError: (error: any) =>
+          toast({ title: "Couldn't reschedule", description: error?.message || "Please try again.", variant: "destructive" }),
+      },
+    );
+  };
+
+  const prevTz = booking.timeReviewPreviousTimezone;
+
+  return (
+    <div className="px-4 py-3 sm:pl-[4.5rem] bg-amber-50/60">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-amber-950">
+            {booking.customerName} — {booking.service}
+          </p>
+          <p className="text-sm text-amber-800 mt-0.5">
+            Now shows <span className="font-semibold">{formatZoned(booking.scheduledFor, tz)} {zoneLabel(tz, new Date(booking.scheduledFor))}</span>
+            {prevTz && (
+              <>
+                {" "}
+                <span className="text-amber-700">
+                  (was {formatZoned(booking.scheduledFor, prevTz)} {zoneLabel(prevTz, new Date(booking.scheduledFor))})
+                </span>
+              </>
+            )}
+          </p>
+        </div>
+        {!editing ? (
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={onConfirm}
+              disabled={busy}
+              className="text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 disabled:opacity-60 px-3 py-1.5 rounded shadow-sm"
+            >
+              {confirm.isPending ? "Confirming…" : "Time is correct"}
+            </button>
+            <button
+              onClick={() => setEditing(true)}
+              disabled={busy}
+              className="text-sm font-medium text-amber-800 bg-card border border-amber-300 hover:bg-amber-100 disabled:opacity-60 px-3 py-1.5 rounded shadow-sm"
+            >
+              Adjust
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 shrink-0">
+            <input
+              type="datetime-local"
+              value={wallClock}
+              onChange={(e) => setWallClock(e.target.value)}
+              className="text-sm border border-amber-300 rounded px-2 py-1.5 bg-card text-amber-950"
+              aria-label={`New time for ${booking.customerName}'s booking (${zoneLabel(tz)})`}
+            />
+            <button
+              onClick={onSave}
+              disabled={busy || !wallClock}
+              className="text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 disabled:opacity-60 px-3 py-1.5 rounded shadow-sm"
+            >
+              {update.isPending ? "Saving…" : "Save"}
+            </button>
+            <button
+              onClick={() => setEditing(false)}
+              disabled={busy}
+              className="text-sm font-medium text-amber-700 hover:text-amber-900 px-2 py-1.5"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

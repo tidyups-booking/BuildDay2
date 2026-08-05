@@ -71,6 +71,13 @@
       "when": 1785922900000,
       "tag": "0009_deposit_payment",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1785923000000,
+      "tag": "0010_timezone_review",
+      "breakpoints": true
     }
   ]
 }

@@ -81,6 +81,14 @@ export const bookingsTable = pgTable("bookings", {
   depositPaidAt: timestamp("deposit_paid_at", { withTimezone: true }),
   // What they actually paid, in case the company edits the deposit afterwards.
   depositPaidAmount: doublePrecision("deposit_paid_amount"),
+  // Set when the company's timezone change shifted this booking's displayed
+  // wall-clock time. The owner is asked to confirm or adjust — the stored UTC
+  // instant may have been entered under the wrong zone.
+  needsTimeReview: boolean("needs_time_review").notNull().default(false),
+  // The zone the booking was displayed in before the switch, so the review UI
+  // can show "was 10:00 AM MDT". Kept from the *first* flagging so repeated
+  // zone changes still reference what the owner originally saw.
+  timeReviewPreviousTimezone: text("time_review_previous_timezone"),
   jobberSynced: boolean("jobber_synced").notNull().default(false),
   jobberJobId: text("jobber_job_id"),
   jobberClientId: text("jobber_client_id"),

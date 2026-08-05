@@ -2388,6 +2388,77 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getUpdateBookingMutationOptions(options));
     }
 
+export const getConfirmBookingTimeUrl = (id: number,) => {
+
+
+
+
+  return `/api/bookings/${id}/confirm-time`
+}
+
+/**
+ * @summary Owner confirms the displayed time is correct after a timezone change
+ */
+export const confirmBookingTime = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<Booking> => {
+
+  return customFetch<Booking>(getConfirmBookingTimeUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getConfirmBookingTimeMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmBookingTime>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof confirmBookingTime>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['confirmBookingTime'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof confirmBookingTime>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  confirmBookingTime(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ConfirmBookingTimeMutationResult = NonNullable<Awaited<ReturnType<typeof confirmBookingTime>>>
+
+    export type ConfirmBookingTimeMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Owner confirms the displayed time is correct after a timezone change
+ */
+export const useConfirmBookingTime = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmBookingTime>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof confirmBookingTime>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getConfirmBookingTimeMutationOptions(options));
+    }
+
 export const getSyncBookingToJobberUrl = (id: number,) => {
 
 

@@ -26,6 +26,7 @@ import {
   tokenExpiry,
 } from "../lib/jobber";
 import { encryptJobberToken } from "../lib/secretBox";
+import { flagShiftedBookings } from "../lib/timezoneReview";
 import { logger } from "../lib/logger";
 import crypto from "node:crypto";
 
@@ -201,6 +202,18 @@ router.patch("/company", async (req, res): Promise<void> => {
     })
     .where(eq(companiesTable.id, company.id))
     .returning();
+
+  // A timezone switch instantly re-renders every booking in the new zone.
+  // Upcoming bookings whose displayed hour just moved may have been entered
+  // as wall-clock agreements under the old zone, so flag them for the owner
+  // to confirm or adjust.
+  if (
+    parsed.data.timezone !== undefined &&
+    company.timezone &&
+    updated!.timezone !== company.timezone
+  ) {
+    await flagShiftedBookings(company.id, company.timezone, updated!.timezone!);
+  }
 
   res.json(UpdateCompanyResponse.parse(await serializeCompany(updated!)));
 });

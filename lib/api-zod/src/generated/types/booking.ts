@@ -51,6 +51,9 @@ export interface Booking {
   depositPaidAmount?: number | null;
   quoteTotals: QuoteTotals;
   quoteSentTotals?: QuoteTotals | null;
+  needsTimeReview: boolean;
+  /** @nullable */
+  timeReviewPreviousTimezone?: string | null;
   jobberSynced: boolean;
   /** @nullable */
   jobberJobId?: string | null;

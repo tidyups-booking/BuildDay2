@@ -555,6 +555,24 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Booking"
+  /bookings/{id}/confirm-time:
+    post:
+      operationId: confirmBookingTime
+      tags: [bookings]
+      summary: Owner confirms the displayed time is correct after a timezone change
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Confirmed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Booking"
   /bookings/{id}/sync-jobber:
     post:
       operationId: syncBookingToJobber
@@ -853,7 +871,7 @@ components:
             $ref: "#/components/schemas/ExtractedAnswer"
     Booking:
       type: object
-      required: [id, customerName, customerPhone, service, scheduledFor, status, quoteTotals, jobberSynced, createdAt]
+      required: [id, customerName, customerPhone, service, scheduledFor, status, quoteTotals, jobberSynced, needsTimeReview, createdAt]
       properties:
         id: { type: integer }
         callId: { type: ["integer", "null"] }
@@ -891,6 +909,12 @@ components:
           oneOf:
             - $ref: "#/components/schemas/QuoteTotals"
             - type: "null"
+        # True when a company timezone change shifted this booking's displayed
+        # time and the owner hasn't yet confirmed or adjusted it.
+        needsTimeReview: { type: boolean }
+        # The zone the booking was shown in before the switch, e.g.
+        # "America/Edmonton". Null unless flagged for review.
+        timeReviewPreviousTimezone: { type: ["string", "null"] }
         jobberSynced: { type: boolean }
         jobberJobId: { type: ["string", "null"] }
         jobberClientId: { type: ["string", "null"] }

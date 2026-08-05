@@ -864,6 +864,8 @@ export const ListBookingsResponseItem = zod.object({
   "deposit": zod.number(),
   "depositEmail": zod.string().nullish()
 }),zod.null()]).optional(),
+  "needsTimeReview": zod.boolean(),
+  "timeReviewPreviousTimezone": zod.string().nullish(),
   "jobberSynced": zod.boolean(),
   "jobberJobId": zod.string().nullish(),
   "jobberClientId": zod.string().nullish(),
@@ -985,6 +987,8 @@ export const CreateBookingResponse = zod.object({
   "deposit": zod.number(),
   "depositEmail": zod.string().nullish()
 }),zod.null()]).optional(),
+  "needsTimeReview": zod.boolean(),
+  "timeReviewPreviousTimezone": zod.string().nullish(),
   "jobberSynced": zod.boolean(),
   "jobberJobId": zod.string().nullish(),
   "jobberClientId": zod.string().nullish(),
@@ -1254,6 +1258,8 @@ export const SendQuoteResponse = zod.object({
   "deposit": zod.number(),
   "depositEmail": zod.string().nullish()
 }),zod.null()]).optional(),
+  "needsTimeReview": zod.boolean(),
+  "timeReviewPreviousTimezone": zod.string().nullish(),
   "jobberSynced": zod.boolean(),
   "jobberJobId": zod.string().nullish(),
   "jobberClientId": zod.string().nullish(),
@@ -1375,6 +1381,89 @@ export const UpdateBookingResponse = zod.object({
   "deposit": zod.number(),
   "depositEmail": zod.string().nullish()
 }),zod.null()]).optional(),
+  "needsTimeReview": zod.boolean(),
+  "timeReviewPreviousTimezone": zod.string().nullish(),
+  "jobberSynced": zod.boolean(),
+  "jobberJobId": zod.string().nullish(),
+  "jobberClientId": zod.string().nullish(),
+  "jobberWebUri": zod.string().nullish(),
+  "jobberSyncError": zod.string().nullish(),
+  "jobberSyncErrorAt": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Owner confirms the displayed time is correct after a timezone change
+ */
+export const ConfirmBookingTimeParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+
+
+
+
+export const ConfirmBookingTimeResponse = zod.object({
+  "id": zod.int(),
+  "callId": zod.int().nullish(),
+  "customerName": zod.string(),
+  "customerPhone": zod.string(),
+  "customerAddress": zod.string().nullish(),
+  "service": zod.string(),
+  "scheduledFor": zod.string(),
+  "status": zod.enum(['pending', 'confirmed', 'completed', 'canceled']),
+  "quoteHours": zod.number().nullish(),
+  "quoteCrewLabel": zod.string().nullish(),
+  "quoteHourlyRate": zod.number().nullish(),
+  "quoteFuelSurcharge": zod.number().nullish(),
+  "quoteDiscountAmount": zod.number().nullish(),
+  "quoteReferralSource": zod.string().nullish(),
+  "quotedAmount": zod.number().nullish(),
+  "quoteDeposit": zod.number().nullish(),
+  "quoteNotes": zod.string().nullish(),
+  "quoteMessage": zod.string().nullish(),
+  "quoteSentAt": zod.string().nullish(),
+  "quoteUrl": zod.string().nullish(),
+  "quoteApprovedAt": zod.string().nullish(),
+  "depositPaidAt": zod.string().nullish(),
+  "depositPaidAmount": zod.number().nullish(),
+  "quoteTotals": zod.object({
+  "lineItems": zod.array(zod.object({
+  "name": zod.string().min(1),
+  "quantity": zod.number(),
+  "unitPrice": zod.number()
+})),
+  "subtotal": zod.number(),
+  "taxLabel": zod.string(),
+  "taxRate": zod.number(),
+  "taxAmount": zod.number(),
+  "feesLabel": zod.string(),
+  "feesRate": zod.number(),
+  "feesAmount": zod.number(),
+  "total": zod.number(),
+  "deposit": zod.number(),
+  "depositEmail": zod.string().nullish()
+}),
+  "quoteSentTotals": zod.union([zod.object({
+  "lineItems": zod.array(zod.object({
+  "name": zod.string().min(1),
+  "quantity": zod.number(),
+  "unitPrice": zod.number()
+})),
+  "subtotal": zod.number(),
+  "taxLabel": zod.string(),
+  "taxRate": zod.number(),
+  "taxAmount": zod.number(),
+  "feesLabel": zod.string(),
+  "feesRate": zod.number(),
+  "feesAmount": zod.number(),
+  "total": zod.number(),
+  "deposit": zod.number(),
+  "depositEmail": zod.string().nullish()
+}),zod.null()]).optional(),
+  "needsTimeReview": zod.boolean(),
+  "timeReviewPreviousTimezone": zod.string().nullish(),
   "jobberSynced": zod.boolean(),
   "jobberJobId": zod.string().nullish(),
   "jobberClientId": zod.string().nullish(),
@@ -1454,6 +1543,8 @@ export const SyncBookingToJobberResponse = zod.object({
   "deposit": zod.number(),
   "depositEmail": zod.string().nullish()
 }),zod.null()]).optional(),
+  "needsTimeReview": zod.boolean(),
+  "timeReviewPreviousTimezone": zod.string().nullish(),
   "jobberSynced": zod.boolean(),
   "jobberJobId": zod.string().nullish(),
   "jobberClientId": zod.string().nullish(),

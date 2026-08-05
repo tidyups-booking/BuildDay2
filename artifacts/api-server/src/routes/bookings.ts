@@ -21,6 +21,8 @@ import {
   SendQuoteResponse,
   SyncBookingToJobberParams,
   SyncBookingToJobberResponse,
+  ConfirmBookingTimeParams,
+  ConfirmBookingTimeResponse,
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/requireAuth";
 import { getCompanyForUser, companyQuoKey } from "../lib/company";
@@ -121,6 +123,11 @@ router.patch("/bookings/:id", async (req, res): Promise<void> => {
       return;
     }
     updates.scheduledFor = when;
+    // Rescheduling is itself the "adjust" half of the timezone review flow:
+    // the owner has set the time deliberately in the current zone, so the
+    // review flag no longer applies.
+    updates.needsTimeReview = false;
+    updates.timeReviewPreviousTimezone = null;
   }
   if (Object.keys(updates).length === 0) {
     res.status(400).json({ error: "Nothing to update" });
@@ -428,6 +435,36 @@ router.post("/bookings/:id/send-quote", async (req, res): Promise<void> => {
   }
 
   res.json(SendQuoteResponse.parse(serializeBooking(company, updated!)));
+});
+
+// Owner reviewed a booking after a timezone change and says the displayed
+// time is right as-is. Idempotent: confirming an unflagged booking is a no-op.
+router.post("/bookings/:id/confirm-time", async (req, res): Promise<void> => {
+  const params = ConfirmBookingTimeParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const company = await getCompanyForUser(req.userId!);
+  if (!company) {
+    res.status(404).json({ error: "Booking not found" });
+    return;
+  }
+  const [booking] = await db
+    .update(bookingsTable)
+    .set({ needsTimeReview: false, timeReviewPreviousTimezone: null })
+    .where(
+      and(
+        eq(bookingsTable.id, params.data.id),
+        eq(bookingsTable.companyId, company.id),
+      ),
+    )
+    .returning();
+  if (!booking) {
+    res.status(404).json({ error: "Booking not found" });
+    return;
+  }
+  res.json(ConfirmBookingTimeResponse.parse(serializeBooking(company, booking)));
 });
 
 router.post("/bookings/:id/sync-jobber", async (req, res): Promise<void> => {
