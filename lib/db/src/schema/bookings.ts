@@ -94,6 +94,14 @@ export const bookingsTable = pgTable("bookings", {
   jobberWebUri: text("jobber_web_uri"),
   jobberSyncError: text("jobber_sync_error"),
   jobberSyncErrorAt: timestamp("jobber_sync_error_at", { withTimezone: true }),
+  // Geocoded position of the job's address, for the live dispatch map. Null
+  // until the address is resolved; geocodedAt records when that happened so a
+  // stale pin can be refreshed after an address edit.
+  lat: doublePrecision("lat"),
+  lng: doublePrecision("lng"),
+  geocodedAt: timestamp("geocoded_at", { withTimezone: true }),
+  // How long the job is expected to take, for laying it out on the schedule.
+  durationMinutes: integer("duration_minutes"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

@@ -120,6 +120,13 @@
       "when": 1785923600000,
       "tag": "0016_team_email_unique",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1785923700000,
+      "tag": "0017_live_map_and_scheduling",
+      "breakpoints": true
     }
   ]
 }

@@ -4,5 +4,7 @@ export * from "./teamMembers";
 export * from "./calls";
 export * from "./bookings";
 export * from "./bookingAssignments";
+export * from "./cleanerLocations";
+export * from "./homeownerPins";
 export * from "./activity";
 export * from "./quoWebhooks";
