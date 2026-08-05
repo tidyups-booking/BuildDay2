@@ -58,10 +58,28 @@ async function initStripe(): Promise<void> {
     // registers a webhook pointing at itself.
     const host = process.env["REPLIT_DOMAINS"]?.split(",")[0];
     if (host) {
-      const result = await stripeSync.findOrCreateManagedWebhook(
-        `https://${host}${STRIPE_WEBHOOK_PATH}`,
+      const webhookUrl = `https://${host}${STRIPE_WEBHOOK_PATH}`;
+      let webhookResult: Awaited<
+        ReturnType<typeof stripeSync.findOrCreateManagedWebhook>
+      >;
+      try {
+        webhookResult = await stripeSync.findOrCreateManagedWebhook(webhookUrl);
+      } catch (webhookErr) {
+        // The managed-webhook table may contain a stale row from a different
+        // Stripe mode (e.g. a test-mode webhook ID that live keys can't see).
+        // Clear the table so the next attempt creates a fresh webhook.
+        logger.warn(
+          { err: webhookErr },
+          "Webhook setup failed; clearing stale managed-webhook rows and retrying",
+        );
+        const { pool: dbPool } = await import("@workspace/db");
+        await dbPool.query('DELETE FROM stripe."_managed_webhooks"');
+        webhookResult = await stripeSync.findOrCreateManagedWebhook(webhookUrl);
+      }
+      logger.info(
+        { url: webhookResult?.url },
+        "Stripe managed webhook configured",
       );
-      logger.info({ url: result?.url }, "Stripe managed webhook configured");
     } else {
       logger.warn("No REPLIT_DOMAINS; skipping Stripe webhook registration");
     }
