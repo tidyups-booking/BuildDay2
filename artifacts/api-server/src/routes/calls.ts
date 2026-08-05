@@ -135,22 +135,14 @@ router.get("/calls/:id", async (req, res): Promise<void> => {
     return;
   }
   const [call] = await db
-    .insert(callsTable)
-    .values({
-      companyId: company.id,
-      callerName: sim.ctx.callerName,
-      callerPhone,
-      status: "booked",
-      serviceRequested: sim.service ? sim.service.name : "Deep Clean",
-      preferredTime: sim.ctx.preferredTime,
-      startedAt: new Date(),
-      durationSeconds: sim.durationSeconds,
-      isTest: true,
-      transcript: sim.transcript,
-      extractedAnswers: sim.extractedAnswers,
-      bookingId: booking!.id,
-    })
-    .returning();
+    .select()
+    .from(callsTable)
+    .where(
+      and(
+        eq(callsTable.id, params.data.id),
+        eq(callsTable.companyId, company.id),
+      ),
+    );
   if (!call) {
     res.status(404).json({ error: "Call not found" });
     return;

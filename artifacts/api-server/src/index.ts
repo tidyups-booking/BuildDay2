@@ -2,6 +2,7 @@ import { runMigrations as runStripeMigrations } from "stripe-replit-sync";
 import app, { STRIPE_WEBHOOK_PATH } from "./app";
 import { logger } from "./lib/logger";
 import { runMigrations } from "./lib/migrate";
+import { startQuoHealthCheck } from "./lib/quoHealth";
 import { getStripeSync } from "./lib/stripeClient";
 
 const rawPort = process.env["PORT"];
@@ -72,6 +73,10 @@ async function initStripe(): Promise<void> {
 }
 
 await initStripe();
+
+// Hourly background check so a revoked Quo key flips quoNeedsReauth even
+// while no webhooks or dashboard traffic touch Quo.
+startQuoHealthCheck();
 
 app.listen(port, (err) => {
   if (err) {

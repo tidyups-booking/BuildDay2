@@ -108,11 +108,19 @@ export function DashboardPage() {
             <AlertCircle className="w-5 h-5 text-red-600" />
           </div>
           <div>
-            <h3 className="font-semibold text-red-900">Quo connection needs attention</h3>
+            <h3 className="font-semibold text-red-900">
+              Quo connection needs attention
+            </h3>
             <p className="text-sm text-red-800 mt-1 mb-3">
-              Quo is rejecting your API key{company.quoKeyLast4 ? ` (…${company.quoKeyLast4})` : ""}, so calls and transcripts have stopped flowing. Reconnect with a fresh key to get your receptionist back online.
+              Quo is rejecting your API key
+              {company.quoKeyLast4 ? ` (…${company.quoKeyLast4})` : ""}, so
+              calls and transcripts have stopped flowing. Reconnect with a fresh
+              key to get your receptionist back online.
             </p>
-            <a href="/setup" className="text-sm font-medium text-red-700 bg-card border border-red-300 px-3 py-1.5 rounded shadow-sm hover:bg-red-50">
+            <a
+              href="/setup"
+              className="text-sm font-medium text-red-700 bg-card border border-red-300 px-3 py-1.5 rounded shadow-sm hover:bg-red-50"
+            >
               Reconnect Quo
             </a>
           </div>

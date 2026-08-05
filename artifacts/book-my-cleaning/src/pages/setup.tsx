@@ -474,10 +474,15 @@ function PhoneStep({ company }: { company: any }) {
     return (
       <div className="space-y-4">
         <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm space-y-2">
-          <p className="font-semibold text-red-900">Quo connection needs attention</p>
+          <p className="font-semibold text-red-900">
+            Quo connection needs attention
+          </p>
           <p className="text-red-800">
-            Quo is rejecting your API key{company.quoKeyLast4 ? ` (…${company.quoKeyLast4})` : ""}, so calls and transcripts have stopped flowing.
-            Generate a fresh key in <strong>Quo settings → API</strong> and paste it below — your watched lines and settings are kept.
+            Quo is rejecting your API key
+            {company.quoKeyLast4 ? ` (…${company.quoKeyLast4})` : ""}, so calls
+            and transcripts have stopped flowing. Generate a fresh key in{" "}
+            <strong>Quo settings → API</strong> and paste it below — your
+            watched lines and settings are kept.
           </p>
         </div>
         <div className="flex gap-2 max-w-sm">
@@ -487,8 +492,15 @@ function PhoneStep({ company }: { company: any }) {
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
           />
-          <Button onClick={handleConnect} disabled={connectQuo.isPending || !apiKey.trim()}>
-            {connectQuo.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Reconnect"}
+          <Button
+            onClick={handleConnect}
+            disabled={connectQuo.isPending || !apiKey.trim()}
+          >
+            {connectQuo.isPending ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              "Reconnect"
+            )}
           </Button>
         </div>
       </div>

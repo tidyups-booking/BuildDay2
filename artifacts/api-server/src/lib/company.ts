@@ -37,9 +37,7 @@ export function requireCompanyQuoKey(company: Company): string {
 
 /** True when the error means Quo rejected the key itself (revoked/rotated). */
 export function isQuoAuthError(err: unknown): boolean {
-  return (
-    err instanceof QuoError && (err.status === 401 || err.status === 403)
-  );
+  return err instanceof QuoError && (err.status === 401 || err.status === 403);
 }
 export async function serializeCompany(company: Company) {
   const team = await db
