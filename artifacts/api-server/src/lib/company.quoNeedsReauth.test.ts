@@ -24,11 +24,9 @@ vi.mock("@workspace/db", () => {
   const db = {
     update: () => ({
       set: (values: { quoNeedsReauth: boolean }) => ({
-        where: (cond: {
-          and: Array<{ eq: [{ __col: string }, unknown] }>;
-        }) => ({
-          returning: async () => {
-            // Atomic conditional update: check + write in one step.
+        where: (cond: { and: Array<{ eq: [{ __col: string }, unknown] }> }) => {
+          // Atomic conditional update: check + write in one step.
+          const exec = () => {
             const idCond = cond.and.find((c) => c.eq[0].__col === "id")!;
             const flagCond = cond.and.find(
               (c) => c.eq[0].__col === "quoNeedsReauth",
@@ -37,8 +35,17 @@ vi.mock("@workspace/db", () => {
             if (!row || row.quoNeedsReauth !== flagCond.eq[1]) return [];
             row.quoNeedsReauth = values.quoNeedsReauth;
             return [{ id: row.id }];
-          },
-        }),
+          };
+          // Like drizzle, the update is awaitable directly (claim release)
+          // or via .returning() (claim attempt).
+          return {
+            returning: async () => exec(),
+            then: (
+              resolve: (rows: Array<{ id: number }>) => void,
+              _reject?: unknown,
+            ) => resolve(exec()),
+          };
+        },
       }),
     }),
     select: () => {
@@ -66,8 +73,8 @@ vi.mock("./quo", () => ({
 
 vi.mock("./secretBox", () => ({ decryptQuoKey: vi.fn(() => null) }));
 
-const notifyOwnerQuoKeyDead = vi.fn(async () => {});
-const notifyOwnerQuoRestored = vi.fn(async () => {});
+const notifyOwnerQuoKeyDead = vi.fn(async (): Promise<string> => "sent");
+const notifyOwnerQuoRestored = vi.fn(async (): Promise<string> => "sent");
 vi.mock("./ownerNotify", () => ({
   notifyOwnerQuoKeyDead: (...args: unknown[]) =>
     notifyOwnerQuoKeyDead(...(args as [])),
@@ -89,9 +96,9 @@ const snapshot = (id: number, quoNeedsReauth = false): Company =>
 beforeEach(() => {
   store = new Map([[1, { id: 1, quoNeedsReauth: false }]]);
   notifyOwnerQuoKeyDead.mockClear();
-  notifyOwnerQuoKeyDead.mockImplementation(async () => {});
+  notifyOwnerQuoKeyDead.mockImplementation(async () => "sent");
   notifyOwnerQuoRestored.mockClear();
-  notifyOwnerQuoRestored.mockImplementation(async () => {});
+  notifyOwnerQuoRestored.mockImplementation(async () => "sent");
 });
 
 describe("setQuoNeedsReauth", () => {
@@ -139,6 +146,40 @@ describe("setQuoNeedsReauth", () => {
     await setQuoNeedsReauth(snapshot(1, true), false); // stale snapshot, DB claim fails
     expect(notifyOwnerQuoKeyDead).not.toHaveBeenCalled();
     expect(notifyOwnerQuoRestored).toHaveBeenCalledTimes(1);
+  });
+
+  it("releases the claim when the dead-key text fails to send, so the next check retries it", async () => {
+    notifyOwnerQuoKeyDead.mockImplementationOnce(async () => "failed");
+    await setQuoNeedsReauth(snapshot(1), true);
+    expect(notifyOwnerQuoKeyDead).toHaveBeenCalledTimes(1);
+    // Claim released: flag reverted so a later check re-runs the transition.
+    expect(store.get(1)!.quoNeedsReauth).toBe(false);
+    // Next hourly check finds the key still dead and retries the text.
+    await setQuoNeedsReauth(snapshot(1), true);
+    expect(notifyOwnerQuoKeyDead).toHaveBeenCalledTimes(2);
+    expect(store.get(1)!.quoNeedsReauth).toBe(true);
+  });
+
+  it("releases the claim when the back-online text fails to send, so the next check retries it", async () => {
+    store.get(1)!.quoNeedsReauth = true;
+    notifyOwnerQuoRestored.mockImplementationOnce(async () => "failed");
+    await setQuoNeedsReauth(snapshot(1, true), false);
+    expect(notifyOwnerQuoRestored).toHaveBeenCalledTimes(1);
+    expect(store.get(1)!.quoNeedsReauth).toBe(true);
+    // Next healthy check retries the recovery text.
+    await setQuoNeedsReauth(snapshot(1, true), false);
+    expect(notifyOwnerQuoRestored).toHaveBeenCalledTimes(2);
+    expect(store.get(1)!.quoNeedsReauth).toBe(false);
+  });
+
+  it("keeps the claim when the text was skipped for configuration reasons", async () => {
+    // e.g. no ring-through number: retrying can't help, and the dashboard
+    // flag must stay accurate.
+    notifyOwnerQuoKeyDead.mockImplementation(async () => "skipped");
+    await setQuoNeedsReauth(snapshot(1), true);
+    expect(store.get(1)!.quoNeedsReauth).toBe(true);
+    await setQuoNeedsReauth(snapshot(1, false), true); // stale snapshot, claim fails
+    expect(notifyOwnerQuoKeyDead).toHaveBeenCalledTimes(1);
   });
 
   it("never notifies restored on routine healthy → healthy checks", async () => {

@@ -4,6 +4,7 @@
 - [Scope express.raw to the webhook path](express-raw-body-scope.md) — a raw parser on `/api` leaves every other route's body a Buffer; body-parser skips once `req._body` is set.
 - [Quo plans & provisioning](quo-plans-and-provisioning.md) — transcripts need Business (not Starter), Sona calls burn credits, and there is no API to create accounts, numbers, or keys.
 - [Webhook idempotency via claim rows](webhook-idempotency-claim.md) — claim the delivery id before processing and release it on failure; ack-then-process silently drops events.
+- [Owner-notify claim release](notify-claim-release.md) — release a notification claim only on transient send failure ("failed"), never on config-gap skips, or retries loop and flags lie.
 - [Migrations are required here](db-migrations-required.md) — API applies Drizzle migrations at startup, so `drizzle-kit push` alone ships nothing; always add a migration file + journal entry.
 - [API date serialization](api-date-serialization.md) — a new nullable timestamp column 500s the whole list endpoint once one row sets it; update the route serializer in the same change.
 - [Booking times use company timezone](company-timezone-display.md) — never render or parse booking times in browser-local time; dispatcher and customer must see the same hour.

@@ -65,14 +65,14 @@ describe("notifyOwnerQuoKeyDead", () => {
     listPhoneNumbers.mockResolvedValue([{ id: "n1", number: "+15550001111" }]);
     sendMessage.mockRejectedValue(new Error("Quo is down"));
     const notify = await freshNotify();
-    await expect(notify(company)).resolves.toBeUndefined();
+    await expect(notify(company)).resolves.toBe("failed");
     expect(logger.error).toHaveBeenCalled();
   });
 
   it("resolves without throwing when the platform number lookup fails", async () => {
     listPhoneNumbers.mockRejectedValue(new Error("network error"));
     const notify = await freshNotify();
-    await expect(notify(company)).resolves.toBeUndefined();
+    await expect(notify(company)).resolves.toBe("failed");
     expect(sendMessage).not.toHaveBeenCalled();
     expect(logger.error).toHaveBeenCalled();
   });
@@ -80,7 +80,7 @@ describe("notifyOwnerQuoKeyDead", () => {
   it("resolves (with a warning, no send) when QUO_API_KEY is unset", async () => {
     vi.stubEnv("QUO_API_KEY", "");
     const notify = await freshNotify();
-    await expect(notify(company)).resolves.toBeUndefined();
+    await expect(notify(company)).resolves.toBe("skipped");
     expect(sendMessage).not.toHaveBeenCalled();
     expect(logger.warn).toHaveBeenCalled();
   });
@@ -106,7 +106,7 @@ describe("notifyOwnerQuoKeyDead", () => {
         ringThroughNumber: null,
         notificationNumber: null,
       } as unknown as Company),
-    ).resolves.toBeUndefined();
+    ).resolves.toBe("skipped");
     expect(sendMessage).not.toHaveBeenCalled();
     expect(logger.warn).toHaveBeenCalled();
   });

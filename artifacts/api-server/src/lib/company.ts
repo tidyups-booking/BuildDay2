@@ -8,6 +8,7 @@ import {
 import { listPhoneNumbers, QuoError } from "./quo";
 import { decryptQuoKey } from "./secretBox";
 import { notifyOwnerQuoKeyDead, notifyOwnerQuoRestored } from "./ownerNotify";
+import { logger } from "./logger";
 
 export async function getCompanyForUser(
   userId: string,
@@ -152,6 +153,14 @@ export async function serializeCompany(company: Company) {
  * healthy → needs-reauth transition is claimed exactly once even when the
  * hourly health check and a webhook race. The caller that wins the claim
  * notifies the owner directly (best-effort text with a reconnect link).
+ *
+ * If the winning caller's send *fails* (network blip, Quo 5xx…), the claim is
+ * released by reverting the flag, so the next health check or webhook
+ * re-claims the transition and retries the text — a transient send failure
+ * never permanently swallows the one-per-outage notification. Sends that were
+ * *skipped* for configuration reasons (no ring-through number, no platform
+ * key) keep the claim: retrying can't succeed until the configuration is
+ * fixed, and the flag must stay accurate for the dashboard.
  */
 export async function setQuoNeedsReauth(
   company: Company,
@@ -170,13 +179,26 @@ export async function setQuoNeedsReauth(
     .returning({ id: companiesTable.id });
   company.quoNeedsReauth = needsReauth;
   if (!claimed) return;
-  if (needsReauth) {
-    // Fired only on the claimed healthy → needs-reauth transition, so the
-    // owner gets one text per outage, not one per hourly check.
-    await notifyOwnerQuoKeyDead(company);
-  } else {
-    // Fired only on the claimed needs-reauth → healthy transition, so routine
-    // healthy → healthy checks never text the owner.
-    await notifyOwnerQuoRestored(company);
-  }
+  // Fired only on the claimed transition, so the owner gets one text per
+  // outage (and one per recovery), not one per hourly check.
+  const outcome = needsReauth
+    ? await notifyOwnerQuoKeyDead(company)
+    : await notifyOwnerQuoRestored(company);
+  if (outcome !== "failed") return;
+  // The send itself errored — likely transient. Release the claim so the next
+  // health check or webhook re-runs this transition and retries the text.
+  await db
+    .update(companiesTable)
+    .set({ quoNeedsReauth: !needsReauth })
+    .where(
+      and(
+        eq(companiesTable.id, company.id),
+        eq(companiesTable.quoNeedsReauth, needsReauth),
+      ),
+    );
+  company.quoNeedsReauth = !needsReauth;
+  logger.warn(
+    { companyId: company.id, needsReauth },
+    "Owner notification send failed; released quoNeedsReauth claim so the text is retried on the next check",
+  );
 }

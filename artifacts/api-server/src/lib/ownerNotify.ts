@@ -8,7 +8,10 @@
  * the company's key.
  *
  * All functions here are best-effort: they log failures and never throw, so a
- * notification hiccup can't break the health check or a webhook handler.
+ * notification hiccup can't break the health check or a webhook handler. They
+ * do, however, report what happened so callers can react — most importantly
+ * setQuoNeedsReauth, which releases its one-per-outage claim when a send
+ * fails so the text is retried instead of silently lost.
  */
 import type { Company } from "@workspace/db";
 import { listPhoneNumbers, sendMessage, toE164 } from "./quo";
@@ -33,6 +36,17 @@ async function platformFromNumber(apiKey: string): Promise<string | null> {
   return cachedFromNumber;
 }
 
+/**
+ * What became of a notification attempt:
+ * - "sent"    — the text went out.
+ * - "skipped" — a configuration gap (no platform key, no ring-through number,
+ *               no platform number) made sending impossible. Retrying won't
+ *               help until someone fixes the configuration, so callers should
+ *               not release claims or retry on this.
+ * - "failed"  — the send itself errored (network, Quo 5xx…). Likely
+ *               transient; callers may retry.
+ */
+export type NotifyOutcome = "sent" | "skipped" | "failed";
 /** Absolute link to the setup page, valid outside any HTTP request. */
 function setupPageUrl(): string {
   const base = process.env.FRONTEND_BASE_PATH || "";
@@ -48,8 +62,10 @@ function setupPageUrl(): string {
  * conditional update), so the owner gets one text per outage, not one per
  * hourly check.
  */
-export async function notifyOwnerQuoKeyDead(company: Company): Promise<void> {
-  await notifyOwner(company, {
+export async function notifyOwnerQuoKeyDead(
+  company: Company,
+): Promise<NotifyOutcome> {
+  return notifyOwner(company, {
     what: "dead Quo key",
     content:
       `Heads up from Book My Cleaning: the Quo connection for ${company.name} stopped working, ` +
@@ -66,8 +82,10 @@ export async function notifyOwnerQuoKeyDead(company: Company): Promise<void> {
  * needs-reauth → healthy transition (setQuoNeedsReauth does this via its
  * conditional update), so routine healthy → healthy checks stay silent.
  */
-export async function notifyOwnerQuoRestored(company: Company): Promise<void> {
-  await notifyOwner(company, {
+export async function notifyOwnerQuoRestored(
+  company: Company,
+): Promise<NotifyOutcome> {
+  return notifyOwner(company, {
     what: "restored Quo connection",
     content:
       `Good news from Book My Cleaning: the Quo connection for ${company.name} is back online. ` +
@@ -80,7 +98,7 @@ export async function notifyOwnerQuoRestored(company: Company): Promise<void> {
 async function notifyOwner(
   company: Company,
   opts: { what: string; content: string; successLog: string },
-): Promise<void> {
+): Promise<NotifyOutcome> {
   try {
     const apiKey = platformQuoKey();
     if (!apiKey) {
@@ -88,7 +106,7 @@ async function notifyOwner(
         { companyId: company.id },
         `Wanted to notify owner (${opts.what}) but QUO_API_KEY is not set; owner not notified`,
       );
-      return;
+      return "skipped";
     }
     // Ring-through number first; fall back to the dedicated notification
     // number so owners without a transfer target still hear about outages.
@@ -100,7 +118,7 @@ async function notifyOwner(
         { companyId: company.id },
         `Wanted to notify owner (${opts.what}) but company has no usable ring-through or notification number; owner not notified`,
       );
-      return;
+      return "skipped";
     }
     const from = await platformFromNumber(apiKey);
     if (!from) {
@@ -108,15 +126,17 @@ async function notifyOwner(
         { companyId: company.id },
         `Wanted to notify owner (${opts.what}) but the platform Quo workspace has no phone number; owner not notified`,
       );
-      return;
+      return "skipped";
     }
     await sendMessage(apiKey, { from, to, content: opts.content });
     logger.info({ companyId: company.id }, opts.successLog);
+    return "sent";
   } catch (err) {
     // Best-effort only — never let a notification failure break the caller.
     logger.error(
       { companyId: company.id, err },
       `Failed to notify owner (${opts.what})`,
     );
+    return "failed";
   }
 }
