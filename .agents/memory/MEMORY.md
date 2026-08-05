@@ -1,0 +1,2 @@
+- [Orval zod v4 mismatch](orval-zod-v4.md) — orval v8 emits zod v4 API (`zod.int()`); codegen script must rewrite the generated import to `zod/v4`.
+- [Clerk web auth is cookie-based](clerk-web-auth.md) — never add bearer-token wiring to browser API calls; a 401 on web is a cookie/middleware issue, not missing tokens.

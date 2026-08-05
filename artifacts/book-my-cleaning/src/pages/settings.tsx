@@ -1,0 +1,359 @@
+import { useState } from "react";
+import { AppLayout } from "@/components/layout/AppLayout";
+import { PageHeader, LoadingSpinner } from "@/components/ui/shared";
+import { 
+  useGetCompany, useUpdateCompany, getGetCompanyQueryKey,
+  useListServices, useCreateService, useUpdateService, useDeleteService, getListServicesQueryKey,
+  useConnectJobber, useDisconnectJobber,
+  Service
+} from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useToast } from "@/hooks/use-toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Plus, Trash2, Edit2, CheckCircle2 } from "lucide-react";
+
+export function SettingsPage() {
+  const { data: company, isLoading } = useGetCompany();
+
+  if (isLoading || !company) {
+    return <AppLayout><LoadingSpinner className="mt-20" /></AppLayout>;
+  }
+
+  return (
+    <AppLayout>
+      <PageHeader title="Settings" description="Manage your company profile and AI configuration." />
+
+      <Tabs defaultValue="general" className="w-full">
+        <TabsList className="mb-6 w-full justify-start h-auto p-1 bg-secondary rounded-lg overflow-x-auto">
+          <TabsTrigger value="general" className="rounded-md px-4 py-2">General</TabsTrigger>
+          <TabsTrigger value="receptionist" className="rounded-md px-4 py-2">Receptionist</TabsTrigger>
+          <TabsTrigger value="services" className="rounded-md px-4 py-2">Services & Pricing</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="general">
+          <GeneralSettings company={company} />
+        </TabsContent>
+        
+        <TabsContent value="receptionist">
+          <ReceptionistSettings company={company} />
+        </TabsContent>
+
+        <TabsContent value="services">
+          <ServicesSettings />
+        </TabsContent>
+      </Tabs>
+    </AppLayout>
+  );
+}
+
+function GeneralSettings({ company }: { company: any }) {
+  const [name, setName] = useState(company.name);
+  const update = useUpdateCompany();
+  const connectJobber = useConnectJobber();
+  const disconnectJobber = useDisconnectJobber();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const handleSave = () => {
+    update.mutate({ data: { name } }, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetCompanyQueryKey() });
+        toast({ title: "Saved", description: "Company settings updated." });
+      }
+    });
+  };
+
+  const handleJobberAction = () => {
+    if (company.jobberConnected) {
+      disconnectJobber.mutate(undefined, {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getGetCompanyQueryKey() });
+          toast({ title: "Disconnected", description: "Jobber account disconnected." });
+        }
+      });
+    } else {
+      connectJobber.mutate(undefined, {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getGetCompanyQueryKey() });
+          toast({ title: "Connected", description: "Jobber account connected." });
+        }
+      });
+    }
+  };
+
+  return (
+    <div className="bg-card border border-border rounded-xl p-6 shadow-sm max-w-2xl space-y-6">
+      <div className="space-y-2">
+        <Label>Company Name</Label>
+        <Input value={name} onChange={e => setName(e.target.value)} />
+      </div>
+
+      <div className="pt-4 border-t border-border">
+        <Label className="mb-2 block">Jobber Integration</Label>
+        <div className="flex items-center justify-between bg-secondary border border-border rounded-lg p-4">
+          <div>
+            <div className="font-medium text-muted-foreground flex items-center gap-2">
+              Jobber Status
+              {company.jobberConnected ? (
+                <span className="text-xs text-green-700 bg-green-500/100/10 px-2 py-0.5 rounded-full flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Connected</span>
+              ) : (
+                <span className="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">Disconnected</span>
+              )}
+            </div>
+            {company.jobberAccountName && <div className="text-sm text-muted-foreground mt-1">{company.jobberAccountName}</div>}
+          </div>
+          <Button 
+            variant={company.jobberConnected ? "outline" : "default"} 
+            size="sm" 
+            onClick={handleJobberAction}
+            disabled={connectJobber.isPending || disconnectJobber.isPending}
+          >
+            {connectJobber.isPending || disconnectJobber.isPending ? "Updating..." : company.jobberConnected ? "Disconnect" : "Connect Account"}
+          </Button>
+        </div>
+      </div>
+
+      <Button onClick={handleSave} disabled={update.isPending || name === company.name}>
+        {update.isPending ? "Saving..." : "Save Changes"}
+      </Button>
+    </div>
+  );
+}
+
+function ReceptionistSettings({ company }: { company: any }) {
+  const [greeting, setGreeting] = useState(company.greeting || "");
+  const [ringThrough, setRingThrough] = useState(company.ringThroughNumber || "");
+  const [customQuestions, setCustomQuestions] = useState(company.customQuestions || []);
+  
+  const update = useUpdateCompany();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const handleSave = () => {
+    update.mutate({ data: { greeting, ringThroughNumber: ringThrough, customQuestions } }, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetCompanyQueryKey() });
+        toast({ title: "Saved", description: "AI configuration updated." });
+      }
+    });
+  };
+
+  const addQuestion = () => {
+    setCustomQuestions([...customQuestions, { question: "", answer: "" }]);
+  };
+
+  const updateQuestion = (index: number, field: 'question' | 'answer', value: string) => {
+    const newQ = [...customQuestions];
+    newQ[index][field] = value;
+    setCustomQuestions(newQ);
+  };
+
+  const removeQuestion = (index: number) => {
+    setCustomQuestions(customQuestions.filter((_: any, i: number) => i !== index));
+  };
+
+  return (
+    <div className="bg-card border border-border rounded-xl p-6 shadow-sm max-w-3xl space-y-8">
+      <div className="space-y-4">
+        <h3 className="font-serif font-bold text-lg">Basic Configuration</h3>
+        <div className="space-y-2">
+          <Label>Greeting Script</Label>
+          <Textarea 
+            value={greeting} 
+            onChange={e => setGreeting(e.target.value)} 
+            className="h-24 resize-none"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Ring-through Number (Transfer Target)</Label>
+          <Input 
+            value={ringThrough} 
+            onChange={e => setRingThrough(e.target.value)} 
+          />
+        </div>
+      </div>
+
+      <div className="pt-6 border-t border-border space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="font-serif font-bold text-lg">Custom Q&A</h3>
+          <Button variant="outline" size="sm" onClick={addQuestion} className="gap-2">
+            <Plus className="w-4 h-4" /> Add Q&A
+          </Button>
+        </div>
+        <p className="text-sm text-muted-foreground">Train your AI with specific answers to common customer questions.</p>
+
+        <div className="space-y-4">
+          {customQuestions.map((q: any, i: number) => (
+            <div key={i} className="flex gap-4 items-start bg-secondary p-4 rounded-lg border border-border relative group">
+              <div className="flex-1 space-y-3">
+                <div>
+                  <Label className="text-xs mb-1">If caller asks...</Label>
+                  <Input value={q.question} onChange={e => updateQuestion(i, 'question', e.target.value)} placeholder="e.g. Do you bring your own supplies?" />
+                </div>
+                <div>
+                  <Label className="text-xs mb-1">AI should answer...</Label>
+                  <Textarea value={q.answer} onChange={e => updateQuestion(i, 'answer', e.target.value)} placeholder="e.g. Yes, we provide all eco-friendly cleaning supplies." className="h-16 resize-none" />
+                </div>
+              </div>
+              <Button variant="ghost" size="icon" className="text-red-400 hover:bg-red-500/10" onClick={() => removeQuestion(i)}>
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
+          ))}
+          {customQuestions.length === 0 && (
+            <div className="text-center py-6 text-sm text-muted-foreground border border-dashed rounded-lg">
+              No custom Q&A added yet.
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="pt-6 border-t border-border">
+        <Button onClick={handleSave} disabled={update.isPending}>
+          {update.isPending ? "Saving..." : "Save AI Configuration"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function ServicesSettings() {
+  const { data: services, isLoading } = useListServices();
+  const deleteService = useDeleteService();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const handleDelete = (id: number) => {
+    if (!confirm("Delete this service?")) return;
+    deleteService.mutate({ id }, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListServicesQueryKey() });
+        toast({ title: "Deleted", description: "Service removed." });
+      }
+    });
+  };
+
+  if (isLoading) return <LoadingSpinner />;
+
+  return (
+    <div className="bg-card border border-border rounded-xl p-6 shadow-sm max-w-3xl space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="font-serif font-bold text-lg">Services & Pricing</h3>
+          <p className="text-sm text-muted-foreground mt-1">The AI will use these to quote prices to callers.</p>
+        </div>
+        <ServiceModal />
+      </div>
+
+      <div className="divide-y divide-gray-100 border border-border rounded-lg overflow-hidden">
+        {services?.map((svc: Service) => (
+          <div key={svc.id} className="p-4 flex items-center justify-between hover:bg-secondary">
+            <div>
+              <div className="font-medium text-muted-foreground">{svc.name}</div>
+              {svc.description && <div className="text-sm text-muted-foreground mt-1">{svc.description}</div>}
+              <div className="text-sm font-semibold text-green-400 mt-2">
+                ${svc.priceMin} - ${svc.priceMax}
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <ServiceModal service={svc} trigger={<Button variant="ghost" size="icon"><Edit2 className="w-4 h-4 text-muted-foreground" /></Button>} />
+              <Button variant="ghost" size="icon" onClick={() => handleDelete(svc.id)} disabled={deleteService.isPending}>
+                <Trash2 className="w-4 h-4 text-red-400" />
+              </Button>
+            </div>
+          </div>
+        ))}
+        {services?.length === 0 && (
+          <div className="p-8 text-center text-muted-foreground text-sm">
+            No services defined. Add some so your AI can give quotes.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ServiceModal({ service, trigger }: { service?: Service, trigger?: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState(service?.name || "");
+  const [description, setDescription] = useState(service?.description || "");
+  const [priceMin, setPriceMin] = useState(service?.priceMin?.toString() || "");
+  const [priceMax, setPriceMax] = useState(service?.priceMax?.toString() || "");
+
+  const create = useCreateService();
+  const update = useUpdateService();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const handleSave = () => {
+    const data = {
+      name,
+      description,
+      priceMin: parseInt(priceMin) || 0,
+      priceMax: parseInt(priceMax) || 0
+    };
+
+    if (service) {
+      update.mutate({ id: service.id, data }, {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getListServicesQueryKey() });
+          toast({ title: "Updated", description: "Service updated." });
+          setOpen(false);
+        }
+      });
+    } else {
+      create.mutate({ data }, {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getListServicesQueryKey() });
+          toast({ title: "Created", description: "Service added." });
+          setOpen(false);
+          setName("");
+          setDescription("");
+          setPriceMin("");
+          setPriceMax("");
+        }
+      });
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        {trigger || <Button className="gap-2"><Plus className="w-4 h-4" /> Add Service</Button>}
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{service ? "Edit Service" : "Add Service"}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 pt-4">
+          <div className="space-y-2">
+            <Label>Service Name</Label>
+            <Input value={name} onChange={e => setName(e.target.value)} placeholder="Deep Cleaning" />
+          </div>
+          <div className="space-y-2">
+            <Label>Description</Label>
+            <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Thorough cleaning including baseboards and inside appliances." className="resize-none" />
+          </div>
+          <div className="flex gap-4">
+            <div className="space-y-2 flex-1">
+              <Label>Minimum Price ($)</Label>
+              <Input type="number" value={priceMin} onChange={e => setPriceMin(e.target.value)} placeholder="200" />
+            </div>
+            <div className="space-y-2 flex-1">
+              <Label>Maximum Price ($)</Label>
+              <Input type="number" value={priceMax} onChange={e => setPriceMax(e.target.value)} placeholder="400" />
+            </div>
+          </div>
+          <Button onClick={handleSave} className="w-full mt-4" disabled={(service ? update.isPending : create.isPending) || !name}>
+            {service ? "Update Service" : "Add Service"}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
