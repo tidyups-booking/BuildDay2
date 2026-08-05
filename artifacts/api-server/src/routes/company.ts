@@ -34,29 +34,31 @@ import { encryptJobberToken } from "../lib/secretBox";
 import { flagShiftedBookings } from "../lib/timezoneReview";
 import { logger } from "../lib/logger";
 import crypto from "node:crypto";
+import { publicBaseUrl } from "../lib/publicUrl";
 
 const router: IRouter = Router();
 
-function externalBaseUrl(req: {
-  get(name: string): string | undefined;
-}): string {
-  const proto = req.get("x-forwarded-proto")?.split(",")[0] || "https";
-  const host = req.get("x-forwarded-host")?.split(",")[0] || req.get("host");
-  return `${proto}://${host}`;
+/**
+ * Constrain a configured frontend base path to a same-origin path prefix.
+ * Anything not starting with a single "/" (or "//", which browsers treat as
+ * protocol-relative) is discarded so it can never rewrite the redirect host.
+ */
+function safePathPrefix(value: string | undefined): string {
+  if (!value) return "";
+  if (!value.startsWith("/") || value.startsWith("//")) return "";
+  return value.replace(/\/+$/, "");
 }
 
 // OAuth callback — hit by a browser redirect from Jobber; identified by the
 // `state` value we generated at connect time, not by a session.
 router.get("/company/jobber/callback", async (req, res): Promise<void> => {
   const { code, state } = req.query as { code?: string; state?: string };
-  // Build the absolute frontend URL from the incoming request's origin so the
-  // redirect works regardless of which base path the frontend is mounted at.
-  // The frontend's BASE_PATH is forwarded in X-Forwarded-Prefix by the proxy;
-  // we fall back to FRONTEND_BASE_PATH env var, then to the root.
-  const frontendBase =
-    req.get("x-forwarded-prefix") || process.env.FRONTEND_BASE_PATH || "";
-  const frontendOrigin = externalBaseUrl(req);
-  const setupUrl = `${frontendOrigin}${frontendBase}/setup`;
+  // Build the absolute frontend URL from server-side configuration only.
+  // Request headers (X-Forwarded-Host / -Proto / -Prefix) are attacker
+  // controllable on this unauthenticated endpoint and must not influence
+  // where we redirect (open-redirect risk).
+  const frontendBase = safePathPrefix(process.env.FRONTEND_BASE_PATH);
+  const setupUrl = `${publicBaseUrl()}${frontendBase}/setup`;
 
   const fail = (reason: string) => {
     logger.warn({ reason }, "Jobber OAuth callback failed");
@@ -254,7 +256,7 @@ router.post("/company/jobber/connect", async (req, res): Promise<void> => {
 
   const state = crypto.randomBytes(24).toString("base64url");
   const { verifier, challenge } = generatePkcePair();
-  const redirectUri = `${externalBaseUrl(req)}/api/company/jobber/callback`;
+  const redirectUri = `${publicBaseUrl()}/api/company/jobber/callback`;
 
   await db
     .update(companiesTable)
