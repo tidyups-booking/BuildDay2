@@ -16,6 +16,7 @@ export interface TeamMember {
   status: TeamMemberStatus;
   hasLogin: boolean;
   inviteEmailSent: boolean;
+  blockedByOtherCompany: boolean;
   /** @nullable */
   claimedAt?: string | null;
   createdAt: string;

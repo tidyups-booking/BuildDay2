@@ -12,6 +12,7 @@ import { requireAuth } from "../middlewares/requireAuth";
 import { requireRole } from "../middlewares/requireRole";
 import { forgetDeniedCaller } from "../lib/callerRole";
 import { getCaller } from "../middlewares/requireRole";
+import { findBlockedEmails } from "../lib/seatAffiliation";
 import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
@@ -21,7 +22,10 @@ router.use(requireAuth);
 // which each mutating handler re-checks.
 router.use(requireRole("owner", "dispatcher"));
 
-function serializeMember(m: typeof teamMembersTable.$inferSelect) {
+function serializeMember(
+  m: typeof teamMembersTable.$inferSelect,
+  blockedByOtherCompany = false,
+) {
   return {
     id: m.id,
     name: m.name,
@@ -32,6 +36,9 @@ function serializeMember(m: typeof teamMembersTable.$inferSelect) {
     // this person can actually sign in, and whether the email really went.
     hasLogin: m.clerkUserId !== null,
     inviteEmailSent: m.clerkInvitationId !== null,
+    // True when this invite can never be accepted because the address is
+    // already attached to another company (one login = one company).
+    blockedByOtherCompany,
     claimedAt: m.claimedAt ? m.claimedAt.toISOString() : null,
     createdAt: m.createdAt.toISOString(),
   };
@@ -85,7 +92,25 @@ router.get("/team", async (req, res): Promise<void> => {
     .from(teamMembersTable)
     .where(eq(teamMembersTable.companyId, caller.company.id))
     .orderBy(teamMembersTable.id);
-  res.json(ListTeamMembersResponse.parse(members.map(serializeMember)));
+
+  // Label invites that can never be accepted because the address already
+  // belongs to someone attached to another company, so the owner can act
+  // (remove the seat and invite a different address) instead of waiting.
+  const pendingEmails = members
+    .filter((m) => m.clerkUserId === null && m.role !== "owner")
+    .map((m) => m.email);
+  const blocked = await findBlockedEmails(pendingEmails);
+
+  res.json(
+    ListTeamMembersResponse.parse(
+      members.map((m) =>
+        serializeMember(
+          m,
+          m.clerkUserId === null && blocked.has(m.email.trim().toLowerCase()),
+        ),
+      ),
+    ),
+  );
 });
 
 router.post("/team", async (req, res): Promise<void> => {
@@ -120,6 +145,18 @@ router.post("/team", async (req, res): Promise<void> => {
     .limit(1);
   if (existing) {
     res.status(409).json({ error: "That email is already on your team" });
+    return;
+  }
+
+  // Block up front rather than letting the invite hang forever: a login can
+  // only belong to one company, so an address already attached elsewhere can
+  // never accept this invite.
+  const blocked = await findBlockedEmails([email]);
+  if (blocked.has(email)) {
+    res.status(409).json({
+      error:
+        "That address already has a login with another company. A login can only belong to one company — ask them for a different email address to use here.",
+    });
     return;
   }
 

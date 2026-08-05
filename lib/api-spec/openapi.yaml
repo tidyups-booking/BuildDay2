@@ -912,7 +912,17 @@ components:
     TeamMember:
       type: object
       required:
-        [id, name, email, role, status, hasLogin, inviteEmailSent, createdAt]
+        [
+          id,
+          name,
+          email,
+          role,
+          status,
+          hasLogin,
+          inviteEmailSent,
+          blockedByOtherCompany,
+          createdAt,
+        ]
       properties:
         id: { type: integer }
         name: { type: string }
@@ -925,6 +935,9 @@ components:
         # False when Clerk would not send the sign-up email. The seat still
         # works — they just have to sign up with the invited address manually.
         inviteEmailSent: { type: boolean }
+        # True when this invite can never be accepted: the address is already
+        # attached to another company, and a login can only belong to one.
+        blockedByOtherCompany: { type: boolean }
         claimedAt: { type: ["string", "null"] }
         createdAt: { type: string }
     CrewMember:

@@ -89,6 +89,13 @@ export function TeamPage() {
                         >
                           Signed up
                         </Badge>
+                      ) : member.blockedByOtherCompany ? (
+                        <Badge
+                          variant="secondary"
+                          className="text-xs py-0 h-5 bg-red-500/10 text-red-400 border-red-500/20"
+                        >
+                          Can&apos;t join
+                        </Badge>
                       ) : (
                         <Badge variant="secondary" className="text-xs py-0 h-5">
                           Waiting to join
@@ -108,9 +115,20 @@ export function TeamPage() {
                         <span className="capitalize">{member.role}</span>
                       </span>
                     </div>
+                    {/* An address already attached to another company can
+                        never accept this invite — tell the owner what to do
+                        instead of letting the seat wait forever. */}
+                    {!member.hasLogin && member.blockedByOtherCompany && (
+                      <p className="text-xs text-red-400 mt-1">
+                        {member.email} already has a login with another company,
+                        so this invite can&apos;t be accepted. Remove this
+                        member and invite them with a different email address.
+                      </p>
+                    )}
                     {/* Say so when the email never left, rather than letting
                         the owner wait for someone who was never contacted. */}
                     {!member.hasLogin &&
+                      !member.blockedByOtherCompany &&
                       !member.inviteEmailSent &&
                       member.role !== "owner" && (
                         <p className="text-xs text-amber-500 mt-1">
@@ -169,6 +187,18 @@ function InviteModal() {
           setName("");
           setEmail("");
           setRole("dispatcher");
+        },
+        onError: (error: unknown) => {
+          // Surface the server's reason (duplicate address, or an address
+          // already attached to another company) instead of failing silently.
+          const message =
+            (error as { data?: { error?: string } })?.data?.error ??
+            "The invite could not be created. Try again.";
+          toast({
+            title: "Couldn't send invite",
+            description: message,
+            variant: "destructive",
+          });
         },
       },
     );

@@ -823,6 +823,7 @@ export const ListTeamMembersResponseItem = zod.object({
   "status": zod.enum(['active', 'invited']),
   "hasLogin": zod.boolean(),
   "inviteEmailSent": zod.boolean(),
+  "blockedByOtherCompany": zod.boolean(),
   "claimedAt": zod.string().nullish(),
   "createdAt": zod.string()
 })
@@ -847,6 +848,7 @@ export const InviteTeamMemberResponse = zod.object({
   "status": zod.enum(['active', 'invited']),
   "hasLogin": zod.boolean(),
   "inviteEmailSent": zod.boolean(),
+  "blockedByOtherCompany": zod.boolean(),
   "claimedAt": zod.string().nullish(),
   "createdAt": zod.string()
 })
