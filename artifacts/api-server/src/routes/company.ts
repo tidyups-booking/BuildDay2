@@ -123,6 +123,11 @@ router.post("/company", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  // Same guard as PATCH: a bogus zone would silently skew every booking time.
+  if (parsed.data.timezone !== undefined && !isValidTimezone(parsed.data.timezone)) {
+    res.status(400).json({ error: `Unknown time zone: ${parsed.data.timezone}` });
+    return;
+  }
 
   const existing = await getCompanyForUser(req.userId!);
   if (existing) {
@@ -135,6 +140,7 @@ router.post("/company", async (req, res): Promise<void> => {
     .values({
       ownerUserId: req.userId!,
       name: parsed.data.name,
+      ...(parsed.data.timezone ? { timezone: parsed.data.timezone } : {}),
       greeting: `Thanks for calling ${parsed.data.name}! How can I help you today?`,
       collectFields: ["name", "address", "service type", "preferred date"],
       customQuestions: [],

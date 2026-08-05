@@ -8,4 +8,9 @@
 
 export interface CompanyInput {
   name: string;
+  /**
+     * IANA time zone detected by the browser (e.g. America/Toronto)
+     * @minLength 1
+     */
+  timezone?: string;
 }

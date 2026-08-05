@@ -618,6 +618,10 @@ components:
       required: [name]
       properties:
         name: { type: string }
+        timezone:
+          type: string
+          minLength: 1
+          description: IANA time zone detected by the browser (e.g. America/Toronto)
     CompanyUpdate:
       type: object
       properties:

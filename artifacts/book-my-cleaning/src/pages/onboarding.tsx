@@ -22,8 +22,17 @@ export function OnboardingPage() {
   });
 
   function onSubmit(values: z.infer<typeof formSchema>) {
+    // The browser already knows the owner's time zone — send it so new
+    // companies don't all start on the default zone. If detection fails,
+    // omit it and let the server default apply.
+    let timezone: string | undefined;
+    try {
+      timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || undefined;
+    } catch {
+      timezone = undefined;
+    }
     createCompany.mutate(
-      { data: { name: values.name } },
+      { data: { name: values.name, ...(timezone ? { timezone } : {}) } },
       {
         onSuccess: () => {
           setLocation("/setup");

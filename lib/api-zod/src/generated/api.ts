@@ -74,8 +74,12 @@ export const GetCompanyResponse = zod.object({
 /**
  * @summary Create the company workspace for the current user
  */
+
+
+
 export const CreateCompanyBody = zod.object({
-  "name": zod.string()
+  "name": zod.string(),
+  "timezone": zod.string().min(1).optional().describe('IANA time zone detected by the browser (e.g. America\/Toronto)')
 })
 
 export const CreateCompanyResponse = zod.object({
