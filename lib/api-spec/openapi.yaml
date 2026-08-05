@@ -573,6 +573,24 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Booking"
+  /bookings/{id}/send-reschedule-text:
+    post:
+      operationId: sendRescheduleText
+      tags: [bookings]
+      summary: Text the customer their booking's new time from the company's Quo number
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Booking"
   /bookings/{id}/sync-jobber:
     post:
       operationId: syncBookingToJobber
@@ -1052,6 +1070,6 @@ components:
       required: [id, type, message, occurredAt]
       properties:
         id: { type: integer }
-        type: { type: string, enum: [call_answered, booking_created, jobber_synced, jobber_sync_failed, quote_sent, quote_approved, deposit_paid, test_call, team_invited] }
+        type: { type: string, enum: [call_answered, booking_created, jobber_synced, jobber_sync_failed, quote_sent, quote_approved, deposit_paid, test_call, team_invited, reschedule_texted] }
         message: { type: string }
         occurredAt: { type: string }

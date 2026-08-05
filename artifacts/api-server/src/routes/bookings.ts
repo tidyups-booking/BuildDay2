@@ -23,11 +23,17 @@ import {
   SyncBookingToJobberResponse,
   ConfirmBookingTimeParams,
   ConfirmBookingTimeResponse,
+  SendRescheduleTextParams,
+  SendRescheduleTextResponse,
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/requireAuth";
 import { getCompanyForUser, companyQuoKey } from "../lib/company";
 import { listPhoneNumbers, sendMessage, toE164 } from "../lib/quo";
-import { buildQuoteMessage, computeQuoteTotals } from "../lib/quotes";
+import {
+  buildQuoteMessage,
+  computeQuoteTotals,
+  formatAppointment,
+} from "../lib/quotes";
 import { ensureQuoteToken, quoteUrl } from "./publicQuote";
 import type { Company } from "@workspace/db";
 import {
@@ -466,6 +472,90 @@ router.post("/bookings/:id/confirm-time", async (req, res): Promise<void> => {
   }
   res.json(ConfirmBookingTimeResponse.parse(serializeBooking(company, booking)));
 });
+
+// After a reschedule, text the customer the new time so the appointment in
+// their head (or an earlier quote text) doesn't win over the one on file.
+router.post(
+  "/bookings/:id/send-reschedule-text",
+  async (req, res): Promise<void> => {
+    const params = SendRescheduleTextParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ error: params.error.message });
+      return;
+    }
+    const company = await getCompanyForUser(req.userId!);
+    if (!company) {
+      res.status(404).json({ error: "Booking not found" });
+      return;
+    }
+    const booking = await loadBooking(company.id, params.data.id);
+    if (!booking) {
+      res.status(404).json({ error: "Booking not found" });
+      return;
+    }
+
+    const to = toE164(booking.customerPhone);
+    if (!to) {
+      res.status(400).json({
+        error: "This customer's phone number isn't a number we can text.",
+      });
+      return;
+    }
+    // Same sender resolution as quote texting so the customer sees the whole
+    // conversation on one thread.
+    const sender = await resolveQuoteSender(company, booking);
+    if ("blockedReason" in sender) {
+      res.status(409).json({ error: sender.blockedReason });
+      return;
+    }
+    const apiKey = companyQuoKey(company);
+    if (!apiKey) {
+      res
+        .status(409)
+        .json({ error: "Connect your Quo account to text customers." });
+      return;
+    }
+
+    // Always the company zone — the same hour the dispatcher just saved.
+    const when = formatAppointment(booking.scheduledFor, company.timezone);
+    const content =
+      `Hi ${booking.customerName.trim() || "there"}, quick update from ${company.name}: ` +
+      `your ${booking.service} is now scheduled for ${when}. ` +
+      `Reply here if that doesn't work for you.`;
+
+    try {
+      await sendMessage(apiKey, { from: sender.from, to, content });
+    } catch (err) {
+      logger.error({ err }, "Reschedule text failed to send");
+      res.status(502).json({
+        error:
+          err instanceof Error
+            ? `Couldn't send the text: ${err.message}`
+            : "Couldn't send the text",
+      });
+      return;
+    }
+
+    // The customer already has the text; a bookkeeping failure here must not
+    // read as "not sent" or the dispatcher will text them twice.
+    try {
+      await db.insert(activityTable).values({
+        companyId: company.id,
+        type: "reschedule_texted",
+        message: `New time texted to ${booking.customerName}: ${when}.`,
+      });
+    } catch (err) {
+      logger.error(
+        { err, bookingId: booking.id, companyId: company.id },
+        "Reschedule text was delivered but recording it failed",
+      );
+    }
+
+    res.json(
+      SendRescheduleTextResponse.parse(serializeBooking(company, booking)),
+    );
+  },
+);
 
 router.post("/bookings/:id/sync-jobber", async (req, res): Promise<void> => {
   const params = SyncBookingToJobberParams.safeParse(req.params);

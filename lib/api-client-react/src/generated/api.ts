@@ -2459,6 +2459,77 @@ export const useConfirmBookingTime = <TError = ErrorType<unknown>,
       return useMutation(getConfirmBookingTimeMutationOptions(options));
     }
 
+export const getSendRescheduleTextUrl = (id: number,) => {
+
+
+
+
+  return `/api/bookings/${id}/send-reschedule-text`
+}
+
+/**
+ * @summary Text the customer their booking's new time from the company's Quo number
+ */
+export const sendRescheduleText = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<Booking> => {
+
+  return customFetch<Booking>(getSendRescheduleTextUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getSendRescheduleTextMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendRescheduleText>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof sendRescheduleText>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['sendRescheduleText'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof sendRescheduleText>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  sendRescheduleText(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SendRescheduleTextMutationResult = NonNullable<Awaited<ReturnType<typeof sendRescheduleText>>>
+
+    export type SendRescheduleTextMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Text the customer their booking's new time from the company's Quo number
+ */
+export const useSendRescheduleText = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendRescheduleText>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof sendRescheduleText>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getSendRescheduleTextMutationOptions(options));
+    }
+
 export const getSyncBookingToJobberUrl = (id: number,) => {
 
 

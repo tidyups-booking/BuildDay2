@@ -1,4 +1,4 @@
-import { useGetDashboardSummary, useGetRecentActivity, ActivityItem, useGetCompany, useUpdateCompany, getGetCompanyQueryKey, useListBookings, getListBookingsQueryKey, useConfirmBookingTime, useUpdateBooking, Booking } from "@workspace/api-client-react";
+import { useGetDashboardSummary, useGetRecentActivity, ActivityItem, useGetCompany, useUpdateCompany, getGetCompanyQueryKey, useListBookings, getListBookingsQueryKey, useConfirmBookingTime, useUpdateBooking, useSendRescheduleText, Booking } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -206,6 +206,11 @@ function TimezoneNudge({ company }: { company: { id: number; timezone?: string |
 function BookingTimeReview({ company }: { company: { timezone?: string | null } }) {
   const { data: bookings } = useListBookings();
   const tz = companyTimeZone(company);
+  // Bookings just rescheduled from this panel: the row disappears once the
+  // review flag clears, so the "text the customer" offer lives up here.
+  const [textOffers, setTextOffers] = useState<
+    { id: number; customerName: string; iso: string }[]
+  >([]);
 
   const flagged = (bookings ?? []).filter(
     (b) =>
@@ -213,33 +218,131 @@ function BookingTimeReview({ company }: { company: { timezone?: string | null } 
       (b.status === "pending" || b.status === "confirmed") &&
       new Date(b.scheduledFor).getTime() > Date.now(),
   );
-  if (flagged.length === 0) return null;
+  if (flagged.length === 0 && textOffers.length === 0) return null;
+
+  const addOffer = (offer: { id: number; customerName: string; iso: string }) =>
+    setTextOffers((prev) => [...prev.filter((o) => o.id !== offer.id), offer]);
+  const removeOffer = (id: number) =>
+    setTextOffers((prev) => prev.filter((o) => o.id !== id));
 
   return (
-    <div className="mb-8 bg-amber-50 border border-amber-200 rounded-xl overflow-hidden">
-      <div className="p-4 flex items-start gap-4">
-        <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0 mt-0.5">
-          <CalendarClock className="w-5 h-5 text-amber-600" />
+    <>
+      {flagged.length > 0 && (
+        <div className="mb-8 bg-amber-50 border border-amber-200 rounded-xl overflow-hidden">
+          <div className="p-4 flex items-start gap-4">
+            <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0 mt-0.5">
+              <CalendarClock className="w-5 h-5 text-amber-600" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-amber-900">
+                {flagged.length === 1 ? "1 booking shifted" : `${flagged.length} bookings shifted`} after your time zone change
+              </h3>
+              <p className="text-sm text-amber-800 mt-1">
+                These upcoming appointments now display at a different hour than before. Confirm each time is what you agreed with the customer, or adjust it.
+              </p>
+            </div>
+          </div>
+          <div className="divide-y divide-amber-200/70 border-t border-amber-200">
+            {flagged.map((b) => (
+              <ReviewRow key={b.id} booking={b} tz={tz} onRescheduled={addOffer} />
+            ))}
+          </div>
         </div>
-        <div>
-          <h3 className="font-semibold text-amber-900">
-            {flagged.length === 1 ? "1 booking shifted" : `${flagged.length} bookings shifted`} after your time zone change
-          </h3>
-          <p className="text-sm text-amber-800 mt-1">
-            These upcoming appointments now display at a different hour than before. Confirm each time is what you agreed with the customer, or adjust it.
+      )}
+      {textOffers.length > 0 && (
+        <div className="mb-8 bg-blue-50 border border-blue-200 rounded-xl overflow-hidden">
+          <div className="divide-y divide-blue-200/70">
+            {textOffers.map((o) => (
+              <RescheduleTextOffer key={o.id} offer={o} tz={tz} onDone={() => removeOffer(o.id)} />
+            ))}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+/**
+ * Offered right after a reschedule: one tap texts the customer the new time
+ * (in the company zone, from the same Quo line as their quote thread).
+ */
+function RescheduleTextOffer({
+  offer,
+  tz,
+  onDone,
+}: {
+  offer: { id: number; customerName: string; iso: string };
+  tz: string;
+  onDone: () => void;
+}) {
+  const send = useSendRescheduleText();
+  const { toast } = useToast();
+
+  const onSend = () =>
+    send.mutate(
+      { id: offer.id },
+      {
+        onSuccess: () => {
+          toast({
+            title: "Text sent",
+            description: `${offer.customerName} was texted the new time.`,
+          });
+          onDone();
+        },
+        onError: (error: any) =>
+          toast({
+            title: "Couldn't send the text",
+            description: error?.message || "Please try again.",
+            variant: "destructive",
+          }),
+      },
+    );
+
+  return (
+    <div className="p-4 flex flex-wrap items-center justify-between gap-3">
+      <div className="flex items-start gap-4 min-w-0">
+        <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center shrink-0 mt-0.5">
+          <MessageSquareText className="w-5 h-5 text-blue-600" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-blue-950">
+            Text {offer.customerName} the new time?
+          </p>
+          <p className="text-sm text-blue-800 mt-0.5">
+            They'll get a text saying their appointment is now{" "}
+            <span className="font-semibold">{formatZoned(offer.iso, tz)} {zoneLabel(tz, new Date(offer.iso))}</span>.
           </p>
         </div>
       </div>
-      <div className="divide-y divide-amber-200/70 border-t border-amber-200">
-        {flagged.map((b) => (
-          <ReviewRow key={b.id} booking={b} tz={tz} />
-        ))}
+      <div className="flex items-center gap-2 shrink-0">
+        <button
+          onClick={onSend}
+          disabled={send.isPending}
+          className="text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 px-3 py-1.5 rounded shadow-sm"
+        >
+          {send.isPending ? "Sending…" : "Send text"}
+        </button>
+        <button
+          onClick={onDone}
+          disabled={send.isPending}
+          className="text-sm font-medium text-blue-700 hover:text-blue-900 px-2 py-1.5"
+        >
+          Skip
+        </button>
       </div>
     </div>
   );
 }
 
-function ReviewRow({ booking, tz }: { booking: Booking; tz: string }) {
+function ReviewRow({
+  booking,
+  tz,
+  onRescheduled,
+}: {
+  booking: Booking;
+  tz: string;
+  onRescheduled: (offer: { id: number; customerName: string; iso: string }) => void;
+}) {
   const [editing, setEditing] = useState(false);
   const [wallClock, setWallClock] = useState(() => isoToZonedInput(booking.scheduledFor, tz));
   const confirm = useConfirmBookingTime();
@@ -276,6 +379,7 @@ function ReviewRow({ booking, tz }: { booking: Booking; tz: string }) {
         onSuccess: () => {
           refresh();
           toast({ title: "Booking rescheduled", description: `${booking.customerName} is now booked for ${formatZoned(iso, tz)} ${zoneLabel(tz)}.` });
+          onRescheduled({ id: booking.id, customerName: booking.customerName, iso });
         },
         onError: (error: any) =>
           toast({ title: "Couldn't reschedule", description: error?.message || "Please try again.", variant: "destructive" }),
@@ -361,6 +465,8 @@ function ActivityIcon({ type }: { type: ActivityItem["type"] }) {
       return <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center shrink-0"><CheckCircle2 className="w-4 h-4 text-indigo-600" /></div>;
     case "jobber_sync_failed":
       return <div className="w-8 h-8 rounded-full bg-red-500/10 flex items-center justify-center shrink-0"><AlertCircle className="w-4 h-4 text-red-400" /></div>;
+    case "reschedule_texted":
+      return <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0"><CalendarClock className="w-4 h-4 text-blue-600" /></div>;
     case "quote_sent":
       return <div className="w-8 h-8 rounded-full bg-brand-blue/10 flex items-center justify-center shrink-0"><MessageSquareText className="w-4 h-4 text-brand-blue" /></div>;
     case "quote_approved":
