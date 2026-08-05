@@ -18,6 +18,14 @@ export interface Booking {
   service: string;
   scheduledFor: string;
   status: BookingStatus;
+  /** @nullable */
+  quotedAmount?: number | null;
+  /** @nullable */
+  quoteNotes?: string | null;
+  /** @nullable */
+  quoteMessage?: string | null;
+  /** @nullable */
+  quoteSentAt?: string | null;
   jobberSynced: boolean;
   /** @nullable */
   jobberJobId?: string | null;

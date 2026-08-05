@@ -1,55 +1,146 @@
+import { useEffect, useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { PageHeader, LoadingSpinner } from "@/components/ui/shared";
-import { useListBookings, useUpdateBooking, useSyncBookingToJobber, useGetCompany, getListBookingsQueryKey, Booking } from "@workspace/api-client-react";
+import {
+  useListBookings,
+  useUpdateBooking,
+  useCreateBooking,
+  useSyncBookingToJobber,
+  useGetCompany,
+  useGetQuotePreview,
+  useSendQuote,
+  getListBookingsQueryKey,
+  getGetQuotePreviewQueryKey,
+  Booking,
+} from "@workspace/api-client-react";
 import { Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { format } from "date-fns";
-import { Calendar, MapPin, Phone, User, CheckCircle2, MoreHorizontal, RefreshCw, ExternalLink } from "lucide-react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { formatDistanceToNow } from "date-fns";
+import {
+  companyTimeZone,
+  defaultScheduledFor,
+  formatZoned,
+  isoToZonedInput,
+  zonedInputToIso,
+  zoneLabel,
+} from "@/lib/time";
+import {
+  Calendar,
+  MapPin,
+  Phone,
+  User,
+  CheckCircle2,
+  MoreHorizontal,
+  RefreshCw,
+  ExternalLink,
+  Plus,
+  MessageSquareText,
+  Pencil,
+  DollarSign,
+} from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+
+type BookingStatus = "pending" | "confirmed" | "completed" | "canceled";
+
+function formatMoney(amount: number): string {
+  return Number.isInteger(amount) ? `$${amount}` : `$${amount.toFixed(2)}`;
+}
 
 export function BookingsPage() {
   const { data: bookings, isLoading } = useListBookings();
   const { data: company } = useGetCompany();
+  const jobberConnected = Boolean(company?.jobberConnected);
   const jobberNeedsReauth = Boolean(company?.jobberNeedsReauth);
+  // Everything on this page is shown in the company's own time, not the
+  // browser's, so what a dispatcher sees matches what the customer is texted.
+  const timeZone = companyTimeZone(company);
   const updateBooking = useUpdateBooking();
   const syncJobber = useSyncBookingToJobber();
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const handleStatusChange = (id: number, status: 'pending' | 'confirmed' | 'completed' | 'canceled') => {
-    updateBooking.mutate({ id, data: { status } }, {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getListBookingsQueryKey() });
-        toast({ title: "Status updated", description: `Booking marked as ${status}.` });
-      }
-    });
+  const [formBooking, setFormBooking] = useState<Booking | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
+  const [quoteBooking, setQuoteBooking] = useState<Booking | null>(null);
+
+  const handleStatusChange = (id: number, status: BookingStatus) => {
+    updateBooking.mutate(
+      { id, data: { status } },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getListBookingsQueryKey() });
+          toast({ title: "Status updated", description: `Booking marked as ${status}.` });
+        },
+      },
+    );
   };
 
   const handleSync = (id: number) => {
-    syncJobber.mutate({ id }, {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getListBookingsQueryKey() });
-        toast({ title: "Synced to Jobber", description: "Client and work request created in your Jobber account." });
+    syncJobber.mutate(
+      { id },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getListBookingsQueryKey() });
+          toast({
+            title: "Synced to Jobber",
+            description: "Client and work request created in your Jobber account.",
+          });
+        },
+        onError: (error: any) => {
+          toast({
+            title: "Jobber sync failed",
+            description: error?.message || "Could not create the job in Jobber. Try again.",
+            variant: "destructive",
+          });
+        },
       },
-      onError: (error: any) => {
-        toast({
-          title: "Jobber sync failed",
-          description: error?.message || "Could not create the job in Jobber. Try again.",
-          variant: "destructive",
-        });
-      },
-    });
+    );
+  };
+
+  const openNew = () => {
+    setFormBooking(null);
+    setFormOpen(true);
+  };
+
+  const openEdit = (booking: Booking) => {
+    setFormBooking(booking);
+    setFormOpen(true);
   };
 
   return (
     <AppLayout>
-      <PageHeader 
-        title="Bookings" 
-        description="Jobs booked directly from AI receptionist calls."
-      />
+      <PageHeader
+        title="Bookings"
+        description={
+          jobberConnected
+            ? "Jobs booked from AI receptionist calls, plus anything you add by hand."
+            : "Quote, schedule and book — all in one place."
+        }
+      >
+        <Button onClick={openNew} className="gap-2">
+          <Plus className="w-4 h-4" /> Add booking
+        </Button>
+      </PageHeader>
 
       {isLoading ? (
         <LoadingSpinner className="mt-20" />
@@ -59,59 +150,117 @@ export function BookingsPage() {
             <Calendar className="w-6 h-6 text-muted-foreground" />
           </div>
           <h3 className="font-semibold text-muted-foreground mb-1">No bookings yet</h3>
-          <p className="text-sm text-muted-foreground max-w-sm mx-auto">When your AI receptionist successfully books a customer, it will appear here.</p>
+          <p className="text-sm text-muted-foreground max-w-sm mx-auto mb-5">
+            When your AI receptionist books a customer it will appear here — or add one
+            yourself for a walk-in or repeat client.
+          </p>
+          <Button onClick={openNew} variant="outline" className="gap-2">
+            <Plus className="w-4 h-4" /> Add your first booking
+          </Button>
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {bookings.map((booking: Booking) => (
-            <div key={booking.id} className="bg-card border border-border rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col">
+            <div
+              key={booking.id}
+              className="bg-card border border-border rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col"
+            >
               <div className="flex justify-between items-start mb-4">
                 <div>
-                  <h3 className="font-bold text-lg text-muted-foreground">{booking.customerName}</h3>
-                  <div className="flex items-center gap-2 mt-1">
+                  <h3 className="font-bold text-lg text-foreground">{booking.customerName}</h3>
+                  <div className="flex items-center gap-2 mt-1 flex-wrap">
                     <BookingStatusBadge status={booking.status} />
+                    {booking.quoteSentAt && (
+                      <span className="flex items-center gap-1 text-xs font-medium text-brand-blue bg-brand-blue/10 px-2 py-0.5 rounded-full border border-brand-blue/20">
+                        <MessageSquareText className="w-3 h-3" /> Quote sent
+                      </span>
+                    )}
                     {booking.jobberSynced && (
-                      <span className="flex items-center gap-1 text-xs font-medium text-green-400 bg-green-500/10 px-2 py-0.5 rounded-full border border-green-200">
+                      <span className="flex items-center gap-1 text-xs font-medium text-green-400 bg-green-500/10 px-2 py-0.5 rounded-full border border-green-500/20">
                         <CheckCircle2 className="w-3 h-3" /> Jobber
                       </span>
                     )}
                   </div>
                 </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-muted-foreground">
-                      <MoreHorizontal className="w-4 h-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => handleStatusChange(booking.id, 'confirmed')}>Mark Confirmed</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleStatusChange(booking.id, 'completed')}>Mark Completed</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleStatusChange(booking.id, 'canceled')} className="text-red-400">Cancel Booking</DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <div className="flex items-center gap-2">
+                  {booking.quotedAmount != null && (
+                    <span className="text-lg font-bold text-foreground tabular-nums">
+                      {formatMoney(booking.quotedAmount)}
+                    </span>
+                  )}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                      >
+                        <MoreHorizontal className="w-4 h-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => openEdit(booking)}>
+                        <Pencil className="w-4 h-4 mr-2" /> Edit &amp; reschedule
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => handleStatusChange(booking.id, "confirmed")}>
+                        Mark Confirmed
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleStatusChange(booking.id, "completed")}>
+                        Mark Completed
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => handleStatusChange(booking.id, "canceled")}
+                        className="text-red-400"
+                      >
+                        Cancel Booking
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </div>
 
               <div className="space-y-2 text-sm text-muted-foreground flex-1">
                 <div className="flex items-start gap-3">
-                  <Calendar className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
-                  <span>{format(new Date(booking.scheduledFor), "EEEE, MMMM d, yyyy 'at' h:mm a")}</span>
+                  <Calendar className="w-4 h-4 mt-0.5 shrink-0" />
+                  <span>
+                    {formatZoned(booking.scheduledFor, timeZone)}{" "}
+                    <span className="text-xs opacity-60">{zoneLabel(timeZone)}</span>
+                  </span>
                 </div>
                 <div className="flex items-start gap-3">
-                  <MapPin className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+                  <MapPin className="w-4 h-4 mt-0.5 shrink-0" />
                   <span>{booking.customerAddress || "Address not provided"}</span>
                 </div>
                 <div className="flex items-start gap-3">
-                  <Phone className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+                  <Phone className="w-4 h-4 mt-0.5 shrink-0" />
                   <span>{booking.customerPhone}</span>
                 </div>
                 <div className="flex items-start gap-3">
-                  <User className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
-                  <span className="font-medium text-muted-foreground">Requested: {booking.service}</span>
+                  <User className="w-4 h-4 mt-0.5 shrink-0" />
+                  <span className="font-medium text-foreground">Requested: {booking.service}</span>
                 </div>
+                {booking.quoteSentAt && (
+                  <div className="flex items-start gap-3">
+                    <MessageSquareText className="w-4 h-4 mt-0.5 shrink-0" />
+                    <span>
+                      Quote texted {formatDistanceToNow(new Date(booking.quoteSentAt), { addSuffix: true })}
+                    </span>
+                  </div>
+                )}
               </div>
 
-              {!booking.jobberSynced && jobberNeedsReauth ? (
-                <div className="mt-5 pt-4 border-t border-border">
+              <div className="mt-5 pt-4 border-t border-border grid gap-2">
+                <Button
+                  variant="outline"
+                  className="w-full gap-2 text-brand-blue border-brand-blue/20 hover:bg-brand-blue/10 hover:text-brand-blue"
+                  onClick={() => setQuoteBooking(booking)}
+                >
+                  <MessageSquareText className="w-4 h-4" />
+                  {booking.quoteSentAt ? "Send updated quote" : "Send quote"}
+                </Button>
+
+                {jobberNeedsReauth && !booking.jobberSynced ? (
                   <Link href="/setup">
                     <Button
                       variant="outline"
@@ -120,11 +269,9 @@ export function BookingsPage() {
                       <RefreshCw className="w-4 h-4" /> Reconnect Jobber to sync
                     </Button>
                   </Link>
-                </div>
-              ) : !booking.jobberSynced ? (
-                <div className="mt-5 pt-4 border-t border-border">
-                  <Button 
-                    variant="outline" 
+                ) : jobberConnected && !booking.jobberSynced ? (
+                  <Button
+                    variant="outline"
                     className="w-full text-primary hover:text-primary hover:bg-primary/5 border-primary/20 gap-2"
                     onClick={() => handleSync(booking.id)}
                     disabled={syncJobber.isPending}
@@ -132,30 +279,384 @@ export function BookingsPage() {
                     <RefreshCw className={`w-4 h-4 ${syncJobber.isPending ? "animate-spin" : ""}`} />
                     {syncJobber.isPending ? "Syncing..." : "Sync to Jobber"}
                   </Button>
-                </div>
-              ) : (booking as any).jobberWebUri ? (
-                <div className="mt-5 pt-4 border-t border-border">
-                  <a href={(booking as any).jobberWebUri} target="_blank" rel="noopener noreferrer">
-                    <Button variant="outline" className="w-full gap-2 text-green-400 border-green-800 hover:bg-green-950 hover:text-green-300">
+                ) : booking.jobberSynced && booking.jobberWebUri ? (
+                  <a href={booking.jobberWebUri} target="_blank" rel="noopener noreferrer">
+                    <Button
+                      variant="outline"
+                      className="w-full gap-2 text-green-400 border-green-800 hover:bg-green-950 hover:text-green-300"
+                    >
                       <ExternalLink className="w-4 h-4" /> View in Jobber
                     </Button>
                   </a>
-                </div>
-              ) : null}
+                ) : null}
+              </div>
             </div>
           ))}
         </div>
+      )}
+
+      <BookingFormDialog
+        key={formBooking?.id ?? "new"}
+        booking={formBooking}
+        timeZone={timeZone}
+        open={formOpen}
+        onOpenChange={setFormOpen}
+      />
+      {quoteBooking && (
+        <QuoteDialog
+          booking={quoteBooking}
+          open
+          onOpenChange={(open) => !open && setQuoteBooking(null)}
+        />
       )}
     </AppLayout>
   );
 }
 
+function QuoteDialog({
+  booking,
+  open,
+  onOpenChange,
+}: {
+  booking: Booking;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const { data: preview, isLoading } = useGetQuotePreview(booking.id, {
+    query: { queryKey: getGetQuotePreviewQueryKey(booking.id) },
+  });
+  const sendQuote = useSendQuote();
+  const [message, setMessage] = useState("");
+  const [touched, setTouched] = useState(false);
+
+  // Seed the box from the server draft, but never clobber the dispatcher's edits.
+  useEffect(() => {
+    if (preview?.message && !touched) setMessage(preview.message);
+  }, [preview?.message, touched]);
+
+  const handleSend = () => {
+    sendQuote.mutate(
+      { id: booking.id, data: { message } },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getListBookingsQueryKey() });
+          toast({
+            title: "Quote sent",
+            description: `Texted to ${booking.customerName} at ${booking.customerPhone}.`,
+          });
+          onOpenChange(false);
+        },
+        onError: (error: any) => {
+          toast({
+            title: "Couldn't send the quote",
+            description: error?.message || "Please try again.",
+            variant: "destructive",
+          });
+        },
+      },
+    );
+  };
+
+  const blocked = preview ? !preview.canSend : false;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Text a quote to {booking.customerName}</DialogTitle>
+          <DialogDescription>
+            {preview?.fromNumber
+              ? `Sends from your Quo number ${preview.fromNumber}.`
+              : "Sends from your own Quo number."}
+          </DialogDescription>
+        </DialogHeader>
+
+        {isLoading ? (
+          <LoadingSpinner className="my-8" />
+        ) : (
+          <div className="space-y-4">
+            {booking.quotedAmount == null && (
+              <div className="text-sm text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-lg p-3">
+                No price set yet. Close this and use <strong>Edit &amp; reschedule</strong> to add
+                one, or type the amount straight into the message below.
+              </div>
+            )}
+            {blocked && (
+              <div className="text-sm text-red-300 bg-red-500/10 border border-red-500/20 rounded-lg p-3">
+                {preview?.blockedReason}
+              </div>
+            )}
+            <div>
+              <Label htmlFor="quote-message" className="mb-2 block">
+                Message
+              </Label>
+              <Textarea
+                id="quote-message"
+                rows={10}
+                value={message}
+                onChange={(e) => {
+                  setTouched(true);
+                  setMessage(e.target.value);
+                }}
+                className="font-mono text-sm"
+              />
+              <p className="text-xs text-muted-foreground mt-2">
+                {message.length} characters · edit freely before sending
+              </p>
+            </div>
+          </div>
+        )}
+
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSend}
+            disabled={sendQuote.isPending || blocked || !message.trim() || isLoading}
+            className="gap-2"
+          >
+            <MessageSquareText className="w-4 h-4" />
+            {sendQuote.isPending ? "Sending..." : "Send text"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function BookingFormDialog({
+  booking,
+  timeZone,
+  open,
+  onOpenChange,
+}: {
+  booking: Booking | null;
+  timeZone: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const createBooking = useCreateBooking();
+  const updateBooking = useUpdateBooking();
+  const isEdit = booking != null;
+
+  const [customerName, setCustomerName] = useState(booking?.customerName ?? "");
+  const [customerPhone, setCustomerPhone] = useState(booking?.customerPhone ?? "");
+  const [customerAddress, setCustomerAddress] = useState(booking?.customerAddress ?? "");
+  const [service, setService] = useState(booking?.service ?? "");
+  const [scheduledFor, setScheduledFor] = useState(
+    booking
+      ? isoToZonedInput(booking.scheduledFor, timeZone)
+      : defaultScheduledFor(timeZone),
+  );
+  const [quotedAmount, setQuotedAmount] = useState(
+    booking?.quotedAmount != null ? String(booking.quotedAmount) : "",
+  );
+  const [quoteNotes, setQuoteNotes] = useState(booking?.quoteNotes ?? "");
+
+  const pending = createBooking.isPending || updateBooking.isPending;
+  const valid =
+    customerName.trim() && customerPhone.trim() && service.trim() && scheduledFor;
+
+  const handleSubmit = () => {
+    // The dispatcher types the time the customer will hear, i.e. company time.
+    const whenIso = zonedInputToIso(scheduledFor, timeZone);
+    if (!whenIso) {
+      toast({
+        title: "Check the date",
+        description: "That scheduled time isn't valid.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const amount = quotedAmount.trim() === "" ? null : Number(quotedAmount);
+    if (amount != null && (Number.isNaN(amount) || amount < 0)) {
+      toast({
+        title: "Check the price",
+        description: "Enter a number, or leave it blank.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const payload = {
+      customerName: customerName.trim(),
+      customerPhone: customerPhone.trim(),
+      customerAddress: customerAddress.trim() || null,
+      service: service.trim(),
+      scheduledFor: whenIso,
+      quotedAmount: amount,
+      quoteNotes: quoteNotes.trim() || null,
+    };
+
+    const onSuccess = () => {
+      queryClient.invalidateQueries({ queryKey: getListBookingsQueryKey() });
+      if (booking) {
+        queryClient.invalidateQueries({
+          queryKey: getGetQuotePreviewQueryKey(booking.id),
+        });
+      }
+      toast({
+        title: isEdit ? "Booking updated" : "Booking added",
+        description: `${payload.customerName} — ${payload.service}.`,
+      });
+      onOpenChange(false);
+    };
+    const onError = (error: any) => {
+      toast({
+        title: isEdit ? "Couldn't update that booking" : "Couldn't add that booking",
+        description: error?.message || "Please try again.",
+        variant: "destructive",
+      });
+    };
+
+    if (isEdit) {
+      updateBooking.mutate({ id: booking!.id, data: payload }, { onSuccess, onError });
+    } else {
+      createBooking.mutate({ data: payload }, { onSuccess, onError });
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{isEdit ? "Edit booking" : "Add a booking"}</DialogTitle>
+          <DialogDescription>
+            {isEdit
+              ? "Change the details, price or time. The customer isn't told until you send a quote."
+              : "For walk-ins, repeat customers, or a call the receptionist missed."}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="b-name" className="mb-2 block">
+                Customer name
+              </Label>
+              <Input
+                id="b-name"
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                placeholder="Jay Patel"
+              />
+            </div>
+            <div>
+              <Label htmlFor="b-phone" className="mb-2 block">
+                Phone
+              </Label>
+              <Input
+                id="b-phone"
+                value={customerPhone}
+                onChange={(e) => setCustomerPhone(e.target.value)}
+                placeholder="(780) 920-6391"
+              />
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="b-service" className="mb-2 block">
+              Service
+            </Label>
+            <Input
+              id="b-service"
+              value={service}
+              onChange={(e) => setService(e.target.value)}
+              placeholder="Move-out clean — 2 bed, 2 bath"
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="b-address" className="mb-2 block">
+              Address <span className="text-muted-foreground font-normal">(optional)</span>
+            </Label>
+            <Input
+              id="b-address"
+              value={customerAddress}
+              onChange={(e) => setCustomerAddress(e.target.value)}
+              placeholder="5810 Mullen Place"
+            />
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="b-when" className="mb-2 block">
+                Scheduled for{" "}
+                <span className="text-muted-foreground font-normal">
+                  ({zoneLabel(timeZone)})
+                </span>
+              </Label>
+              <Input
+                id="b-when"
+                type="datetime-local"
+                value={scheduledFor}
+                onChange={(e) => setScheduledFor(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="b-amount" className="mb-2 block">
+                Quote <span className="text-muted-foreground font-normal">(optional)</span>
+              </Label>
+              <div className="relative">
+                <DollarSign className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  id="b-amount"
+                  inputMode="decimal"
+                  className="pl-9"
+                  value={quotedAmount}
+                  onChange={(e) => setQuotedAmount(e.target.value)}
+                  placeholder="320"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="b-notes" className="mb-2 block">
+              Quote notes{" "}
+              <span className="text-muted-foreground font-normal">
+                (optional — included in the text)
+              </span>
+            </Label>
+            <Textarea
+              id="b-notes"
+              rows={3}
+              value={quoteNotes}
+              onChange={(e) => setQuoteNotes(e.target.value)}
+              placeholder="Includes inside fridge and oven. Around 3 hours."
+            />
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button onClick={handleSubmit} disabled={pending || !valid}>
+            {pending ? "Saving..." : isEdit ? "Save changes" : "Add booking"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function BookingStatusBadge({ status }: { status: string }) {
   switch (status) {
-    case 'pending': return <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-200 border-0">Pending</Badge>;
-    case 'confirmed': return <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200 border-0">Confirmed</Badge>;
-    case 'completed': return <Badge className="bg-green-500/100/10 text-green-700 hover:bg-green-200 border-0">Completed</Badge>;
-    case 'canceled': return <Badge className="bg-secondary text-muted-foreground hover:bg-secondary border-0">Canceled</Badge>;
-    default: return <Badge variant="outline">{status}</Badge>;
+    case "pending":
+      return <Badge className="bg-amber-500/15 text-amber-300 hover:bg-amber-500/25 border-0">Pending</Badge>;
+    case "confirmed":
+      return <Badge className="bg-blue-500/15 text-blue-300 hover:bg-blue-500/25 border-0">Confirmed</Badge>;
+    case "completed":
+      return <Badge className="bg-green-500/15 text-green-300 hover:bg-green-500/25 border-0">Completed</Badge>;
+    case "canceled":
+      return <Badge className="bg-secondary text-muted-foreground hover:bg-secondary border-0">Canceled</Badge>;
+    default:
+      return <Badge variant="outline">{status}</Badge>;
   }
 }

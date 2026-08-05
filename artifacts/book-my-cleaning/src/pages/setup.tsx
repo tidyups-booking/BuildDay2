@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { 
   useGetCompany, useConnectJobber, useDisconnectJobber, getGetCompanyQueryKey, 
   useConnectQuo, useListQuoNumbers, getListQuoNumbersQueryKey, useSelectQuoNumbers, useUpdateCompany,
-  useGoLive, useSimulateTestCall, useInviteTeamMember
+  useGoLive, useSimulateTestCall, useInviteTeamMember, useSetJobberSkipped
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Check, ChevronRight, Zap, Phone, Settings2, Users, Play, Loader2, PhoneForwarded } from "lucide-react";
@@ -52,6 +52,12 @@ export function SetupPage() {
     );
   }
 
+  // Jobber is optional: a live connection or a deliberate skip both unblock the
+  // rest of setup. An expired connection still needs attention, though.
+  const jobberDone =
+    (company.setupStatus.jobberConnected && !company.jobberNeedsReauth) ||
+    company.setupStatus.jobberSkipped;
+
   const steps = [
     {
       id: "account",
@@ -64,12 +70,12 @@ export function SetupPage() {
     {
       id: "jobber",
       title: "Connect Jobber",
-      description: "Link your Jobber account to sync your schedule.",
+      description: company.setupStatus.jobberSkipped
+        ? "Skipped — you're quoting and booking inside Book My Cleaning."
+        : "Link your Jobber account, or skip it and book here instead.",
       icon: Zap,
-      isDone: company.setupStatus.jobberConnected && !company.jobberNeedsReauth,
-      isActive:
-        company.setupStatus.accountCreated &&
-        (!company.setupStatus.jobberConnected || company.jobberNeedsReauth),
+      isDone: jobberDone,
+      isActive: company.setupStatus.accountCreated && !jobberDone,
     },
     {
       id: "phone",
@@ -77,7 +83,7 @@ export function SetupPage() {
       description: "Choose which Quo numbers Sona answers for you.",
       icon: Phone,
       isDone: company.setupStatus.phoneProvisioned,
-      isActive: company.setupStatus.jobberConnected && !company.setupStatus.phoneProvisioned,
+      isActive: jobberDone && !company.setupStatus.phoneProvisioned,
     },
     {
       id: "customize",
@@ -168,8 +174,35 @@ export function SetupPage() {
 
 function JobberStep({ company }: { company: any }) {
   const connect = useConnectJobber();
+  const setSkipped = useSetJobberSkipped();
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const needsReauth = Boolean(company?.jobberNeedsReauth);
+  const skipped = Boolean(company?.setupStatus?.jobberSkipped);
+
+  const handleSkip = (value: boolean) => {
+    setSkipped.mutate(
+      { data: { skipped: value } },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getGetCompanyQueryKey() });
+          toast({
+            title: value ? "Skipping Jobber" : "Jobber step reopened",
+            description: value
+              ? "You'll quote, schedule and book right here. You can connect Jobber any time."
+              : "Connect your Jobber account to sync bookings across.",
+          });
+        },
+        onError: (error: any) => {
+          toast({
+            title: "Couldn't update that",
+            description: error?.message || "Please try again.",
+            variant: "destructive",
+          });
+        },
+      },
+    );
+  };
 
   const handleConnect = () => {
     connect.mutate(undefined, {
@@ -187,6 +220,33 @@ function JobberStep({ company }: { company: any }) {
     });
   };
 
+  if (skipped) {
+    return (
+      <div className="space-y-4">
+        <div className="bg-secondary/60 border border-border rounded-xl p-4 flex gap-3 text-sm text-muted-foreground">
+          <Check className="w-5 h-5 text-green-400 shrink-0" />
+          <p>
+            You're running without Jobber. Quotes, scheduling and bookings all live in
+            Book My Cleaning — your receptionist still answers calls and books jobs as normal.
+          </p>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <Button onClick={handleConnect} disabled={connect.isPending}>
+            {connect.isPending ? "Redirecting to Jobber..." : "Connect Jobber anyway"}
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={() => handleSkip(false)}
+            disabled={setSkipped.isPending}
+            className="text-muted-foreground"
+          >
+            Undo skip
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       {needsReauth ? (
@@ -200,13 +260,30 @@ function JobberStep({ company }: { company: any }) {
           <p>You'll be sent to Jobber to sign in and approve access. Once connected, bookings can be pushed into Jobber as real clients and work requests.</p>
         </div>
       )}
-      <Button onClick={handleConnect} disabled={connect.isPending} className="w-full sm:w-auto">
-        {connect.isPending
-          ? "Redirecting to Jobber..."
-          : needsReauth
-            ? "Reconnect Jobber"
-            : "Connect Jobber Account"}
-      </Button>
+      <div className="flex flex-col sm:flex-row gap-3">
+        <Button onClick={handleConnect} disabled={connect.isPending}>
+          {connect.isPending
+            ? "Redirecting to Jobber..."
+            : needsReauth
+              ? "Reconnect Jobber"
+              : "Connect Jobber Account"}
+        </Button>
+        {!needsReauth && (
+          <Button
+            variant="outline"
+            onClick={() => handleSkip(true)}
+            disabled={setSkipped.isPending}
+          >
+            {setSkipped.isPending ? "Saving..." : "Skip — I'll book here instead"}
+          </Button>
+        )}
+      </div>
+      {!needsReauth && (
+        <p className="text-xs text-muted-foreground">
+          Don't use Jobber? Skip it. You'll still quote, schedule and take bookings —
+          and you can connect Jobber later without redoing anything.
+        </p>
+      )}
     </div>
   );
 }
@@ -417,7 +494,11 @@ function GoLiveStep({ company }: { company: any }) {
         <PhoneForwarded className="w-8 h-8" />
       </div>
       <h4 className="text-xl font-bold text-muted-foreground">Ready to Answer Calls</h4>
-      <p className="text-muted-foreground max-w-sm mx-auto">Your AI is configured, Jobber is connected, and your phone number is ready.</p>
+      <p className="text-muted-foreground max-w-sm mx-auto">
+        {company?.setupStatus?.jobberSkipped
+          ? "Your AI is configured and your phone number is ready. Quotes and bookings will land right here."
+          : "Your AI is configured, Jobber is connected, and your phone number is ready."}
+      </p>
       
       <div className="pt-4 flex flex-col sm:flex-row gap-3 justify-center">
         <Button variant="outline" onClick={() => testCall.mutate(undefined)} disabled={testCall.isPending}>

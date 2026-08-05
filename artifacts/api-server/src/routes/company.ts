@@ -9,6 +9,8 @@ import {
   UpdateCompanyResponse,
   ConnectJobberResponse,
   DisconnectJobberResponse,
+  SetJobberSkippedBody,
+  SetJobberSkippedResponse,
   GoLiveResponse,
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/requireAuth";
@@ -79,6 +81,8 @@ router.get("/company/jobber/callback", async (req, res): Promise<void> => {
       .update(companiesTable)
       .set({
         jobberConnected: true,
+        // Connecting later overrides an earlier "skip" choice.
+        jobberSkipped: false,
         jobberAccountId: account.id,
         jobberAccountName: account.name,
         // Tokens are encrypted at rest; decrypted only inside getValidAccessToken
@@ -249,6 +253,36 @@ router.post("/company/jobber/disconnect", async (req, res): Promise<void> => {
     .returning();
 
   res.json(DisconnectJobberResponse.parse(await serializeCompany(updated!)));
+});
+
+// Jobber is optional. Skipping keeps the whole product usable — quotes,
+// scheduling and bookings just live here instead of being pushed across.
+router.post("/company/jobber/skip", async (req, res): Promise<void> => {
+  const parsed = SetJobberSkippedBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const company = await getCompanyForUser(req.userId!);
+  if (!company) {
+    res.status(404).json({ error: "No company yet" });
+    return;
+  }
+  // Skipping while connected would leave the UI claiming both at once.
+  if (parsed.data.skipped && company.jobberConnected) {
+    res.status(409).json({
+      error: "Disconnect Jobber first if you want to run without it.",
+    });
+    return;
+  }
+
+  const [updated] = await db
+    .update(companiesTable)
+    .set({ jobberSkipped: parsed.data.skipped })
+    .where(eq(companiesTable.id, company.id))
+    .returning();
+
+  res.json(SetJobberSkippedResponse.parse(await serializeCompany(updated!)));
 });
 
 router.post("/company/go-live", async (req, res): Promise<void> => {

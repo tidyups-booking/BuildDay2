@@ -52,6 +52,8 @@ export interface WatchedNumber {
 export interface SetupStatus {
   accountCreated: boolean;
   jobberConnected: boolean;
+  jobberSkipped: boolean;
+  jobberResolved: boolean;
   quoConnected: boolean;
   phoneProvisioned: boolean;
   receptionistConfigured: boolean;
@@ -64,6 +66,8 @@ export interface SetupStatus {
 export interface Company {
   id: number;
   name: string;
+  /** IANA zone the company schedules in. Booking times are shown and texted in this zone. */
+  timezone: string;
   greeting: string;
   collectFields: string[];
   customQuestions: CustomQuestion[];
@@ -72,6 +76,7 @@ export interface Company {
   /** @nullable */
   phoneNumber?: string | null;
   jobberConnected: boolean;
+  jobberSkipped: boolean;
   /** @nullable */
   jobberAccountName?: string | null;
   jobberNeedsReauth: boolean;
@@ -260,6 +265,14 @@ export interface Booking {
   service: string;
   scheduledFor: string;
   status: BookingStatus;
+  /** @nullable */
+  quotedAmount?: number | null;
+  /** @nullable */
+  quoteNotes?: string | null;
+  /** @nullable */
+  quoteMessage?: string | null;
+  /** @nullable */
+  quoteSentAt?: string | null;
   jobberSynced: boolean;
   /** @nullable */
   jobberJobId?: string | null;
@@ -283,6 +296,72 @@ export const BookingUpdateStatus = {
 export interface BookingUpdate {
   status?: BookingUpdateStatus;
   scheduledFor?: string;
+  /** @minLength 1 */
+  customerName?: string;
+  /** @minLength 1 */
+  customerPhone?: string;
+  /** @nullable */
+  customerAddress?: string | null;
+  /** @minLength 1 */
+  service?: string;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  quotedAmount?: number | null;
+  /** @nullable */
+  quoteNotes?: string | null;
+}
+
+export type BookingCreateStatus = typeof BookingCreateStatus[keyof typeof BookingCreateStatus];
+
+
+export const BookingCreateStatus = {
+  pending: 'pending',
+  confirmed: 'confirmed',
+  completed: 'completed',
+  canceled: 'canceled',
+} as const;
+
+export interface BookingCreate {
+  /** @minLength 1 */
+  customerName: string;
+  /** @minLength 1 */
+  customerPhone: string;
+  /** @nullable */
+  customerAddress?: string | null;
+  /** @minLength 1 */
+  service: string;
+  scheduledFor: string;
+  status?: BookingCreateStatus;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  quotedAmount?: number | null;
+  /** @nullable */
+  quoteNotes?: string | null;
+}
+
+export interface QuotePreview {
+  message: string;
+  canSend: boolean;
+  /** @nullable */
+  blockedReason?: string | null;
+  /** @nullable */
+  fromNumber?: string | null;
+}
+
+export interface SendQuoteInput {
+  /**
+     * @minLength 1
+     * @maxLength 1600
+     */
+  message: string;
+}
+
+export interface JobberSkipInput {
+  skipped: boolean;
 }
 
 export interface DashboardSummary {
@@ -302,6 +381,7 @@ export const ActivityItemType = {
   call_answered: 'call_answered',
   booking_created: 'booking_created',
   jobber_synced: 'jobber_synced',
+  quote_sent: 'quote_sent',
   test_call: 'test_call',
   team_invited: 'team_invited',
 } as const;

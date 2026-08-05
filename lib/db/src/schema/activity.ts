@@ -14,7 +14,7 @@ export const activityTable = pgTable("activity", {
   companyId: integer("company_id")
     .notNull()
     .references(() => companiesTable.id),
-  type: text("type").notNull(), // call_answered | booking_created | jobber_synced | test_call | team_invited
+  type: text("type").notNull(), // call_answered | booking_created | jobber_synced | quote_sent | test_call | team_invited
   message: text("message").notNull(),
   occurredAt: timestamp("occurred_at", { withTimezone: true })
     .notNull()

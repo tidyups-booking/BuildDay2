@@ -109,11 +109,18 @@ function GeneralSettings({ company }: { company: any }) {
               Jobber Status
               {company.jobberConnected ? (
                 <span className="text-xs text-green-700 bg-green-500/100/10 px-2 py-0.5 rounded-full flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Connected</span>
+              ) : company.jobberSkipped ? (
+                <span className="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">Not used</span>
               ) : (
                 <span className="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">Disconnected</span>
               )}
             </div>
             {company.jobberAccountName && <div className="text-sm text-muted-foreground mt-1">{company.jobberAccountName}</div>}
+            {!company.jobberConnected && company.jobberSkipped && (
+              <div className="text-sm text-muted-foreground mt-1">
+                You're quoting and booking inside Book My Cleaning. Connect any time to sync jobs across.
+              </div>
+            )}
           </div>
           <Button 
             variant={company.jobberConnected ? "outline" : "default"} 

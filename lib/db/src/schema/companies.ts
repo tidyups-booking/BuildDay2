@@ -30,8 +30,16 @@ export const companiesTable = pgTable("companies", {
     .default([]),
   ringThroughNumber: text("ring_through_number"),
   phoneNumber: text("phone_number"),
+  // IANA zone used when writing appointment times into customer-facing text.
+  // Without this a quote would quote UTC and promise the wrong hour.
+  timezone: text("timezone").notNull().default("America/Edmonton"),
   // Jobber OAuth tokens — real OAuth with PKCE
   jobberConnected: boolean("jobber_connected").notNull().default(false),
+  // Jobber is optional. A company that explicitly skips it runs standalone:
+  // quotes, scheduling and bookings all live in Book My Cleaning. This is a
+  // deliberate choice, distinct from "hasn't got round to it yet", so the
+  // setup wizard can stop blocking on it.
+  jobberSkipped: boolean("jobber_skipped").notNull().default(false),
   jobberAccountName: text("jobber_account_name"),
   jobberAccountId: text("jobber_account_id"),
   jobberAccessToken: text("jobber_access_token"),

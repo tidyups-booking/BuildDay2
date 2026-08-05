@@ -5,6 +5,7 @@ import {
   integer,
   boolean,
   timestamp,
+  doublePrecision,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -24,6 +25,14 @@ export const bookingsTable = pgTable("bookings", {
   service: text("service").notNull(),
   scheduledFor: timestamp("scheduled_for", { withTimezone: true }).notNull(),
   status: text("status").notNull().default("pending"), // pending | confirmed | completed | canceled
+  // Quoting lives here rather than in Jobber, so companies that skip Jobber
+  // can still price a job and text the customer.
+  quotedAmount: doublePrecision("quoted_amount"),
+  quoteNotes: text("quote_notes"),
+  // The exact text last sent to the customer, and when. Kept so the dispatcher
+  // can see what was promised rather than guessing from the amount alone.
+  quoteMessage: text("quote_message"),
+  quoteSentAt: timestamp("quote_sent_at", { withTimezone: true }),
   jobberSynced: boolean("jobber_synced").notNull().default(false),
   jobberJobId: text("jobber_job_id"),
   jobberClientId: text("jobber_client_id"),

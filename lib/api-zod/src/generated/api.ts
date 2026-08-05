@@ -22,6 +22,7 @@ export const HealthCheckResponse = zod.object({
 export const GetCompanyResponse = zod.object({
   "id": zod.int(),
   "name": zod.string(),
+  "timezone": zod.string().describe('IANA zone the company schedules in. Booking times are shown and texted in this zone.'),
   "greeting": zod.string(),
   "collectFields": zod.array(zod.string()),
   "customQuestions": zod.array(zod.object({
@@ -31,6 +32,7 @@ export const GetCompanyResponse = zod.object({
   "ringThroughNumber": zod.string().nullish(),
   "phoneNumber": zod.string().nullish(),
   "jobberConnected": zod.boolean(),
+  "jobberSkipped": zod.boolean(),
   "jobberAccountName": zod.string().nullish(),
   "jobberNeedsReauth": zod.boolean(),
   "quoConnected": zod.boolean(),
@@ -46,6 +48,8 @@ export const GetCompanyResponse = zod.object({
   "setupStatus": zod.object({
   "accountCreated": zod.boolean(),
   "jobberConnected": zod.boolean(),
+  "jobberSkipped": zod.boolean(),
+  "jobberResolved": zod.boolean(),
   "quoConnected": zod.boolean(),
   "phoneProvisioned": zod.boolean(),
   "receptionistConfigured": zod.boolean(),
@@ -68,6 +72,7 @@ export const CreateCompanyBody = zod.object({
 export const CreateCompanyResponse = zod.object({
   "id": zod.int(),
   "name": zod.string(),
+  "timezone": zod.string().describe('IANA zone the company schedules in. Booking times are shown and texted in this zone.'),
   "greeting": zod.string(),
   "collectFields": zod.array(zod.string()),
   "customQuestions": zod.array(zod.object({
@@ -77,6 +82,7 @@ export const CreateCompanyResponse = zod.object({
   "ringThroughNumber": zod.string().nullish(),
   "phoneNumber": zod.string().nullish(),
   "jobberConnected": zod.boolean(),
+  "jobberSkipped": zod.boolean(),
   "jobberAccountName": zod.string().nullish(),
   "jobberNeedsReauth": zod.boolean(),
   "quoConnected": zod.boolean(),
@@ -92,6 +98,8 @@ export const CreateCompanyResponse = zod.object({
   "setupStatus": zod.object({
   "accountCreated": zod.boolean(),
   "jobberConnected": zod.boolean(),
+  "jobberSkipped": zod.boolean(),
+  "jobberResolved": zod.boolean(),
   "quoConnected": zod.boolean(),
   "phoneProvisioned": zod.boolean(),
   "receptionistConfigured": zod.boolean(),
@@ -121,6 +129,7 @@ export const UpdateCompanyBody = zod.object({
 export const UpdateCompanyResponse = zod.object({
   "id": zod.int(),
   "name": zod.string(),
+  "timezone": zod.string().describe('IANA zone the company schedules in. Booking times are shown and texted in this zone.'),
   "greeting": zod.string(),
   "collectFields": zod.array(zod.string()),
   "customQuestions": zod.array(zod.object({
@@ -130,6 +139,7 @@ export const UpdateCompanyResponse = zod.object({
   "ringThroughNumber": zod.string().nullish(),
   "phoneNumber": zod.string().nullish(),
   "jobberConnected": zod.boolean(),
+  "jobberSkipped": zod.boolean(),
   "jobberAccountName": zod.string().nullish(),
   "jobberNeedsReauth": zod.boolean(),
   "quoConnected": zod.boolean(),
@@ -145,6 +155,8 @@ export const UpdateCompanyResponse = zod.object({
   "setupStatus": zod.object({
   "accountCreated": zod.boolean(),
   "jobberConnected": zod.boolean(),
+  "jobberSkipped": zod.boolean(),
+  "jobberResolved": zod.boolean(),
   "quoConnected": zod.boolean(),
   "phoneProvisioned": zod.boolean(),
   "receptionistConfigured": zod.boolean(),
@@ -171,6 +183,7 @@ export const ConnectJobberResponse = zod.object({
 export const DisconnectJobberResponse = zod.object({
   "id": zod.int(),
   "name": zod.string(),
+  "timezone": zod.string().describe('IANA zone the company schedules in. Booking times are shown and texted in this zone.'),
   "greeting": zod.string(),
   "collectFields": zod.array(zod.string()),
   "customQuestions": zod.array(zod.object({
@@ -180,6 +193,7 @@ export const DisconnectJobberResponse = zod.object({
   "ringThroughNumber": zod.string().nullish(),
   "phoneNumber": zod.string().nullish(),
   "jobberConnected": zod.boolean(),
+  "jobberSkipped": zod.boolean(),
   "jobberAccountName": zod.string().nullish(),
   "jobberNeedsReauth": zod.boolean(),
   "quoConnected": zod.boolean(),
@@ -195,6 +209,8 @@ export const DisconnectJobberResponse = zod.object({
   "setupStatus": zod.object({
   "accountCreated": zod.boolean(),
   "jobberConnected": zod.boolean(),
+  "jobberSkipped": zod.boolean(),
+  "jobberResolved": zod.boolean(),
   "quoConnected": zod.boolean(),
   "phoneProvisioned": zod.boolean(),
   "receptionistConfigured": zod.boolean(),
@@ -213,6 +229,7 @@ export const DisconnectJobberResponse = zod.object({
 export const GoLiveResponse = zod.object({
   "id": zod.int(),
   "name": zod.string(),
+  "timezone": zod.string().describe('IANA zone the company schedules in. Booking times are shown and texted in this zone.'),
   "greeting": zod.string(),
   "collectFields": zod.array(zod.string()),
   "customQuestions": zod.array(zod.object({
@@ -222,6 +239,7 @@ export const GoLiveResponse = zod.object({
   "ringThroughNumber": zod.string().nullish(),
   "phoneNumber": zod.string().nullish(),
   "jobberConnected": zod.boolean(),
+  "jobberSkipped": zod.boolean(),
   "jobberAccountName": zod.string().nullish(),
   "jobberNeedsReauth": zod.boolean(),
   "quoConnected": zod.boolean(),
@@ -237,6 +255,58 @@ export const GoLiveResponse = zod.object({
   "setupStatus": zod.object({
   "accountCreated": zod.boolean(),
   "jobberConnected": zod.boolean(),
+  "jobberSkipped": zod.boolean(),
+  "jobberResolved": zod.boolean(),
+  "quoConnected": zod.boolean(),
+  "phoneProvisioned": zod.boolean(),
+  "receptionistConfigured": zod.boolean(),
+  "teamInvited": zod.boolean(),
+  "isLive": zod.boolean(),
+  "completedSteps": zod.int(),
+  "totalSteps": zod.int()
+}),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Skip Jobber (or un-skip it) and run bookings inside Book My Cleaning
+ */
+export const SetJobberSkippedBody = zod.object({
+  "skipped": zod.boolean()
+})
+
+export const SetJobberSkippedResponse = zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "timezone": zod.string().describe('IANA zone the company schedules in. Booking times are shown and texted in this zone.'),
+  "greeting": zod.string(),
+  "collectFields": zod.array(zod.string()),
+  "customQuestions": zod.array(zod.object({
+  "question": zod.string(),
+  "answer": zod.string()
+})),
+  "ringThroughNumber": zod.string().nullish(),
+  "phoneNumber": zod.string().nullish(),
+  "jobberConnected": zod.boolean(),
+  "jobberSkipped": zod.boolean(),
+  "jobberAccountName": zod.string().nullish(),
+  "jobberNeedsReauth": zod.boolean(),
+  "quoConnected": zod.boolean(),
+  "quoWorkspaceName": zod.string().nullish(),
+  "quoKeyLast4": zod.string().nullish(),
+  "watchedNumbers": zod.array(zod.object({
+  "id": zod.string(),
+  "phoneNumber": zod.string(),
+  "name": zod.string(),
+  "watched": zod.boolean()
+})),
+  "isLive": zod.boolean(),
+  "setupStatus": zod.object({
+  "accountCreated": zod.boolean(),
+  "jobberConnected": zod.boolean(),
+  "jobberSkipped": zod.boolean(),
+  "jobberResolved": zod.boolean(),
   "quoConnected": zod.boolean(),
   "phoneProvisioned": zod.boolean(),
   "receptionistConfigured": zod.boolean(),
@@ -259,6 +329,7 @@ export const ConnectQuoBody = zod.object({
 export const ConnectQuoResponse = zod.object({
   "id": zod.int(),
   "name": zod.string(),
+  "timezone": zod.string().describe('IANA zone the company schedules in. Booking times are shown and texted in this zone.'),
   "greeting": zod.string(),
   "collectFields": zod.array(zod.string()),
   "customQuestions": zod.array(zod.object({
@@ -268,6 +339,7 @@ export const ConnectQuoResponse = zod.object({
   "ringThroughNumber": zod.string().nullish(),
   "phoneNumber": zod.string().nullish(),
   "jobberConnected": zod.boolean(),
+  "jobberSkipped": zod.boolean(),
   "jobberAccountName": zod.string().nullish(),
   "jobberNeedsReauth": zod.boolean(),
   "quoConnected": zod.boolean(),
@@ -283,6 +355,8 @@ export const ConnectQuoResponse = zod.object({
   "setupStatus": zod.object({
   "accountCreated": zod.boolean(),
   "jobberConnected": zod.boolean(),
+  "jobberSkipped": zod.boolean(),
+  "jobberResolved": zod.boolean(),
   "quoConnected": zod.boolean(),
   "phoneProvisioned": zod.boolean(),
   "receptionistConfigured": zod.boolean(),
@@ -301,6 +375,7 @@ export const ConnectQuoResponse = zod.object({
 export const DisconnectQuoResponse = zod.object({
   "id": zod.int(),
   "name": zod.string(),
+  "timezone": zod.string().describe('IANA zone the company schedules in. Booking times are shown and texted in this zone.'),
   "greeting": zod.string(),
   "collectFields": zod.array(zod.string()),
   "customQuestions": zod.array(zod.object({
@@ -310,6 +385,7 @@ export const DisconnectQuoResponse = zod.object({
   "ringThroughNumber": zod.string().nullish(),
   "phoneNumber": zod.string().nullish(),
   "jobberConnected": zod.boolean(),
+  "jobberSkipped": zod.boolean(),
   "jobberAccountName": zod.string().nullish(),
   "jobberNeedsReauth": zod.boolean(),
   "quoConnected": zod.boolean(),
@@ -325,6 +401,8 @@ export const DisconnectQuoResponse = zod.object({
   "setupStatus": zod.object({
   "accountCreated": zod.boolean(),
   "jobberConnected": zod.boolean(),
+  "jobberSkipped": zod.boolean(),
+  "jobberResolved": zod.boolean(),
   "quoConnected": zod.boolean(),
   "phoneProvisioned": zod.boolean(),
   "receptionistConfigured": zod.boolean(),
@@ -359,6 +437,7 @@ export const SelectQuoNumbersBody = zod.object({
 export const SelectQuoNumbersResponse = zod.object({
   "id": zod.int(),
   "name": zod.string(),
+  "timezone": zod.string().describe('IANA zone the company schedules in. Booking times are shown and texted in this zone.'),
   "greeting": zod.string(),
   "collectFields": zod.array(zod.string()),
   "customQuestions": zod.array(zod.object({
@@ -368,6 +447,7 @@ export const SelectQuoNumbersResponse = zod.object({
   "ringThroughNumber": zod.string().nullish(),
   "phoneNumber": zod.string().nullish(),
   "jobberConnected": zod.boolean(),
+  "jobberSkipped": zod.boolean(),
   "jobberAccountName": zod.string().nullish(),
   "jobberNeedsReauth": zod.boolean(),
   "quoConnected": zod.boolean(),
@@ -383,6 +463,8 @@ export const SelectQuoNumbersResponse = zod.object({
   "setupStatus": zod.object({
   "accountCreated": zod.boolean(),
   "jobberConnected": zod.boolean(),
+  "jobberSkipped": zod.boolean(),
+  "jobberResolved": zod.boolean(),
   "quoConnected": zod.boolean(),
   "phoneProvisioned": zod.boolean(),
   "receptionistConfigured": zod.boolean(),
@@ -611,6 +693,10 @@ export const ListBookingsResponseItem = zod.object({
   "service": zod.string(),
   "scheduledFor": zod.string(),
   "status": zod.enum(['pending', 'confirmed', 'completed', 'canceled']),
+  "quotedAmount": zod.number().nullish(),
+  "quoteNotes": zod.string().nullish(),
+  "quoteMessage": zod.string().nullish(),
+  "quoteSentAt": zod.string().nullish(),
   "jobberSynced": zod.boolean(),
   "jobberJobId": zod.string().nullish(),
   "jobberClientId": zod.string().nullish(),
@@ -620,13 +706,119 @@ export const ListBookingsResponseItem = zod.object({
 export const ListBookingsResponse = zod.array(ListBookingsResponseItem)
 
 
+/**
+ * @summary Add a booking by hand (walk-in, repeat customer, or a call the AI missed)
+ */
+
+
+
+export const createBookingBodyQuotedAmountMin = 0;
+
+
+
+export const CreateBookingBody = zod.object({
+  "customerName": zod.string().min(1),
+  "customerPhone": zod.string().min(1),
+  "customerAddress": zod.string().nullish(),
+  "service": zod.string().min(1),
+  "scheduledFor": zod.string(),
+  "status": zod.enum(['pending', 'confirmed', 'completed', 'canceled']).optional(),
+  "quotedAmount": zod.number().min(createBookingBodyQuotedAmountMin).nullish(),
+  "quoteNotes": zod.string().nullish()
+})
+
+export const CreateBookingResponse = zod.object({
+  "id": zod.int(),
+  "callId": zod.int().nullish(),
+  "customerName": zod.string(),
+  "customerPhone": zod.string(),
+  "customerAddress": zod.string().nullish(),
+  "service": zod.string(),
+  "scheduledFor": zod.string(),
+  "status": zod.enum(['pending', 'confirmed', 'completed', 'canceled']),
+  "quotedAmount": zod.number().nullish(),
+  "quoteNotes": zod.string().nullish(),
+  "quoteMessage": zod.string().nullish(),
+  "quoteSentAt": zod.string().nullish(),
+  "jobberSynced": zod.boolean(),
+  "jobberJobId": zod.string().nullish(),
+  "jobberClientId": zod.string().nullish(),
+  "jobberWebUri": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary The quote text that would be sent to this customer
+ */
+export const GetQuotePreviewParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const GetQuotePreviewResponse = zod.object({
+  "message": zod.string(),
+  "canSend": zod.boolean(),
+  "blockedReason": zod.string().nullish(),
+  "fromNumber": zod.string().nullish()
+})
+
+
+/**
+ * @summary Text the quote to the customer from the company's own Quo number
+ */
+export const SendQuoteParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const sendQuoteBodyMessageMax = 1600;
+
+
+
+export const SendQuoteBody = zod.object({
+  "message": zod.string().min(1).max(sendQuoteBodyMessageMax)
+})
+
+export const SendQuoteResponse = zod.object({
+  "id": zod.int(),
+  "callId": zod.int().nullish(),
+  "customerName": zod.string(),
+  "customerPhone": zod.string(),
+  "customerAddress": zod.string().nullish(),
+  "service": zod.string(),
+  "scheduledFor": zod.string(),
+  "status": zod.enum(['pending', 'confirmed', 'completed', 'canceled']),
+  "quotedAmount": zod.number().nullish(),
+  "quoteNotes": zod.string().nullish(),
+  "quoteMessage": zod.string().nullish(),
+  "quoteSentAt": zod.string().nullish(),
+  "jobberSynced": zod.boolean(),
+  "jobberJobId": zod.string().nullish(),
+  "jobberClientId": zod.string().nullish(),
+  "jobberWebUri": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+
+
 export const UpdateBookingParams = zod.object({
   "id": zod.coerce.number().int()
 })
 
+
+
+
+export const updateBookingBodyQuotedAmountMin = 0;
+
+
+
 export const UpdateBookingBody = zod.object({
   "status": zod.enum(['pending', 'confirmed', 'completed', 'canceled']).optional(),
-  "scheduledFor": zod.string().optional()
+  "scheduledFor": zod.string().optional(),
+  "customerName": zod.string().min(1).optional(),
+  "customerPhone": zod.string().min(1).optional(),
+  "customerAddress": zod.string().nullish(),
+  "service": zod.string().min(1).optional(),
+  "quotedAmount": zod.number().min(updateBookingBodyQuotedAmountMin).nullish(),
+  "quoteNotes": zod.string().nullish()
 })
 
 export const UpdateBookingResponse = zod.object({
@@ -638,6 +830,10 @@ export const UpdateBookingResponse = zod.object({
   "service": zod.string(),
   "scheduledFor": zod.string(),
   "status": zod.enum(['pending', 'confirmed', 'completed', 'canceled']),
+  "quotedAmount": zod.number().nullish(),
+  "quoteNotes": zod.string().nullish(),
+  "quoteMessage": zod.string().nullish(),
+  "quoteSentAt": zod.string().nullish(),
   "jobberSynced": zod.boolean(),
   "jobberJobId": zod.string().nullish(),
   "jobberClientId": zod.string().nullish(),
@@ -662,6 +858,10 @@ export const SyncBookingToJobberResponse = zod.object({
   "service": zod.string(),
   "scheduledFor": zod.string(),
   "status": zod.enum(['pending', 'confirmed', 'completed', 'canceled']),
+  "quotedAmount": zod.number().nullish(),
+  "quoteNotes": zod.string().nullish(),
+  "quoteMessage": zod.string().nullish(),
+  "quoteSentAt": zod.string().nullish(),
   "jobberSynced": zod.boolean(),
   "jobberJobId": zod.string().nullish(),
   "jobberClientId": zod.string().nullish(),
@@ -689,7 +889,7 @@ export const GetDashboardSummaryResponse = zod.object({
  */
 export const GetRecentActivityResponseItem = zod.object({
   "id": zod.int(),
-  "type": zod.enum(['call_answered', 'booking_created', 'jobber_synced', 'test_call', 'team_invited']),
+  "type": zod.enum(['call_answered', 'booking_created', 'jobber_synced', 'quote_sent', 'test_call', 'team_invited']),
   "message": zod.string(),
   "occurredAt": zod.string()
 })

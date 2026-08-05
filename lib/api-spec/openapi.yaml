@@ -115,6 +115,24 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Company"
+  /company/jobber/skip:
+    post:
+      operationId: setJobberSkipped
+      tags: [company]
+      summary: Skip Jobber (or un-skip it) and run bookings inside Book My Cleaning
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JobberSkipInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Company"
   /company/quo/connect:
     post:
       operationId: connectQuo
@@ -363,6 +381,65 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Booking"
+    post:
+      operationId: createBooking
+      tags: [bookings]
+      summary: Add a booking by hand (walk-in, repeat customer, or a call the AI missed)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BookingCreate"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Booking"
+  /bookings/{id}/quote-preview:
+    get:
+      operationId: getQuotePreview
+      tags: [bookings]
+      summary: The quote text that would be sent to this customer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Draft
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuotePreview"
+  /bookings/{id}/send-quote:
+    post:
+      operationId: sendQuote
+      tags: [bookings]
+      summary: Text the quote to the customer from the company's own Quo number
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendQuoteInput"
+      responses:
+        "200":
+          description: Sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Booking"
   /bookings/{id}:
     patch:
       operationId: updateBooking
@@ -492,10 +569,14 @@ components:
         watched: { type: boolean }
     SetupStatus:
       type: object
-      required: [accountCreated, jobberConnected, quoConnected, phoneProvisioned, receptionistConfigured, teamInvited, isLive, completedSteps, totalSteps]
+      required: [accountCreated, jobberConnected, jobberSkipped, jobberResolved, quoConnected, phoneProvisioned, receptionistConfigured, teamInvited, isLive, completedSteps, totalSteps]
       properties:
         accountCreated: { type: boolean }
         jobberConnected: { type: boolean }
+        jobberSkipped: { type: boolean }
+        # True once the owner has made a choice either way, so the wizard can
+        # advance. Connecting Jobber later un-skips it.
+        jobberResolved: { type: boolean }
         quoConnected: { type: boolean }
         phoneProvisioned: { type: boolean }
         receptionistConfigured: { type: boolean }
@@ -505,10 +586,13 @@ components:
         totalSteps: { type: integer }
     Company:
       type: object
-      required: [id, name, greeting, collectFields, customQuestions, jobberConnected, jobberNeedsReauth, quoConnected, watchedNumbers, isLive, setupStatus, createdAt]
+      required: [id, name, timezone, greeting, collectFields, customQuestions, jobberConnected, jobberSkipped, jobberNeedsReauth, quoConnected, watchedNumbers, isLive, setupStatus, createdAt]
       properties:
         id: { type: integer }
         name: { type: string }
+        timezone:
+          type: string
+          description: IANA zone the company schedules in. Booking times are shown and texted in this zone.
         greeting: { type: string }
         collectFields:
           type: array
@@ -520,6 +604,7 @@ components:
         ringThroughNumber: { type: ["string", "null"] }
         phoneNumber: { type: ["string", "null"] }
         jobberConnected: { type: boolean }
+        jobberSkipped: { type: boolean }
         jobberAccountName: { type: ["string", "null"] }
         jobberNeedsReauth: { type: boolean }
         quoConnected: { type: boolean }
@@ -661,6 +746,10 @@ components:
         service: { type: string }
         scheduledFor: { type: string }
         status: { type: string, enum: [pending, confirmed, completed, canceled] }
+        quotedAmount: { type: ["number", "null"] }
+        quoteNotes: { type: ["string", "null"] }
+        quoteMessage: { type: ["string", "null"] }
+        quoteSentAt: { type: ["string", "null"] }
         jobberSynced: { type: boolean }
         jobberJobId: { type: ["string", "null"] }
         jobberClientId: { type: ["string", "null"] }
@@ -671,6 +760,43 @@ components:
       properties:
         status: { type: string, enum: [pending, confirmed, completed, canceled] }
         scheduledFor: { type: string }
+        customerName: { type: string, minLength: 1 }
+        customerPhone: { type: string, minLength: 1 }
+        customerAddress: { type: ["string", "null"] }
+        service: { type: string, minLength: 1 }
+        quotedAmount: { type: ["number", "null"], minimum: 0 }
+        quoteNotes: { type: ["string", "null"] }
+    BookingCreate:
+      type: object
+      required: [customerName, customerPhone, service, scheduledFor]
+      properties:
+        customerName: { type: string, minLength: 1 }
+        customerPhone: { type: string, minLength: 1 }
+        customerAddress: { type: ["string", "null"] }
+        service: { type: string, minLength: 1 }
+        scheduledFor: { type: string }
+        status: { type: string, enum: [pending, confirmed, completed, canceled] }
+        quotedAmount: { type: ["number", "null"], minimum: 0 }
+        quoteNotes: { type: ["string", "null"] }
+    QuotePreview:
+      type: object
+      required: [message, canSend]
+      properties:
+        message: { type: string }
+        # False when the company has no Quo line to send from, or no key.
+        canSend: { type: boolean }
+        blockedReason: { type: ["string", "null"] }
+        fromNumber: { type: ["string", "null"] }
+    SendQuoteInput:
+      type: object
+      required: [message]
+      properties:
+        message: { type: string, minLength: 1, maxLength: 1600 }
+    JobberSkipInput:
+      type: object
+      required: [skipped]
+      properties:
+        skipped: { type: boolean }
     DashboardSummary:
       type: object
       required: [callsToday, callsThisWeek, bookingsThisWeek, answeredRate, avgCallSeconds, pendingBookings, jobberSyncedCount]
@@ -687,6 +813,6 @@ components:
       required: [id, type, message, occurredAt]
       properties:
         id: { type: integer }
-        type: { type: string, enum: [call_answered, booking_created, jobber_synced, test_call, team_invited] }
+        type: { type: string, enum: [call_answered, booking_created, jobber_synced, quote_sent, test_call, team_invited] }
         message: { type: string }
         occurredAt: { type: string }

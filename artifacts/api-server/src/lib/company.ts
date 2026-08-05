@@ -78,9 +78,13 @@ export async function serializeCompany(company: Company) {
     }
   }
 
+  // Jobber is optional: connecting it or deliberately skipping it both count
+  // as having dealt with the step, so the wizard stops blocking either way.
+  const jobberResolved = company.jobberConnected || company.jobberSkipped;
+
   const steps = [
     true, // account created
-    company.jobberConnected,
+    jobberResolved,
     phoneProvisioned,
     company.receptionistConfigured,
     teamInvited,
@@ -95,7 +99,9 @@ export async function serializeCompany(company: Company) {
     customQuestions: company.customQuestions,
     ringThroughNumber: company.ringThroughNumber,
     phoneNumber: watchedNumbers[0]?.phoneNumber || company.phoneNumber,
+    timezone: company.timezone,
     jobberConnected: company.jobberConnected,
+    jobberSkipped: company.jobberSkipped,
     jobberAccountName: company.jobberAccountName,
     jobberNeedsReauth: company.jobberNeedsReauth,
     quoConnected: company.quoConnected,
@@ -106,6 +112,8 @@ export async function serializeCompany(company: Company) {
     setupStatus: {
       accountCreated: true,
       jobberConnected: company.jobberConnected,
+      jobberSkipped: company.jobberSkipped,
+      jobberResolved,
       quoConnected: company.quoConnected,
       phoneProvisioned,
       receptionistConfigured: company.receptionistConfigured,

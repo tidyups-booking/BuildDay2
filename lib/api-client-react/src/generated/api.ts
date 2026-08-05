@@ -22,6 +22,7 @@ import type {
 import type {
   ActivityItem,
   Booking,
+  BookingCreate,
   BookingUpdate,
   Call,
   CallDetail,
@@ -32,9 +33,12 @@ import type {
   DashboardSummary,
   HealthStatus,
   JobberConnectStart,
+  JobberSkipInput,
   ListCallsParams,
   QuoNumber,
   QuoNumberSelection,
+  QuotePreview,
+  SendQuoteInput,
   Service,
   ServiceInput,
   ServiceUpdate,
@@ -577,6 +581,77 @@ export const useGoLive = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getGoLiveMutationOptions(options));
+    }
+
+export const getSetJobberSkippedUrl = () => {
+
+
+
+
+  return `/api/company/jobber/skip`
+}
+
+/**
+ * @summary Skip Jobber (or un-skip it) and run bookings inside Book My Cleaning
+ */
+export const setJobberSkipped = async (jobberSkipInput: JobberSkipInput, options?: Parameters<typeof customFetch>[1]): Promise<Company> => {
+
+  return customFetch<Company>(getSetJobberSkippedUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(jobberSkipInput)
+  }
+);}
+
+
+
+
+
+export const getSetJobberSkippedMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setJobberSkipped>>, TError,{data: BodyType<JobberSkipInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof setJobberSkipped>>, TError,{data: BodyType<JobberSkipInput>}, TContext> => {
+
+const mutationKey = ['setJobberSkipped'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof setJobberSkipped>>, {data: BodyType<JobberSkipInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  setJobberSkipped(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SetJobberSkippedMutationResult = NonNullable<Awaited<ReturnType<typeof setJobberSkipped>>>
+    export type SetJobberSkippedMutationBody = BodyType<JobberSkipInput>
+    export type SetJobberSkippedMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Skip Jobber (or un-skip it) and run bookings inside Book My Cleaning
+ */
+export const useSetJobberSkipped = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setJobberSkipped>>, TError,{data: BodyType<JobberSkipInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof setJobberSkipped>>,
+        TError,
+        {data: BodyType<JobberSkipInput>},
+        TContext
+      > => {
+      return useMutation(getSetJobberSkippedMutationOptions(options));
     }
 
 export const getConnectQuoUrl = () => {
@@ -1734,6 +1809,226 @@ export function useListBookings<TData = Awaited<ReturnType<typeof listBookings>>
 
 
 
+
+export const getCreateBookingUrl = () => {
+
+
+
+
+  return `/api/bookings`
+}
+
+/**
+ * @summary Add a booking by hand (walk-in, repeat customer, or a call the AI missed)
+ */
+export const createBooking = async (bookingCreate: BookingCreate, options?: Parameters<typeof customFetch>[1]): Promise<Booking> => {
+
+  return customFetch<Booking>(getCreateBookingUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(bookingCreate)
+  }
+);}
+
+
+
+
+
+export const getCreateBookingMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createBooking>>, TError,{data: BodyType<BookingCreate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createBooking>>, TError,{data: BodyType<BookingCreate>}, TContext> => {
+
+const mutationKey = ['createBooking'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createBooking>>, {data: BodyType<BookingCreate>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createBooking(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateBookingMutationResult = NonNullable<Awaited<ReturnType<typeof createBooking>>>
+    export type CreateBookingMutationBody = BodyType<BookingCreate>
+    export type CreateBookingMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Add a booking by hand (walk-in, repeat customer, or a call the AI missed)
+ */
+export const useCreateBooking = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createBooking>>, TError,{data: BodyType<BookingCreate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createBooking>>,
+        TError,
+        {data: BodyType<BookingCreate>},
+        TContext
+      > => {
+      return useMutation(getCreateBookingMutationOptions(options));
+    }
+
+export const getGetQuotePreviewUrl = (id: number,) => {
+
+
+
+
+  return `/api/bookings/${id}/quote-preview`
+}
+
+/**
+ * @summary The quote text that would be sent to this customer
+ */
+export const getQuotePreview = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<QuotePreview> => {
+
+  return customFetch<QuotePreview>(getGetQuotePreviewUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetQuotePreviewQueryKey = (id: number,) => {
+    return [
+    `/api/bookings/${id}/quote-preview`
+    ] as const;
+    }
+
+
+export const getGetQuotePreviewQueryOptions = <TData = Awaited<ReturnType<typeof getQuotePreview>>, TError = ErrorType<unknown>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getQuotePreview>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetQuotePreviewQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getQuotePreview>>> = ({ signal }) => getQuotePreview(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getQuotePreview>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetQuotePreviewQueryResult = NonNullable<Awaited<ReturnType<typeof getQuotePreview>>>
+export type GetQuotePreviewQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary The quote text that would be sent to this customer
+ */
+
+export function useGetQuotePreview<TData = Awaited<ReturnType<typeof getQuotePreview>>, TError = ErrorType<unknown>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getQuotePreview>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetQuotePreviewQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSendQuoteUrl = (id: number,) => {
+
+
+
+
+  return `/api/bookings/${id}/send-quote`
+}
+
+/**
+ * @summary Text the quote to the customer from the company's own Quo number
+ */
+export const sendQuote = async (id: number,
+    sendQuoteInput: SendQuoteInput, options?: Parameters<typeof customFetch>[1]): Promise<Booking> => {
+
+  return customFetch<Booking>(getSendQuoteUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(sendQuoteInput)
+  }
+);}
+
+
+
+
+
+export const getSendQuoteMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendQuote>>, TError,{id: number;data: BodyType<SendQuoteInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof sendQuote>>, TError,{id: number;data: BodyType<SendQuoteInput>}, TContext> => {
+
+const mutationKey = ['sendQuote'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof sendQuote>>, {id: number;data: BodyType<SendQuoteInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  sendQuote(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SendQuoteMutationResult = NonNullable<Awaited<ReturnType<typeof sendQuote>>>
+    export type SendQuoteMutationBody = BodyType<SendQuoteInput>
+    export type SendQuoteMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Text the quote to the customer from the company's own Quo number
+ */
+export const useSendQuote = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendQuote>>, TError,{id: number;data: BodyType<SendQuoteInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof sendQuote>>,
+        TError,
+        {id: number;data: BodyType<SendQuoteInput>},
+        TContext
+      > => {
+      return useMutation(getSendQuoteMutationOptions(options));
+    }
 
 export const getUpdateBookingUrl = (id: number,) => {
 

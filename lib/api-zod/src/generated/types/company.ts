@@ -12,6 +12,8 @@ import type { WatchedNumber } from './watchedNumber';
 export interface Company {
   id: number;
   name: string;
+  /** IANA zone the company schedules in. Booking times are shown and texted in this zone. */
+  timezone: string;
   greeting: string;
   collectFields: string[];
   customQuestions: CustomQuestion[];
@@ -20,6 +22,7 @@ export interface Company {
   /** @nullable */
   phoneNumber?: string | null;
   jobberConnected: boolean;
+  jobberSkipped: boolean;
   /** @nullable */
   jobberAccountName?: string | null;
   jobberNeedsReauth: boolean;

@@ -287,6 +287,52 @@ export async function createSummaryWebhook(
   return res.data;
 }
 
+/**
+ * Quo only accepts E.164 (`^\+[1-9]\d{1,14}$`). Numbers captured from calls
+ * already arrive that way, but hand-typed ones do not — returns null when the
+ * input cannot be read as a phone number rather than guessing.
+ */
+export function toE164(raw: string, defaultCountryCode = "1"): string | null {
+  const trimmed = raw.trim();
+  if (/^\+[1-9]\d{1,14}$/.test(trimmed)) return trimmed;
+
+  const digits = trimmed.replace(/\D/g, "");
+  if (digits.length === 10) return `+${defaultCountryCode}${digits}`;
+  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
+  if (digits.length >= 8 && digits.length <= 15) return `+${digits}`;
+  return null;
+}
+
+export type QuoSentMessage = {
+  id: string;
+  status: string;
+  to: string[];
+  from: string;
+  createdAt: string;
+};
+
+/**
+ * Sends an SMS from one of the workspace's own numbers.
+ *
+ * `from` must be a number that belongs to this workspace in E.164 form — Quo
+ * rejects anything else, which also means a company can only ever text from a
+ * line they actually own.
+ */
+export async function sendMessage(
+  apiKey: string,
+  input: { from: string; to: string; content: string },
+): Promise<QuoSentMessage> {
+  const res = await quoRequest<{ data: QuoSentMessage }>(apiKey, "/messages", {
+    method: "POST",
+    body: JSON.stringify({
+      from: input.from,
+      to: [input.to],
+      content: input.content,
+    }),
+  });
+  return res.data;
+}
+
 export async function deleteWebhook(apiKey: string, id: string): Promise<void> {
   try {
     await quoRequest<void>(

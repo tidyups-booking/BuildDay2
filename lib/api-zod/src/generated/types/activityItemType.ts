@@ -13,6 +13,7 @@ export const ActivityItemType = {
   call_answered: 'call_answered',
   booking_created: 'booking_created',
   jobber_synced: 'jobber_synced',
+  quote_sent: 'quote_sent',
   test_call: 'test_call',
   team_invited: 'team_invited',
 } as const;
