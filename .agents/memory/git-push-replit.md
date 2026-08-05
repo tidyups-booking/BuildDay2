@@ -25,6 +25,20 @@ credentials, seed the tracking ref locally with
 `git update-ref refs/remotes/origin/main refs/remotes/<subrepl-remote>/main` — the two
 remotes are the same repository.
 
+## `UNAUTHENTICATED` usually means the repo does not exist
+
+GitHub answers requests for a repository you cannot see with an auth error rather than a
+"not found", so `gitPush` reporting `CLI_ERROR: UNAUTHENTICATED` is **not** evidence that
+credentials are missing. Check that the remote URL names a repository that actually
+exists before touching credentials or proposing a connector.
+
+**Why:** GitHub deliberately hides the existence of inaccessible repos. A one-character
+difference in the remote URL is indistinguishable from a permissions failure.
+
+**How to apply:** hit `GET /repos/{owner}/{repo}` through the GitHub connector. A 404
+there while other repos return 200 means the name is wrong, not the token. Listing
+`/user/repos` reveals near-miss names (hyphen placement, casing).
+
 ## The GitHub connector does not grant push access
 
 Authorizing the GitHub **integration/connector** (the one from `searchIntegrations`)
