@@ -225,6 +225,17 @@ router.patch("/company", async (req, res): Promise<void> => {
     return;
   }
 
+  // Saving a phone field (valid or cleared) resolves any warning about an
+  // old undialable value the startup cleanup pass removed.
+  const rejectedClears = {
+    ...(parsed.data.notificationNumber !== undefined
+      ? { notificationNumberRejected: null }
+      : {}),
+    ...(parsed.data.ringThroughNumber !== undefined
+      ? { ringThroughNumberRejected: null }
+      : {}),
+  };
+
   const touchesConfig =
     parsed.data.greeting !== undefined ||
     parsed.data.collectFields !== undefined ||
@@ -235,6 +246,7 @@ router.patch("/company", async (req, res): Promise<void> => {
     .update(companiesTable)
     .set({
       ...parsed.data,
+      ...rejectedClears,
       ...(touchesConfig ? { receptionistConfigured: true } : {}),
     })
     .where(eq(companiesTable.id, company.id))

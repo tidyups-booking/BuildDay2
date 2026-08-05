@@ -24,6 +24,13 @@ if (Number.isNaN(port) || port <= 0) {
 // or after a schema-changing deploy.
 await runMigrations();
 
+// Normalize owner phone numbers saved before validation existed; undialable
+// ones are cleared and surfaced in settings instead of failing silently
+// during an outage. Idempotent, so running on every boot is a no-op after
+// the first pass.
+const { cleanupStoredPhoneNumbers } = await import("./lib/phoneCleanup");
+await cleanupStoredPhoneNumbers();
+
 /**
  * Set up the Stripe mirror: create the `stripe` schema, register the managed
  * webhook, then backfill.

@@ -35,7 +35,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Trash2, Edit2, CheckCircle2 } from "lucide-react";
+import { Plus, Trash2, Edit2, CheckCircle2, AlertTriangle } from "lucide-react";
 
 export function SettingsPage() {
   const { data: company, isLoading } = useGetCompany();
@@ -300,6 +300,31 @@ function ReceptionistSettings({ company }: { company: any }) {
 
   return (
     <div className="bg-card border border-border rounded-xl p-6 shadow-sm max-w-3xl space-y-8">
+      {(company.ringThroughNumberRejected ||
+        company.notificationNumberRejected) && (
+        <div className="flex gap-3 items-start bg-amber-500/10 border border-amber-500/30 rounded-lg p-4">
+          <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+          <div className="text-sm space-y-1">
+            <p className="font-medium">
+              A saved phone number couldn't receive texts and was removed.
+            </p>
+            {company.ringThroughNumberRejected && (
+              <p className="text-muted-foreground">
+                Ring-through number "{company.ringThroughNumberRejected}" isn't
+                a dialable number. Enter a full number below and save to restore
+                transfers.
+              </p>
+            )}
+            {company.notificationNumberRejected && (
+              <p className="text-muted-foreground">
+                Notification number "{company.notificationNumberRejected}" isn't
+                a number we can text. Enter a full number below and save so you
+                get outage alerts.
+              </p>
+            )}
+          </div>
+        </div>
+      )}
       <div className="space-y-4">
         <h3 className="font-serif font-bold text-lg">Basic Configuration</h3>
         <div className="space-y-2">

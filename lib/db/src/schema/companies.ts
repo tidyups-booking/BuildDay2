@@ -34,6 +34,12 @@ export const companiesTable = pgTable("companies", {
   // number is set. Without either, those notifications can only surface in
   // the dashboard.
   notificationNumber: text("notification_number"),
+  // Raw values that were stored before phone validation existed and could not
+  // be normalized to E.164 by the one-time cleanup pass. The undialable value
+  // is cleared from the live column and preserved here so settings can show
+  // the owner what was removed. Nulled when the owner saves a replacement.
+  ringThroughNumberRejected: text("ring_through_number_rejected"),
+  notificationNumberRejected: text("notification_number_rejected"),
   phoneNumber: text("phone_number"),
   // IANA zone used when writing appointment times into customer-facing text.
   // Without this a quote would quote UTC and promise the wrong hour.

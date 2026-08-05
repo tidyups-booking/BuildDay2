@@ -782,6 +782,12 @@ components:
         # Fallback number for owner outage/recovery texts when no ring-through
         # number is set.
         notificationNumber: { type: ["string", "null"] }
+        # Raw values saved before phone validation existed that the one-time
+        # cleanup pass could not normalize to a textable number. The live
+        # field was cleared; these hold what was removed so settings can warn
+        # the owner. Null once the owner saves a replacement.
+        ringThroughNumberRejected: { type: ["string", "null"] }
+        notificationNumberRejected: { type: ["string", "null"] }
         phoneNumber: { type: ["string", "null"] }
         jobberConnected: { type: boolean }
         jobberSkipped: { type: boolean }

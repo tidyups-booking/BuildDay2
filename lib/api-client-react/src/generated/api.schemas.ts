@@ -120,6 +120,10 @@ export interface Company {
   /** @nullable */
   notificationNumber?: string | null;
   /** @nullable */
+  ringThroughNumberRejected?: string | null;
+  /** @nullable */
+  notificationNumberRejected?: string | null;
+  /** @nullable */
   phoneNumber?: string | null;
   jobberConnected: boolean;
   jobberSkipped: boolean;

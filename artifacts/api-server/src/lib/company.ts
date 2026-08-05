@@ -106,6 +106,10 @@ export async function serializeCompany(company: Company) {
     customQuestions: company.customQuestions,
     ringThroughNumber: company.ringThroughNumber,
     notificationNumber: company.notificationNumber,
+    // Raw values the startup cleanup pass removed because they can't receive
+    // texts — settings shows a warning until the owner saves a replacement.
+    ringThroughNumberRejected: company.ringThroughNumberRejected,
+    notificationNumberRejected: company.notificationNumberRejected,
     phoneNumber: watchedNumbers[0]?.phoneNumber || company.phoneNumber,
     timezone: company.timezone,
     jobberConnected: company.jobberConnected,
