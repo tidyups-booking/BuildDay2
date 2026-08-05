@@ -10,7 +10,11 @@ import {
 import { z } from "zod/v4";
 import * as quo from "../lib/quo";
 import { upsertCall, applyTranscript } from "../lib/quoIngest";
-import { companyQuoKey } from "../lib/company";
+import {
+  companyQuoKey,
+  isQuoAuthError,
+  setQuoNeedsReauth,
+} from "../lib/company";
 
 const router: IRouter = Router();
 
@@ -214,6 +218,11 @@ router.post("/webhooks/quo", async (req, res): Promise<void> => {
 
     res.sendStatus(200);
   } catch (err) {
+    // A 401/403 means the company's key was revoked or rotated — record it so
+    // the dashboard warns the owner that calls have stopped flowing.
+    if (isQuoAuthError(err)) {
+      await setQuoNeedsReauth(company, true).catch(() => {});
+    }
     // Release the idempotency claim so Quo's retry is processed rather than
     // silently swallowed as a duplicate, then fail loudly enough to trigger it.
     await db

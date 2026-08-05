@@ -78,6 +78,13 @@
       "when": 1785923000000,
       "tag": "0010_timezone_review",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1785923100000,
+      "tag": "0011_quo_needs_reauth",
+      "breakpoints": true
     }
   ]
 }

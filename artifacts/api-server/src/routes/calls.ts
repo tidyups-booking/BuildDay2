@@ -16,7 +16,12 @@ import {
   SimulateTestCallResponse,
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/requireAuth";
-import { getCompanyForUser, companyQuoKey } from "../lib/company";
+import {
+  getCompanyForUser,
+  companyQuoKey,
+  isQuoAuthError,
+  setQuoNeedsReauth,
+} from "../lib/company";
 import { buildSimulatedCall } from "../lib/simulateCall";
 import { backfillCalls } from "../lib/quoIngest";
 import { listPhoneNumbers } from "../lib/quo";
@@ -106,6 +111,14 @@ router.post("/calls/sync", async (req, res): Promise<void> => {
     );
   } catch (err) {
     req.log.error({ err: (err as Error).message }, "Quo sync failed");
+    if (isQuoAuthError(err)) {
+      await setQuoNeedsReauth(company, true).catch(() => {});
+      res.status(502).json({
+        error:
+          "Quo rejected your API key. Reconnect Quo from the setup page to resume syncing.",
+      });
+      return;
+    }
     res.status(502).json({ error: "Could not sync calls from Quo" });
   }
 });
@@ -122,14 +135,22 @@ router.get("/calls/:id", async (req, res): Promise<void> => {
     return;
   }
   const [call] = await db
-    .select()
-    .from(callsTable)
-    .where(
-      and(
-        eq(callsTable.id, params.data.id),
-        eq(callsTable.companyId, company.id),
-      ),
-    );
+    .insert(callsTable)
+    .values({
+      companyId: company.id,
+      callerName: sim.ctx.callerName,
+      callerPhone,
+      status: "booked",
+      serviceRequested: sim.service ? sim.service.name : "Deep Clean",
+      preferredTime: sim.ctx.preferredTime,
+      startedAt: new Date(),
+      durationSeconds: sim.durationSeconds,
+      isTest: true,
+      transcript: sim.transcript,
+      extractedAnswers: sim.extractedAnswers,
+      bookingId: booking!.id,
+    })
+    .returning();
   if (!call) {
     res.status(404).json({ error: "Call not found" });
     return;

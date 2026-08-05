@@ -24,9 +24,9 @@ const router: IRouter = Router();
 router.use(requireAuth);
 
 router.post("/company/quo/connect", async (req, res): Promise<void> => {
-  const parsed = ConnectQuoBody.safeParse(req.body);
+  const parsed = SelectQuoNumbersBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: "Paste the API key from your Quo settings" });
+    res.status(400).json({ error: parsed.error.message });
     return;
   }
   const company = await getCompanyForUser(req.userId!);
@@ -34,12 +34,11 @@ router.post("/company/quo/connect", async (req, res): Promise<void> => {
     res.status(404).json({ error: "No company yet" });
     return;
   }
-
-  const apiKey = parsed.data.apiKey.trim();
+  const apiKey = companyQuoKey(company);
 
   // Prove the key works before storing it, so a typo fails here rather than
   // silently breaking call ingestion later.
-  let numbers: quo.QuoPhoneNumber[];
+    const numbers = await quo.listPhoneNumbers(listKey);
   try {
     numbers = await quo.listPhoneNumbers(apiKey);
   } catch (err) {
@@ -61,27 +60,37 @@ router.post("/company/quo/connect", async (req, res): Promise<void> => {
     return;
   }
 
-  const [updated] = await db
-    .update(companiesTable)
-    .set({
-      quoConnected: true,
-      quoWorkspaceName: `${numbers.length} line${numbers.length === 1 ? "" : "s"}`,
-      quoApiKeyEncrypted: encryptQuoKey(apiKey),
-      quoKeyLast4: apiKey.slice(-4),
-    })
-    .where(eq(companiesTable.id, company.id))
-    .returning();
+  const [updated] = await db.transaction(async (tx) => {
+    await tx
+      .delete(quoWebhooksTable)
+      .where(eq(quoWebhooksTable.companyId, company.id));
+    if (created.length > 0) {
+      await tx.insert(quoWebhooksTable).values(
+        created.map((w) => ({
+          companyId: company.id,
+          quoWebhookId: w.id,
+          signingKey: w.key,
+          events: w.events,
+          url: w.url,
+        })),
+      );
+    }
+    return tx
+      .update(companiesTable)
+      .set({ quoNumberIds: numberIds })
+      .where(eq(companiesTable.id, company.id))
+      .returning();
+  });
 
-  res.json(ConnectQuoResponse.parse(await serializeCompany(updated!)));
+  res.json(DisconnectQuoResponse.parse(await serializeCompany(updated!)));
 });
 
-router.post("/company/quo/disconnect", async (req, res): Promise<void> => {
+router.get("/quo/numbers", async (req, res): Promise<void> => {
   const company = await getCompanyForUser(req.userId!);
   if (!company) {
     res.status(404).json({ error: "No company yet" });
     return;
   }
-
   const apiKey = companyQuoKey(company);
   const hooks = await db
     .select()
@@ -105,17 +114,27 @@ router.post("/company/quo/disconnect", async (req, res): Promise<void> => {
     .delete(quoWebhooksTable)
     .where(eq(quoWebhooksTable.companyId, company.id));
 
-  const [updated] = await db
-    .update(companiesTable)
-    .set({
-      quoConnected: false,
-      quoWorkspaceName: null,
-      quoNumberIds: [],
-      quoApiKeyEncrypted: null,
-      quoKeyLast4: null,
-    })
-    .where(eq(companiesTable.id, company.id))
-    .returning();
+  const [updated] = await db.transaction(async (tx) => {
+    await tx
+      .delete(quoWebhooksTable)
+      .where(eq(quoWebhooksTable.companyId, company.id));
+    if (created.length > 0) {
+      await tx.insert(quoWebhooksTable).values(
+        created.map((w) => ({
+          companyId: company.id,
+          quoWebhookId: w.id,
+          signingKey: w.key,
+          events: w.events,
+          url: w.url,
+        })),
+      );
+    }
+    return tx
+      .update(companiesTable)
+      .set({ quoNumberIds: numberIds })
+      .where(eq(companiesTable.id, company.id))
+      .returning();
+  });
 
   res.json(DisconnectQuoResponse.parse(await serializeCompany(updated!)));
 });

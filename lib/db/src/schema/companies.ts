@@ -86,6 +86,10 @@ export const companiesTable = pgTable("companies", {
   // Never returned to the browser — only `quoKeyLast4` is.
   quoApiKeyEncrypted: text("quo_api_key_encrypted"),
   quoKeyLast4: text("quo_key_last4"),
+  // Set when Quo answers 401/403 for this company's key (revoked or rotated),
+  // so the UI can warn the owner instead of failing silently. Cleared when a
+  // key is (re)connected or a Quo call succeeds again.
+  quoNeedsReauth: boolean("quo_needs_reauth").notNull().default(false),
   receptionistConfigured: boolean("receptionist_configured")
     .notNull()
     .default(false),

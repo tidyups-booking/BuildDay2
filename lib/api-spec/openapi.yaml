@@ -755,6 +755,7 @@ components:
           jobberSkipped,
           jobberNeedsReauth,
           quoConnected,
+          quoNeedsReauth,
           watchedNumbers,
           isLive,
           setupStatus,
@@ -783,6 +784,9 @@ components:
         quoConnected: { type: boolean }
         quoWorkspaceName: { type: ["string", "null"] }
         quoKeyLast4: { type: ["string", "null"] }
+        # True when Quo answered 401/403 for the stored key — the owner needs
+        # to reconnect before calls flow again.
+        quoNeedsReauth: { type: boolean }
         quoteRateSolo: { type: number }
         quoteRateTeam: { type: number }
         quoteFuelSurcharge: { type: number }

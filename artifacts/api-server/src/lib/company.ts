@@ -35,6 +35,12 @@ export function requireCompanyQuoKey(company: Company): string {
   return key;
 }
 
+/** True when the error means Quo rejected the key itself (revoked/rotated). */
+export function isQuoAuthError(err: unknown): boolean {
+  return (
+    err instanceof QuoError && (err.status === 401 || err.status === 403)
+  );
+}
 export async function serializeCompany(company: Company) {
   const team = await db
     .select()
@@ -56,6 +62,7 @@ export async function serializeCompany(company: Company) {
   if (quoKey && company.quoNumberIds.length > 0) {
     try {
       const numbers = await listPhoneNumbers(quoKey);
+      await setQuoNeedsReauth(company, false);
       watchedNumbers = numbers
         .filter((n) => company.quoNumberIds.includes(n.id))
         .map((n) => ({
@@ -64,7 +71,10 @@ export async function serializeCompany(company: Company) {
           name: n.name ?? n.number,
           watched: true,
         }));
-    } catch {
+    } catch (err) {
+      // A 401/403 means the key itself is dead — record it so the dashboard
+      // can warn the owner instead of failing silently.
+      if (isQuoAuthError(err)) await setQuoNeedsReauth(company, true);
       // Quo being unreachable must not break the dashboard; fall back to ids.
       watchedNumbers = company.quoNumberIds.map((id) => ({
         id,
@@ -104,6 +114,7 @@ export async function serializeCompany(company: Company) {
     quoConnected: company.quoConnected,
     quoWorkspaceName: company.quoWorkspaceName,
     quoKeyLast4: company.quoKeyLast4,
+    quoNeedsReauth: company.quoNeedsReauth,
     quoteRateSolo: company.quoteRateSolo,
     quoteRateTeam: company.quoteRateTeam,
     quoteFuelSurcharge: company.quoteFuelSurcharge,
@@ -130,4 +141,21 @@ export async function serializeCompany(company: Company) {
     },
     createdAt: company.createdAt.toISOString(),
   };
+}
+
+/**
+ * Persist whether Quo currently rejects this company's key. Only writes when
+ * the flag actually changes, so hot paths (webhooks, dashboard) don't churn
+ * the row on every call.
+ */
+export async function setQuoNeedsReauth(
+  company: Company,
+  needsReauth: boolean,
+): Promise<void> {
+  if (company.quoNeedsReauth === needsReauth) return;
+  await db
+    .update(companiesTable)
+    .set({ quoNeedsReauth: needsReauth })
+    .where(eq(companiesTable.id, company.id));
+  company.quoNeedsReauth = needsReauth;
 }

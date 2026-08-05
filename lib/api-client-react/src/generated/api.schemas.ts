@@ -128,6 +128,7 @@ export interface Company {
   quoWorkspaceName?: string | null;
   /** @nullable */
   quoKeyLast4?: string | null;
+  quoNeedsReauth: boolean;
   quoteRateSolo?: number;
   quoteRateTeam?: number;
   quoteFuelSurcharge?: number;
