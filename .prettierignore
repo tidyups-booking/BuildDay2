@@ -11,5 +11,6 @@ coverage
 *.min.*
 artifacts/*/src/generated
 **/generated
+**/.generated
 .replit
 artifacts/owner-mobile/expo-env.d.ts
