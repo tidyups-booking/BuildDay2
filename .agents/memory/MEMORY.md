@@ -11,3 +11,5 @@
 - [Quote pricing rules](quote-pricing.md) — totals derive from stored inputs, but a texted quote is frozen at send; money rounding can't use bare toFixed or Math.round.
 - [Customer quote link](public-quote-link.md) — the quote page is a bearer link with no auth in Express *or* the SPA; approval is claimed via a conditional update.
 - [Jobber OAuth PKCE flow](jobber-oauth.md) — real OAuth with PKCE; connect returns authorizeUrl, callback at /api/company/jobber/callback stores tokens; token refresh on every sync.
+- [video-js scaffold gaps](video-artifact-scaffold.md) — new video artifacts ship without DOM libs in tsconfig and unformatted, so repo typecheck + format go red until fixed.
+- [waitForJob timeout is capped](waitforjob-timeout-cap.md) — the `timeout` arg is silently clamped to ~20s; long waits need real sleeps, not a bigger number.
