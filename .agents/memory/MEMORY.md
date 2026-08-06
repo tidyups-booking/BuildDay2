@@ -16,6 +16,7 @@
 - [video-js scaffold gaps](video-artifact-scaffold.md) — new video artifacts ship without DOM libs in tsconfig and unformatted, so repo typecheck + format go red until fixed.
 - [Owner-notify claim release](notify-claim-release.md) — notification sends return sent/skipped/failed; retry state must live apart from health flags or dashboards lie during outages.
 - [Team roles & authorization](team-roles-authorization.md) — resolving a company is scope, not permission; every route needs an explicit requireRole or crews inherit the owner's dashboard.
+- [Clerk instance mismatch](clerk-instance-mismatch.md) — a cloned prod DB carries dev Clerk ids that 404, stranding every account in an onboarding loop; email recovery must be cohort-scoped and expiring.
 - [Clerk Expo mobile wiring](clerk-expo-mobile.md) — mobile uses bearer tokens via setAuthTokenGetter + custom auth screens; Clerk key must be injected in both dev script and build.js Metro env.
 - [Stripe live-mode switch](stripe-live-mode.md) — live keys come from the Publish pane, not code; mode-scoped keys stop webhook reconciliation from touching the live webhook; private visibility blocks webhooks.
 - [waitForJob timeout is capped](waitforjob-timeout-cap.md) — the `timeout` arg is silently clamped to ~20s; long waits need real sleeps, not a bigger number.
