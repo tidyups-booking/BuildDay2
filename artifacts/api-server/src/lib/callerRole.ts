@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull, ne, sql } from "drizzle-orm";
 import { clerkClient } from "@clerk/express";
 import {
   db,
@@ -60,6 +60,86 @@ async function verifiedEmailsFor(userId: string): Promise<string[]> {
 }
 
 /**
+ * Is this Clerk account definitively gone?
+ *
+ * Only a 404 counts. Any other outcome — an outage, a timeout, a rate limit —
+ * is reported as "still there", because this answer is used to release
+ * somebody's seat and a false positive would hand it to the wrong person.
+ */
+async function clerkUserIsGone(userId: string): Promise<boolean> {
+  try {
+    await clerkClient.users.getUser(userId);
+    return false;
+  } catch (err) {
+    if ((err as { status?: number })?.status === 404) return true;
+    logger.error({ err, userId }, "[callerRole] stale seat check failed");
+    return false;
+  }
+}
+
+/**
+ * A seat can end up held by a Clerk account that no longer exists: the account
+ * was deleted, or the database was copied between Clerk instances so its ids
+ * were never valid here. The seat still reads as "claimed", so the invite
+ * match below skips it, and the real person is dropped into onboarding on
+ * every single sign-in — where the only thing on offer is creating a second,
+ * empty company beside the one they already belong to.
+ *
+ * Releasing the seat needs two independent facts: the caller's email is
+ * VERIFIED and matches the seat, and the account holding it is confirmed gone.
+ */
+async function reclaimAbandonedSeat(
+  userId: string,
+  emails: string[],
+): Promise<number | null> {
+  // Bounded: each candidate costs a Clerk round trip, and one person holding
+  // more than a handful of same-email seats is not a real scenario.
+  const held = await db
+    .select({
+      id: teamMembersTable.id,
+      clerkUserId: teamMembersTable.clerkUserId,
+    })
+    .from(teamMembersTable)
+    .where(
+      and(
+        isNotNull(teamMembersTable.clerkUserId),
+        ne(teamMembersTable.clerkUserId, userId),
+        inArray(sql`lower(${teamMembersTable.email})`, emails),
+      ),
+    )
+    .orderBy(teamMembersTable.id)
+    .limit(5);
+
+  for (const seat of held) {
+    const staleUserId = seat.clerkUserId!;
+    if (!(await clerkUserIsGone(staleUserId))) continue;
+
+    // Pinning the old id in the WHERE keeps this safe against a concurrent
+    // claim: whoever gets there first wins and the other pass simply misses.
+    const [taken] = await db
+      .update(teamMembersTable)
+      .set({ clerkUserId: userId, status: "active", claimedAt: new Date() })
+      .where(
+        and(
+          eq(teamMembersTable.id, seat.id),
+          eq(teamMembersTable.clerkUserId, staleUserId),
+        ),
+      )
+      .returning({ id: teamMembersTable.id });
+
+    if (taken) {
+      logger.warn(
+        { userId, seatId: seat.id, staleUserId },
+        "[callerRole] seat released from a deleted account and re-claimed",
+      );
+      return taken.id;
+    }
+  }
+
+  return null;
+}
+
+/**
  * First sign-in for an invited person: match a VERIFIED Clerk email to a seat
  * that nobody has claimed yet and attach the account to it.
  *
@@ -100,17 +180,32 @@ async function tryClaimSeat(userId: string): Promise<Caller | null> {
     // safe: two concurrent first requests cannot both take the seat, and a
     // seat claimed or deleted while Clerk was being queried is simply missed
     // rather than resurrected.
-    const [claimed] = pending
+    const claimedId = pending
+      ? ((
+          await db
+            .update(teamMembersTable)
+            .set({
+              clerkUserId: userId,
+              status: "active",
+              claimedAt: new Date(),
+            })
+            .where(
+              and(
+                eq(teamMembersTable.id, pending.id),
+                isNull(teamMembersTable.clerkUserId),
+              ),
+            )
+            .returning({ id: teamMembersTable.id })
+        )[0]?.id ?? null)
+      : // No free seat under this address. Before giving up, check whether one
+        // is only nominally taken — held by an account that no longer exists.
+        await reclaimAbandonedSeat(userId, emails);
+
+    const [claimed] = claimedId
       ? await db
-          .update(teamMembersTable)
-          .set({ clerkUserId: userId, status: "active", claimedAt: new Date() })
-          .where(
-            and(
-              eq(teamMembersTable.id, pending.id),
-              isNull(teamMembersTable.clerkUserId),
-            ),
-          )
-          .returning()
+          .select()
+          .from(teamMembersTable)
+          .where(eq(teamMembersTable.id, claimedId))
       : [];
 
     if (claimed) {

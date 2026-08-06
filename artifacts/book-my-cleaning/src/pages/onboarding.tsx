@@ -6,6 +6,7 @@ import {
   useUpdateCompany,
 } from "@workspace/api-client-react";
 import { useLocation } from "wouter";
+import { useClerk, useUser } from "@clerk/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -16,7 +17,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Building2, ArrowRight } from "lucide-react";
+import { Building2, ArrowRight, UserCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { runOnboardingSubmit } from "@/lib/onboardingSubmit";
 
@@ -29,11 +30,16 @@ const formSchema = z.object({
     }),
 });
 
+const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
+
 export function OnboardingPage() {
   const [, setLocation] = useLocation();
   const createCompany = useCreateCompany();
   const updateCompany = useUpdateCompany();
   const { toast } = useToast();
+  const { user } = useUser();
+  const { signOut } = useClerk();
+  const signedInEmail = user?.primaryEmailAddress?.emailAddress ?? "";
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -96,10 +102,53 @@ export function OnboardingPage() {
         <h1 className="text-2xl font-serif font-bold text-muted-foreground mb-2">
           Welcome to Tidyups
         </h1>
-        <p className="text-muted-foreground text-sm mb-8">
+        <p className="text-muted-foreground text-sm mb-6">
           Let's set up your AI receptionist workspace. What's your cleaning
           company called?
         </p>
+
+        {/* Landing here means this login isn't attached to a workspace yet.
+            Most of the time that's simply the wrong login — so name it, and
+            make switching one click, rather than letting someone quietly
+            create a second empty company beside the real one. */}
+        <div className="mb-8 rounded-xl border border-border bg-secondary/60 p-4">
+          <div className="flex items-start gap-3">
+            <UserCircle2 className="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" />
+            <div className="min-w-0 space-y-1">
+              <p className="text-sm text-foreground">
+                {signedInEmail ? (
+                  <>
+                    You're signed in as{" "}
+                    <span
+                      className="font-medium break-all"
+                      data-testid="text-signed-in-email"
+                    >
+                      {signedInEmail}
+                    </span>
+                    .
+                  </>
+                ) : (
+                  <>You're signed in with a new account.</>
+                )}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                This login isn't part of a workspace yet. If your company is
+                already set up, or someone invited you to their team, sign in
+                with that email instead — creating a company here makes a
+                separate, empty one.
+              </p>
+              <Button
+                type="button"
+                variant="link"
+                className="h-auto p-0 text-sm"
+                data-testid="button-switch-account"
+                onClick={() => signOut({ redirectUrl: basePath || "/" })}
+              >
+                Use a different account
+              </Button>
+            </div>
+          </div>
+        </div>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
