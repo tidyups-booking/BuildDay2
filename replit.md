@@ -56,4 +56,13 @@ Replit-managed Clerk. Clerk Organizations are NOT available — companies/roles 
 
 ## User preferences
 
-(none recorded yet)
+- **Commit and push after every completed piece of work.** Don't leave finished
+  work sitting uncommitted in the workspace. Push to GitHub
+  (`tidyups-booking/book-my-cleaning-official`) as part of wrapping up, not as a
+  separate thing the owner has to ask for.
+- **Say whether a republish is needed.** Pushing to GitHub does not update the
+  live site at bookmycleaning.net. Whenever work is finished, state plainly
+  whether the change is already live, or whether it needs publishing to take
+  effect.
+- Write plainly. The owner runs a cleaning business, not an engineering team —
+  lead with what they can now do, not what was changed in the code.
