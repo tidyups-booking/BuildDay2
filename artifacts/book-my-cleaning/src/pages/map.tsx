@@ -180,7 +180,7 @@ function MapView() {
     <>
       <PageHeader
         title="Live Map"
-        description="Where your crews are right now, plus the jobs on your calendar and your saved locations."
+        description="Where your crews are right now, the jobs on your calendar, your cleaners' home addresses and every place you've worked."
       >
         <div className="flex items-center gap-2">
           <input
@@ -202,9 +202,10 @@ function MapView() {
             onClick={() => setShowAllPins((v) => !v)}
             data-testid="button-toggle-all-pins"
             className={showAllPins ? "brand-gradient text-white" : ""}
+            title="Every client address you've worked at, ignoring the dates"
           >
             <MapPin className="w-4 h-4 mr-1.5" />
-            All clients
+            All homes
           </Button>
           {canManageJobber && (
             <JobberSyncButton
@@ -775,7 +776,8 @@ function LiveMap({
                 {locatedJobs.length}
               </span>{" "}
               location{locatedJobs.length === 1 ? "" : "s"}, one pin per place
-              however many times you&apos;ve been. The calendar below still
+              however many times you&apos;ve been — plus your cleaners&apos;
+              homes and anyone currently on the move. The calendar below still
               follows the dates you picked.
             </span>
           ) : (

@@ -36,7 +36,7 @@ export function Sidebar({ company }: SidebarProps) {
     ? [
         { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
         { href: "/bookings", label: "My Jobs", icon: CalendarCheck },
-        { href: "/map", label: "Map", icon: Map },
+        { href: "/map", label: "Live Map", icon: Map },
         // The API scopes a cleaner's schedule to their own day.
         { href: "/schedule", label: "Schedule", icon: CalendarDays },
       ]
@@ -44,7 +44,7 @@ export function Sidebar({ company }: SidebarProps) {
         { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
         { href: "/calls", label: "Calls", icon: PhoneCall },
         { href: "/bookings", label: "Bookings", icon: CalendarCheck },
-        { href: "/map", label: "Map", icon: Map },
+        { href: "/map", label: "Live Map", icon: Map },
         { href: "/schedule", label: "Schedule", icon: CalendarDays },
         ...(isOwner ? [{ href: "/team", label: "Staff", icon: Users }] : []),
       ];
