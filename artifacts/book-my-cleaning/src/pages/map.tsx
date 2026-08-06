@@ -14,6 +14,7 @@ import {
   getGetMapDataQueryKey,
   getListBookingsInRangeQueryKey,
   MapData,
+  GetMapDataParams,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
@@ -89,6 +90,10 @@ function MapView() {
   const today = todayInZone(timeZone);
 
   const [view, setView] = useState<CalendarView>("day");
+  // "Where are my clients" rather than "where is the crew today". The calendar
+  // below keeps following the selected dates either way — only the map lets go
+  // of them, so switching back doesn't lose the dispatcher's place.
+  const [showAllPins, setShowAllPins] = useState(false);
   const [selectedDate, setSelectedDate] = useState(today);
   const [monthAnchor, setMonthAnchor] = useState(
     () => `${today.slice(0, 7)}-01`,
@@ -108,8 +113,8 @@ function MapView() {
   } = useGetMapConfig();
 
   const mapParams = useMemo(
-    () => ({ date: range.start, end: range.end }),
-    [range.start, range.end],
+    () => (showAllPins ? { all: true } : { date: range.start, end: range.end }),
+    [showAllPins, range.start, range.end],
   );
 
   const {
@@ -187,9 +192,21 @@ function MapView() {
           <Button variant="outline" size="sm" onClick={() => jumpToDate(today)}>
             Today
           </Button>
+          <Button
+            variant={showAllPins ? "default" : "outline"}
+            size="sm"
+            aria-pressed={showAllPins}
+            onClick={() => setShowAllPins((v) => !v)}
+            data-testid="button-toggle-all-pins"
+            className={showAllPins ? "brand-gradient text-white" : ""}
+          >
+            <MapPin className="w-4 h-4 mr-1.5" />
+            All clients
+          </Button>
           {canManageJobber && (
             <JobberSyncButton
               mapParams={mapParams}
+              rangeParams={rangeParams}
               connected={Boolean(company?.jobberConnected)}
               needsReauth={Boolean(company?.jobberNeedsReauth)}
             />
@@ -223,6 +240,7 @@ function MapView() {
           lastUpdated={dataUpdatedAt}
           isFetching={isFetching}
           isRangeView={isRangeView}
+          showAllPins={showAllPins}
           rangeLabel={`${shortDayLabel(range.start)} – ${shortDayLabel(range.end)}`}
           calendar={
             <>
@@ -350,16 +368,18 @@ function LiveMap({
   lastUpdated,
   isFetching,
   isRangeView,
+  showAllPins,
   rangeLabel,
   calendar,
 }: {
   apiKey: string;
-  mapParams: { date: string; end: string };
+  mapParams: GetMapDataParams;
   mapData: MapData | undefined;
   timeZone: string;
   lastUpdated: number;
   isFetching: boolean;
   isRangeView: boolean;
+  showAllPins: boolean;
   rangeLabel: string;
   calendar: React.ReactNode;
 }) {
@@ -496,6 +516,16 @@ function LiveMap({
       const el = document.createElement("div");
       el.style.cssText = `width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#fff;background:hsl(330,81%,55%);border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);`;
       el.innerHTML = briefcaseSvg();
+      // A place we've been to more than once says so on the pin itself —
+      // otherwise every address looks like a one-off and the map loses the
+      // one thing it knows about a regular client.
+      if ((j.visits ?? 1) > 1) {
+        const badge = document.createElement("div");
+        badge.style.cssText = `position:absolute;top:-6px;right:-8px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:#fff;color:hsl(330,81%,45%);border:1px solid hsl(330,81%,55%);font:700 10px/14px sans-serif;text-align:center;`;
+        badge.textContent = j.visits! > 99 ? "99+" : String(j.visits);
+        el.style.position = "relative";
+        el.appendChild(badge);
+      }
       const marker = new maps.AdvancedMarkerElement({
         map,
         position: { lat: j.lat, lng: j.lng },
@@ -603,18 +633,32 @@ function LiveMap({
         </div>
       )}
 
-      {isRangeView && (
+      {(isRangeView || showAllPins) && (
         <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-brand-purple/10 border border-brand-purple/25 text-xs text-muted-foreground">
           <MapPin className="w-3.5 h-3.5 text-brand-purple shrink-0" />
-          <span>
-            The map below shows all{" "}
-            <span className="font-semibold text-foreground">
-              {locatedJobs.length}
-            </span>{" "}
-            pinned job{locatedJobs.length === 1 ? "" : "s"} from{" "}
-            <span className="font-semibold text-foreground">{rangeLabel}</span>{" "}
-            — tap a pin for its date and crew.
-          </span>
+          {showAllPins ? (
+            <span>
+              Showing every address you&apos;ve worked at —{" "}
+              <span className="font-semibold text-foreground">
+                {locatedJobs.length}
+              </span>{" "}
+              location{locatedJobs.length === 1 ? "" : "s"}, one pin per place
+              however many times you&apos;ve been. The calendar below still
+              follows the dates you picked.
+            </span>
+          ) : (
+            <span>
+              The map below shows all{" "}
+              <span className="font-semibold text-foreground">
+                {locatedJobs.length}
+              </span>{" "}
+              pinned job{locatedJobs.length === 1 ? "" : "s"} from{" "}
+              <span className="font-semibold text-foreground">
+                {rangeLabel}
+              </span>{" "}
+              — tap a pin for its date and crew.
+            </span>
+          )}
         </div>
       )}
 
@@ -709,7 +753,7 @@ function Legend() {
 }
 
 /** Invalidate whichever span the map is currently showing. */
-function useRefreshMap(mapParams: { date: string; end: string }) {
+function useRefreshMap(mapParams: GetMapDataParams) {
   const queryClient = useQueryClient();
   return () =>
     queryClient.invalidateQueries({
@@ -731,10 +775,15 @@ function useRefreshMap(mapParams: { date: string; end: string }) {
  */
 function JobberSyncButton({
   mapParams,
+  rangeParams,
   connected,
   needsReauth,
 }: {
-  mapParams: { date: string; end: string };
+  mapParams: GetMapDataParams;
+  // The calendar's span, which is not the map's when "All clients" is on.
+  // Both caches have to be refreshed after an import, so the button needs
+  // each one's key rather than deriving the calendar's from the map's.
+  rangeParams: { start: string; end: string };
   connected: boolean;
   needsReauth: boolean;
 }) {
@@ -779,10 +828,7 @@ function JobberSyncButton({
           queryKey: getGetMapDataQueryKey(mapParams),
         });
         queryClient.invalidateQueries({
-          queryKey: getListBookingsInRangeQueryKey({
-            start: mapParams.date,
-            end: mapParams.end,
-          }),
+          queryKey: getListBookingsInRangeQueryKey(rangeParams),
         });
       },
       onError: (error: any) => {
@@ -838,7 +884,7 @@ function AddressSearchBar({
 }: {
   apiKey: string;
   bias?: { lat: number; lng: number };
-  mapParams: { date: string; end: string };
+  mapParams: GetMapDataParams;
 }) {
   const { toast } = useToast();
   const createPin = useCreateMapPin();
@@ -916,7 +962,7 @@ function SavedPins({
   canEdit,
 }: {
   pins: MapData["pins"];
-  mapParams: { date: string; end: string };
+  mapParams: GetMapDataParams;
   canEdit: boolean;
 }) {
   const { toast } = useToast();

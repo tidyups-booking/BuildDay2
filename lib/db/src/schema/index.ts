@@ -6,5 +6,6 @@ export * from "./bookings";
 export * from "./bookingAssignments";
 export * from "./cleanerLocations";
 export * from "./homeownerPins";
+export * from "./geocodedAddresses";
 export * from "./activity";
 export * from "./quoWebhooks";

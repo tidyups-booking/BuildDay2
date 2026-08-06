@@ -15,4 +15,8 @@ date?: string;
  * Last day of the range, YYYY-MM-DD in the company's timezone. When given, jobs cover every day from `date` to `end` inclusive so the week and month views can pin a whole span at once. Omit for a single day.
  */
 end?: string;
+/**
+ * Ignore the date range and pin every located job the caller may see, one pin per address rather than one per visit. Answers "where are my clients" instead of "where is the crew today"; `date` and `end` are ignored when set.
+ */
+all?: boolean;
 };

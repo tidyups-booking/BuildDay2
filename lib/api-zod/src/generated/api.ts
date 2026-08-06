@@ -1944,7 +1944,8 @@ export const GetMapConfigResponse = zod.object({
  */
 export const GetMapDataQueryParams = zod.object({
   "date": zod.coerce.string().optional().describe('Day to show jobs for, YYYY-MM-DD in the company\'s timezone.'),
-  "end": zod.coerce.string().optional().describe('Last day of the range, YYYY-MM-DD in the company\'s timezone. When given, jobs cover every day from `date` to `end` inclusive so the week and month views can pin a whole span at once. Omit for a single day.')
+  "end": zod.coerce.string().optional().describe('Last day of the range, YYYY-MM-DD in the company\'s timezone. When given, jobs cover every day from `date` to `end` inclusive so the week and month views can pin a whole span at once. Omit for a single day.'),
+  "all": zod.coerce.boolean().optional().describe('Ignore the date range and pin every located job the caller may see, one pin per address rather than one per visit. Answers \"where are my clients\" instead of \"where is the crew today\"; `date` and `end` are ignored when set.')
 })
 
 export const GetMapDataResponse = zod.object({
@@ -1967,7 +1968,8 @@ export const GetMapDataResponse = zod.object({
   "assignees": zod.array(zod.object({
   "teamMemberId": zod.int(),
   "name": zod.string()
-}))
+})),
+  "visits": zod.int().optional()
 })),
   "pins": zod.array(zod.object({
   "id": zod.int(),

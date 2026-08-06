@@ -39,7 +39,7 @@ export class GeocodeConfigError extends Error {
 }
 
 /** Collapse whitespace and case so "12 Main St " and "12 main st" share a slot. */
-function normalizeAddress(address: string): string {
+export function normalizeAddress(address: string): string {
   return address.trim().replace(/\s+/g, " ").toLowerCase();
 }
 

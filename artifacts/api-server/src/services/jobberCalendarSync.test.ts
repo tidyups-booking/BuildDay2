@@ -252,6 +252,32 @@ describe("syncCompanyCalendar", () => {
     expect((await imported(`job_${runId}_1`))!.status).toBe("confirmed");
   });
 
+  it("never cancels off a pull that came back incomplete", async () => {
+    // The job is imported and healthy going in.
+    respondWith([jobberJob()]);
+    await syncCompanyCalendar(await company());
+    expect((await imported(`job_${runId}_1`))!.status).toBe("confirmed");
+
+    // Now Jobber hands back a first page promising more, then a page with no
+    // payload. We've seen none of the real inventory, so "missing from the
+    // pull" cannot mean "cancelled in Jobber" — the window spans months and
+    // getting this wrong would wipe the calendar.
+    graphqlMock.mockReset();
+    graphqlMock
+      .mockResolvedValueOnce({
+        jobs: {
+          nodes: [],
+          pageInfo: { hasNextPage: true, endCursor: "cursor_1" },
+        },
+      })
+      .mockResolvedValueOnce({ jobs: null });
+
+    const result = await syncCompanyCalendar(await company());
+
+    expect(result.canceled).toBe(0);
+    expect((await imported(`job_${runId}_1`))!.status).toBe("confirmed");
+  });
+
   it("does nothing when Jobber access needs reconnecting", async () => {
     graphqlMock.mockReset();
     const disconnected = { ...(await company()), jobberNeedsReauth: true };

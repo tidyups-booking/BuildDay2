@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { and, eq, gte, lt, isNotNull, inArray } from "drizzle-orm";
+import { and, desc, eq, gte, lt, isNotNull, inArray } from "drizzle-orm";
 import {
   db,
   bookingsTable,
@@ -20,10 +20,54 @@ import { requireAuth } from "../middlewares/requireAuth";
 import { requireRole, getCaller } from "../middlewares/requireRole";
 import { getCompanyForUser } from "../lib/company";
 import { companyDayBounds } from "../lib/dayBounds";
-import { geocodeAddress, GeocodeConfigError } from "../services/geocode";
+import {
+  geocodeAddress,
+  normalizeAddress,
+  GeocodeConfigError,
+} from "../services/geocode";
 import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
+
+/**
+ * Ceiling on located jobs read for one map request.
+ *
+ * Only reachable in `all` mode. Generous enough to cover years of work for a
+ * normal cleaning company, low enough that the response can't grow unbounded
+ * as an account ages.
+ */
+const ALL_JOBS_LIMIT = 5000;
+
+type PlacedJob = { row: typeof bookingsTable.$inferSelect; visits: number };
+
+/**
+ * Collapse repeat visits into one pin per place.
+ *
+ * Keyed on the address where there is one, and on rounded coordinates where
+ * there isn't — five decimal places is about a metre, so the same house
+ * geocoded twice lands in the same bucket while neighbours stay apart.
+ *
+ * The representative is the latest visit: the customer's current name, and the
+ * most recent thing that happened at that address.
+ */
+function collapseToPlaces(
+  rows: Array<typeof bookingsTable.$inferSelect>,
+): PlacedJob[] {
+  const byPlace = new Map<string, PlacedJob>();
+  for (const row of rows) {
+    const key = row.customerAddress
+      ? normalizeAddress(row.customerAddress)
+      : `${row.lat!.toFixed(5)},${row.lng!.toFixed(5)}`;
+    const seen = byPlace.get(key);
+    if (!seen) {
+      byPlace.set(key, { row, visits: 1 });
+      continue;
+    }
+    seen.visits += 1;
+    if (row.scheduledFor > seen.row.scheduledFor) seen.row = row;
+  }
+  return [...byPlace.values()];
+}
 
 // The Google Maps browser key. Served only to authenticated dispatchers so it
 // never has to be baked into the client bundle; missing key is a soft state
@@ -99,14 +143,22 @@ router.get(
       updatedAt: r.updatedAt.toISOString(),
     }));
 
-    // Jobs on the requested day (company zone) that already have coordinates —
-    // an un-geocoded booking simply has no pin yet.
+    // Jobs that already have coordinates — an un-geocoded booking simply has
+    // no pin yet. Normally that's the requested day (company zone); in `all`
+    // mode the dates drop away and every located job counts, because the
+    // question being asked is "where are my clients", not "where is the crew
+    // today".
+    const showAll = query.data.all === true;
     const pinnedInRange = and(
       eq(bookingsTable.companyId, company.id),
-      gte(bookingsTable.scheduledFor, start),
-      lt(bookingsTable.scheduledFor, end),
       isNotNull(bookingsTable.lat),
       isNotNull(bookingsTable.lng),
+      ...(showAll
+        ? []
+        : [
+            gte(bookingsTable.scheduledFor, start),
+            lt(bookingsTable.scheduledFor, end),
+          ]),
     );
 
     // A pin carries the customer's home address. Crew see only the houses they
@@ -129,11 +181,33 @@ router.get(
           )
         : pinnedInRange;
 
-    const jobRows = await db.select().from(bookingsTable).where(jobScope);
+    const jobRows = await db
+      .select()
+      .from(bookingsTable)
+      .where(jobScope)
+      // Newest first so that if the ceiling below does bite, what survives is
+      // the recent work rather than an arbitrary slice the database happened
+      // to return.
+      .orderBy(desc(bookingsTable.scheduledFor))
+      // Only bites in `all` mode; a dated span can't reach it. A ceiling has
+      // to exist so one long-established account can't try to draw its entire
+      // history at once.
+      .limit(ALL_JOBS_LIMIT);
 
-    const assigneesByBooking = await loadAssignees(jobRows.map((b) => b.id));
+    // In `all` mode a pin is a place, not a visit. A house cleaned every week
+    // for a year is one marker carrying its count, rather than fifty markers
+    // stacked on the same roof that the dispatcher can neither read nor click
+    // past. The most recent visit supplies the name and status, since that's
+    // the freshest thing we know about the address.
+    const visible = showAll
+      ? collapseToPlaces(jobRows)
+      : jobRows.map((row) => ({ row, visits: 1 }));
 
-    const jobs = jobRows.map((b) => ({
+    const assigneesByBooking = await loadAssignees(
+      visible.map((b) => b.row.id),
+    );
+
+    const jobs = visible.map(({ row: b, visits }) => ({
       bookingId: b.id,
       customerName: b.customerName,
       customerAddress: b.customerAddress ?? null,
@@ -142,6 +216,7 @@ router.get(
       scheduledFor: b.scheduledFor.toISOString(),
       status: b.status as "pending" | "confirmed" | "completed" | "canceled",
       assignees: assigneesByBooking.get(b.id) ?? [],
+      visits,
     }));
 
     const pinRows = await db

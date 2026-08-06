@@ -763,6 +763,16 @@ paths:
             single day.
           schema:
             type: string
+        - name: all
+          in: query
+          required: false
+          description: >-
+            Ignore the date range and pin every located job the caller may see,
+            one pin per address rather than one per visit. Answers "where are
+            my clients" instead of "where is the crew today"; `date` and `end`
+            are ignored when set.
+          schema:
+            type: boolean
       responses:
         "200":
           description: Map data
@@ -1525,6 +1535,11 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/MapJobAssignee"
+        # How many jobs this pin stands for. Always 1 in the dated views, where
+        # a pin is a visit. In `all` mode a pin is a place, so a house cleaned
+        # every week is one marker carrying its visit count instead of fifty
+        # markers stacked on the same roof.
+        visits: { type: integer }
     MapPin:
       type: object
       required: [id, name, lat, lng]

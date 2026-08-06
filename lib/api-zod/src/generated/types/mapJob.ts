@@ -18,4 +18,5 @@ export interface MapJob {
   scheduledFor: string;
   status: MapJobStatus;
   assignees: MapJobAssignee[];
+  visits?: number;
 }

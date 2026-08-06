@@ -22,12 +22,28 @@ import { logger } from "../lib/logger";
 
 /** How often the background pull runs. */
 export const JOBBER_SYNC_INTERVAL_MS = 10 * 60 * 1000;
-/** Rolling window the poller keeps fresh: yesterday through +60 days. */
-const WINDOW_BACK_DAYS = 1;
-const WINDOW_FORWARD_DAYS = 60;
-/** 100 jobs a page; a hard stop so one runaway account can't page forever. */
+/**
+ * Rolling window the poller keeps fresh: three months back through a year out.
+ *
+ * It reaches backwards because the map answers "where are my clients", not
+ * just "where is the crew today" — a house cleaned monthly is invisible on a
+ * 60-day forward window if its last visit was in the spring. Three months is
+ * where the owner drew the line: far enough to catch occasional clients,
+ * short enough that the bookings list isn't buried in old work.
+ *
+ * Forward is a full year because recurring cleans are scheduled far out, and
+ * a job that exists in Jobber but not here is the failure this sync exists to
+ * prevent.
+ */
+const WINDOW_BACK_DAYS = 90;
+const WINDOW_FORWARD_DAYS = 365;
+/**
+ * 100 jobs a page; a hard stop so one runaway account can't page forever.
+ * The window now spans fifteen months, so the ceiling has to clear a busy
+ * account's real volume — hitting it silently disables the cancellation sweep.
+ */
 const PAGE_SIZE = 100;
-const MAX_PAGES = 10;
+const MAX_PAGES = 60;
 
 export type JobberCalendarJob = {
   id: string;
@@ -161,6 +177,17 @@ async function runSync(
   let cursor: string | null = null;
   let pages = 0;
   let hitPageLimit = false;
+  /**
+   * Did Jobber hand us its complete inventory for this window?
+   *
+   * Only a complete pull may drive cancellations. Everything else — a page
+   * that came back without a payload, a response missing its pagination
+   * block — means "we don't know what Jobber has", and the difference between
+   * "not in the pull" and "canceled in Jobber" collapses. Getting that wrong
+   * now wipes fifteen months of a company's calendar, so absence of evidence
+   * must never be read as evidence of cancellation.
+   */
+  let pullComplete = true;
 
   type JobsPage = {
     nodes: JobberCalendarJob[];
@@ -185,8 +212,17 @@ async function runSync(
       },
     );
 
-    const page = data.jobs;
-    if (!page) break;
+    const page = data?.jobs;
+    if (!page?.nodes || !page.pageInfo) {
+      // A shape we don't recognise. Import nothing further and, crucially,
+      // don't let the sweep treat this truncated pull as the whole truth.
+      pullComplete = false;
+      logger.warn(
+        { companyId: company.id, pages },
+        "Jobber calendar sync: incomplete page, skipping cancellation sweep",
+      );
+      break;
+    }
     jobs.push(...page.nodes);
     pages += 1;
     cursor = page.pageInfo.hasNextPage ? page.pageInfo.endCursor : null;
@@ -215,14 +251,17 @@ async function runSync(
     }
   }
 
-  const canceled = hitPageLimit
-    ? 0
-    : await sweepCanceled(
-        company,
-        windowStart,
-        windowEnd,
-        jobs.map((j) => j.id),
-      );
+  // Cancel only off a pull we know is the whole window: every page received
+  // and understood, and the page ceiling never reached.
+  const canceled =
+    hitPageLimit || !pullComplete
+      ? 0
+      : await sweepCanceled(
+          company,
+          windowStart,
+          windowEnd,
+          jobs.map((j) => j.id),
+        );
 
   return {
     imported,
