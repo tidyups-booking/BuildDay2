@@ -746,6 +746,15 @@ export interface MapData {
   pins: MapPin[];
 }
 
+export interface JobberCalendarSync {
+  imported: number;
+  updated: number;
+  skipped: number;
+  canceled: number;
+  jobberCount: number;
+  hitPageLimit: boolean;
+}
+
 export type BookingRangeItemStatus = typeof BookingRangeItemStatus[keyof typeof BookingRangeItemStatus];
 
 

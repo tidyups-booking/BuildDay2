@@ -16,6 +16,7 @@ import {
   DisconnectJobberResponse,
   SetJobberSkippedBody,
   SetJobberSkippedResponse,
+  SyncJobberCalendarResponse,
   GoLiveResponse,
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/requireAuth";
@@ -33,6 +34,8 @@ import {
   getValidAccessToken,
   tokenExpiry,
 } from "../lib/jobber";
+import { syncCompanyCalendar } from "../services/jobberCalendarSync";
+import { runGeocodeBackfill } from "../services/geocodeBackfill";
 import { encryptJobberToken } from "../lib/secretBox";
 import { flagShiftedBookings } from "../lib/timezoneReview";
 import { normalizePhoneField } from "../lib/phoneField";
@@ -382,6 +385,53 @@ router.post(
       .returning();
 
     res.json(DisconnectJobberResponse.parse(await serializeCompany(updated!)));
+  },
+);
+
+// "Sync now" for the owner who just added a job in Jobber and wants it on the
+// map without waiting for the ten-minute poller.
+router.post(
+  "/company/jobber/sync-calendar",
+  requireRole("owner", "dispatcher"),
+  async (req, res): Promise<void> => {
+    const company = await getCompanyForUser(req.userId!);
+    if (!company) {
+      res.status(404).json({ error: "No company yet" });
+      return;
+    }
+    if (!company.jobberConnected) {
+      res.status(400).json({ error: "Jobber isn't connected yet." });
+      return;
+    }
+    if (company.jobberNeedsReauth) {
+      res.status(400).json({
+        error: "Jobber access has expired — reconnect Jobber to keep syncing.",
+      });
+      return;
+    }
+
+    try {
+      const result = await syncCompanyCalendar(company);
+      // Newly imported addresses have no coordinates yet. Nudge the geocoder
+      // rather than making the owner wait out its next cycle for pins.
+      if (result.imported > 0 || result.updated > 0) {
+        void runGeocodeBackfill().catch((err) =>
+          logger.warn({ err }, "Geocode pass after Jobber sync failed"),
+        );
+      }
+      res.json(SyncJobberCalendarResponse.parse(result));
+    } catch (err) {
+      logger.warn(
+        { err, companyId: company.id },
+        "Manual Jobber calendar sync failed",
+      );
+      res.status(400).json({
+        error:
+          err instanceof Error
+            ? err.message
+            : "We couldn't reach Jobber. Try again in a moment.",
+      });
+    }
   },
 );
 

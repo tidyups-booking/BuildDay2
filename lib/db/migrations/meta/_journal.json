@@ -127,6 +127,13 @@
       "when": 1785923700000,
       "tag": "0017_live_map_and_scheduling",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1785923800000,
+      "tag": "0018_jobber_calendar_sync",
+      "breakpoints": true
     }
   ]
 }

@@ -314,6 +314,20 @@ export const DisconnectJobberResponse = zod.object({
 
 
 /**
+ * Runs the same import as the background sync, on demand, over a rolling window around today. Only ever creates or updates bookings this import owns — a booking taken by the receptionist is never touched.
+ * @summary Pull scheduled Jobber jobs onto our calendar and map right now
+ */
+export const SyncJobberCalendarResponse = zod.object({
+  "imported": zod.int(),
+  "updated": zod.int(),
+  "skipped": zod.int(),
+  "canceled": zod.int(),
+  "jobberCount": zod.int(),
+  "hitPageLimit": zod.boolean()
+})
+
+
+/**
  * @summary Mark setup complete and take the receptionist live
  */
 export const GoLiveResponse = zod.object({

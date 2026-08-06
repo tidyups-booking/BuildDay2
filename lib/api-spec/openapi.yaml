@@ -106,6 +106,24 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Company"
+  /company/jobber/sync-calendar:
+    post:
+      operationId: syncJobberCalendar
+      tags: [company]
+      summary: Pull scheduled Jobber jobs onto our calendar and map right now
+      description: >-
+        Runs the same import as the background sync, on demand, over a rolling
+        window around today. Only ever creates or updates bookings this import
+        owns — a booking taken by the receptionist is never touched.
+      responses:
+        "200":
+          description: Sync finished
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobberCalendarSync"
+        "400":
+          description: Jobber isn't connected, or the sync failed
   /company/go-live:
     post:
       operationId: goLive
@@ -1527,6 +1545,21 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/MapPin"
+    JobberCalendarSync:
+      type: object
+      required:
+        [imported, updated, skipped, canceled, jobberCount, hitPageLimit]
+      properties:
+        imported: { type: integer }
+        updated: { type: integer }
+        # Jobber jobs with no scheduled time, or one we couldn't read.
+        skipped: { type: integer }
+        # Imported bookings that have since disappeared from Jobber.
+        canceled: { type: integer }
+        jobberCount: { type: integer }
+        # True when the account has more scheduled work than one sync can page
+        # through; the cancellation sweep is skipped in that case.
+        hitPageLimit: { type: boolean }
     BookingRangeItem:
       type: object
       required:

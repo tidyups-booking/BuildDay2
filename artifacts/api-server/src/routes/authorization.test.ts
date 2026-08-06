@@ -89,6 +89,9 @@ const MATRIX: Record<string, Role[]> = {
   "POST /company/jobber/connect": ["owner"],
   "POST /company/jobber/disconnect": ["owner"],
   "POST /company/jobber/skip": ["owner"],
+  // Pulling the Jobber calendar is day-to-day dispatch work, not a settings
+  // change, so a dispatcher may trigger it.
+  "POST /company/jobber/sync-calendar": ["owner", "dispatcher"],
   "POST /company/go-live": ["owner"],
   // Quo connection and numbers: owner only.
   "POST /company/quo/connect": ["owner"],

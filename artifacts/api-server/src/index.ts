@@ -4,6 +4,7 @@ import { logger } from "./lib/logger";
 import { runMigrations } from "./lib/migrate";
 import { startQuoHealthCheck } from "./lib/quoHealth";
 import { startGeocodeBackfill } from "./services/geocodeBackfill";
+import { startJobberCalendarSync } from "./services/jobberCalendarSync";
 import { getStripeSync } from "./lib/stripeClient";
 
 const rawPort = process.env["PORT"];
@@ -107,6 +108,10 @@ startQuoHealthCheck();
 // Geocode upcoming bookings in the background so the live map loads pins from
 // the DB. Degrades quietly when GOOGLE_MAPS_API_KEY is absent.
 startGeocodeBackfill();
+
+// Pull scheduled work out of Jobber so an owner who books there still sees
+// those addresses on the map. No-ops for companies that skipped Jobber.
+startJobberCalendarSync();
 
 app.listen(port, (err) => {
   if (err) {

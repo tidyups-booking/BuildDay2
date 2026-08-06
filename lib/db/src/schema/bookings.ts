@@ -90,6 +90,12 @@ export const bookingsTable = pgTable("bookings", {
   timeReviewPreviousTimezone: text("time_review_previous_timezone"),
   jobberSynced: boolean("jobber_synced").notNull().default(false),
   jobberJobId: text("jobber_job_id"),
+  // The Jobber *job* this booking was imported from, when the calendar pull
+  // created it. Deliberately separate from `jobberJobId`, which holds the
+  // Jobber *request* id our outbound sync creates — one is "Jobber told us
+  // about this", the other is "we told Jobber about this", and conflating them
+  // would make the calendar sync overwrite work it never imported.
+  jobberSyncedJobId: text("jobber_synced_job_id"),
   jobberClientId: text("jobber_client_id"),
   jobberWebUri: text("jobber_web_uri"),
   jobberSyncError: text("jobber_sync_error"),

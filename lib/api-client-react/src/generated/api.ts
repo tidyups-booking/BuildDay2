@@ -37,6 +37,7 @@ import type {
   GetMapDataParams,
   GetScheduleParams,
   HealthStatus,
+  JobberCalendarSync,
   JobberConnectStart,
   JobberSkipInput,
   ListBookingsInRangeParams,
@@ -525,6 +526,78 @@ export const useDisconnectJobber = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getDisconnectJobberMutationOptions(options));
+    }
+
+export const getSyncJobberCalendarUrl = () => {
+
+
+
+
+  return `/api/company/jobber/sync-calendar`
+}
+
+/**
+ * Runs the same import as the background sync, on demand, over a rolling window around today. Only ever creates or updates bookings this import owns — a booking taken by the receptionist is never touched.
+ * @summary Pull scheduled Jobber jobs onto our calendar and map right now
+ */
+export const syncJobberCalendar = async ( options?: Parameters<typeof customFetch>[1]): Promise<JobberCalendarSync> => {
+
+  return customFetch<JobberCalendarSync>(getSyncJobberCalendarUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getSyncJobberCalendarMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof syncJobberCalendar>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof syncJobberCalendar>>, TError,void, TContext> => {
+
+const mutationKey = ['syncJobberCalendar'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof syncJobberCalendar>>, void> = () => {
+
+
+          return  syncJobberCalendar(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SyncJobberCalendarMutationResult = NonNullable<Awaited<ReturnType<typeof syncJobberCalendar>>>
+
+    export type SyncJobberCalendarMutationError = ErrorType<void>
+
+    /**
+ * @summary Pull scheduled Jobber jobs onto our calendar and map right now
+ */
+export const useSyncJobberCalendar = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof syncJobberCalendar>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof syncJobberCalendar>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getSyncJobberCalendarMutationOptions(options));
     }
 
 export const getGoLiveUrl = () => {

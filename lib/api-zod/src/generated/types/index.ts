@@ -36,6 +36,7 @@ export * from './extractedAnswer';
 export * from './getMapDataParams';
 export * from './getScheduleParams';
 export * from './healthStatus';
+export * from './jobberCalendarSync';
 export * from './jobberConnectStart';
 export * from './jobberSkipInput';
 export * from './listBookingsInRangeParams';

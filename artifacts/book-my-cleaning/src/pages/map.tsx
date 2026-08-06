@@ -8,6 +8,7 @@ import {
   useListBookingsInRange,
   useCreateMapPin,
   useDeleteMapPin,
+  useSyncJobberCalendar,
   useGetCompany,
   useGetCurrentUser,
   getGetMapDataQueryKey,
@@ -158,6 +159,13 @@ function MapView() {
 
   const isRangeView = view !== "day";
 
+  // Pulling from Jobber writes bookings, so it stays with the people who are
+  // allowed to change the schedule.
+  const { data: me } = useGetCurrentUser();
+  const canSyncJobber =
+    Boolean(company?.jobberConnected) &&
+    (me?.role === "owner" || me?.role === "dispatcher");
+
   return (
     <>
       <PageHeader
@@ -177,6 +185,7 @@ function MapView() {
           <Button variant="outline" size="sm" onClick={() => jumpToDate(today)}>
             Today
           </Button>
+          {canSyncJobber && <JobberSyncButton mapParams={mapParams} />}
           <Button
             variant="outline"
             size="icon"
@@ -698,6 +707,75 @@ function useRefreshMap(mapParams: { date: string; end: string }) {
     queryClient.invalidateQueries({
       queryKey: getGetMapDataQueryKey(mapParams),
     });
+}
+
+/**
+ * "Sync Jobber" — pull scheduled Jobber jobs onto the map on demand.
+ *
+ * The background sync already runs every ten minutes; this is for the owner
+ * who just booked something in Jobber and wants to see it now. The result is
+ * spelled out in plain counts rather than a silent success, because "nothing
+ * happened" and "nothing needed to happen" look identical otherwise.
+ */
+function JobberSyncButton({
+  mapParams,
+}: {
+  mapParams: { date: string; end: string };
+}) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const sync = useSyncJobberCalendar();
+
+  const run = () => {
+    sync.mutate(undefined, {
+      onSuccess: (result) => {
+        const bits: string[] = [];
+        if (result.imported) bits.push(`${result.imported} new`);
+        if (result.updated) bits.push(`${result.updated} updated`);
+        if (result.canceled) bits.push(`${result.canceled} cancelled`);
+        toast({
+          title: "Jobber sync finished",
+          description: bits.length
+            ? `${bits.join(", ")}. New addresses get pinned once they're looked up.`
+            : "Everything on your Jobber calendar was already here.",
+        });
+        queryClient.invalidateQueries({
+          queryKey: getGetMapDataQueryKey(mapParams),
+        });
+        queryClient.invalidateQueries({
+          queryKey: getListBookingsInRangeQueryKey({
+            start: mapParams.date,
+            end: mapParams.end,
+          }),
+        });
+      },
+      onError: (error: any) => {
+        toast({
+          title: "Jobber sync failed",
+          description:
+            error?.data?.error ||
+            error?.message ||
+            "We couldn't reach Jobber. Try again in a moment.",
+          variant: "destructive",
+        });
+      },
+    });
+  };
+
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={run}
+      disabled={sync.isPending}
+      data-testid="button-sync-jobber"
+    >
+      <RefreshCw
+        className={`w-4 h-4 mr-2 ${sync.isPending ? "animate-spin" : ""}`}
+      />
+      {sync.isPending ? "Syncing…" : "Sync Jobber"}
+    </Button>
+  );
 }
 
 function pinErrorMessage(error: any): string {

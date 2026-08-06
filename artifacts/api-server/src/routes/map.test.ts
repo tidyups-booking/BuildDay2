@@ -396,6 +396,21 @@ describe("GET /map/data", () => {
     expect(jobIds).not.toContain(jobUnassignedId);
     expect(jobIds).not.toContain(jobCompanyBId);
   });
+
+  it("shows a cleaner only the houses they're sent to", async () => {
+    const res = await call("GET", `/map/data?date=${DAY}&end=2030-05-16`, {
+      as: "cleanerA",
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      jobs: Array<{ bookingId: number; customerAddress: string | null }>;
+    };
+    // A month-wide map must not hand crew every address the company holds.
+    expect(body.jobs.map((j) => j.bookingId)).toEqual([jobAssignedId]);
+    const text = JSON.stringify(body.jobs);
+    expect(text).not.toContain("Other Day Customer");
+    expect(text).not.toContain("Company B Customer");
+  });
 });
 
 describe("GET /bookings/range", () => {

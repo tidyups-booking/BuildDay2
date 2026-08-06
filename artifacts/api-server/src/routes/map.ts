@@ -17,7 +17,7 @@ import {
   DeleteMapPinParams,
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/requireAuth";
-import { requireRole } from "../middlewares/requireRole";
+import { requireRole, getCaller } from "../middlewares/requireRole";
 import { getCompanyForUser } from "../lib/company";
 import { companyDayBounds } from "../lib/dayBounds";
 import { geocodeAddress, GeocodeConfigError } from "../services/geocode";
@@ -55,7 +55,8 @@ router.get(
       res.status(400).json({ error: query.error.message });
       return;
     }
-    const company = await getCompanyForUser(req.userId!);
+    const caller = await getCaller(req);
+    const company = caller.company;
     if (!company) {
       res.json(GetMapDataResponse.parse({ cleaners: [], jobs: [], pins: [] }));
       return;
@@ -100,18 +101,35 @@ router.get(
 
     // Jobs on the requested day (company zone) that already have coordinates —
     // an un-geocoded booking simply has no pin yet.
-    const jobRows = await db
-      .select()
-      .from(bookingsTable)
-      .where(
-        and(
-          eq(bookingsTable.companyId, company.id),
-          gte(bookingsTable.scheduledFor, start),
-          lt(bookingsTable.scheduledFor, end),
-          isNotNull(bookingsTable.lat),
-          isNotNull(bookingsTable.lng),
-        ),
-      );
+    const pinnedInRange = and(
+      eq(bookingsTable.companyId, company.id),
+      gte(bookingsTable.scheduledFor, start),
+      lt(bookingsTable.scheduledFor, end),
+      isNotNull(bookingsTable.lat),
+      isNotNull(bookingsTable.lng),
+    );
+
+    // A pin carries the customer's home address. Crew see only the houses they
+    // are actually sent to — the same rule as the bookings list, applied here
+    // because a month-wide map would otherwise hand a cleaner every address
+    // the company has.
+    const jobScope =
+      caller.role === "cleaner" && caller.teamMemberId !== null
+        ? and(
+            pinnedInRange,
+            inArray(
+              bookingsTable.id,
+              db
+                .select({ id: bookingAssignmentsTable.bookingId })
+                .from(bookingAssignmentsTable)
+                .where(
+                  eq(bookingAssignmentsTable.teamMemberId, caller.teamMemberId),
+                ),
+            ),
+          )
+        : pinnedInRange;
+
+    const jobRows = await db.select().from(bookingsTable).where(jobScope);
 
     const assigneesByBooking = await loadAssignees(jobRows.map((b) => b.id));
 
