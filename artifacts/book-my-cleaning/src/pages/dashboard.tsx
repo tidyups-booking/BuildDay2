@@ -1,6 +1,8 @@
 import {
   useGetDashboardSummary,
   useGetRecentActivity,
+  getGetRecentActivityQueryKey,
+  useGetCurrentUser,
   ActivityItem,
   useGetCompany,
   useUpdateCompany,
@@ -46,10 +48,22 @@ import {
 } from "@/lib/time";
 
 export function DashboardPage() {
+  const { data: me } = useGetCurrentUser();
+  // Crew read the headline numbers, but the feed quotes customer phone
+  // numbers and deposit amounts, so the API refuses it for them. Don't even
+  // ask — an unconditional call would error the panel for every cleaner.
+  const isCleaner = me?.role === "cleaner";
+  const showActivity = me !== undefined && !isCleaner;
   const { data: summary, isLoading: isSummaryLoading } =
     useGetDashboardSummary();
-  const { data: activity, isLoading: isActivityLoading } =
-    useGetRecentActivity();
+  const { data: activity, isLoading: isActivityLoading } = useGetRecentActivity(
+    {
+      query: {
+        queryKey: getGetRecentActivityQueryKey(),
+        enabled: showActivity,
+      },
+    },
+  );
   const { data: company } = useGetCompany();
 
   if (isSummaryLoading || isActivityLoading) {
@@ -104,32 +118,38 @@ export function DashboardPage() {
         }
       />
 
-      {company && company.quoConnected && company.quoNeedsReauth && (
-        <div className="mb-8 bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-4">
-          <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0 mt-0.5">
-            <AlertCircle className="w-5 h-5 text-red-600" />
+      {/* Every nudge below is run-the-business work for an owner or
+          dispatcher. Crew see the numbers, not the to-do list. */}
+      {!isCleaner &&
+        company &&
+        company.quoConnected &&
+        company.quoNeedsReauth && (
+          <div className="mb-8 bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-4">
+            <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0 mt-0.5">
+              <AlertCircle className="w-5 h-5 text-red-600" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-red-900">
+                Quo connection needs attention
+              </h3>
+              <p className="text-sm text-red-800 mt-1 mb-3">
+                Quo is rejecting your API key
+                {company.quoKeyLast4 ? ` (…${company.quoKeyLast4})` : ""}, so
+                calls and transcripts have stopped flowing. Reconnect with a
+                fresh key to get your receptionist back online.
+              </p>
+              <a
+                href="/setup"
+                className="text-sm font-medium text-red-700 bg-card border border-red-300 px-3 py-1.5 rounded shadow-sm hover:bg-red-50"
+              >
+                Reconnect Quo
+              </a>
+            </div>
           </div>
-          <div>
-            <h3 className="font-semibold text-red-900">
-              Quo connection needs attention
-            </h3>
-            <p className="text-sm text-red-800 mt-1 mb-3">
-              Quo is rejecting your API key
-              {company.quoKeyLast4 ? ` (…${company.quoKeyLast4})` : ""}, so
-              calls and transcripts have stopped flowing. Reconnect with a fresh
-              key to get your receptionist back online.
-            </p>
-            <a
-              href="/setup"
-              className="text-sm font-medium text-red-700 bg-card border border-red-300 px-3 py-1.5 rounded shadow-sm hover:bg-red-50"
-            >
-              Reconnect Quo
-            </a>
-          </div>
-        </div>
-      )}
+        )}
 
-      {company &&
+      {!isCleaner &&
+        company &&
         company.quoConnected &&
         !company.ringThroughNumber &&
         !company.notificationNumber && (
@@ -156,10 +176,10 @@ export function DashboardPage() {
           </div>
         )}
 
-      {company && <TimezoneNudge company={company} />}
-      {company && <BookingTimeReview company={company} />}
+      {!isCleaner && company && <TimezoneNudge company={company} />}
+      {!isCleaner && company && <BookingTimeReview company={company} />}
 
-      {company && !company.isLive && (
+      {!isCleaner && company && !company.isLive && (
         <div className="mb-8 bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-4">
           <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0 mt-0.5">
             <span className="text-amber-600 font-bold">!</span>
@@ -208,40 +228,42 @@ export function DashboardPage() {
         </div>
       </PanelErrorBoundary>
 
-      <PanelErrorBoundary label="recent activity feed">
-        <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-border bg-secondary/50">
-            <h2 className="font-semibold text-muted-foreground">
-              Recent Activity
-            </h2>
-          </div>
-          <div className="divide-y divide-gray-100">
-            {activity?.length === 0 ? (
-              <div className="p-8 text-center text-muted-foreground text-sm">
-                No recent activity. Once your AI starts taking calls, they will
-                appear here.
-              </div>
-            ) : (
-              activity?.map((item: ActivityItem) => (
-                <div
-                  key={item.id}
-                  className="p-4 px-6 flex items-start gap-4 hover:bg-secondary transition-colors"
-                >
-                  <ActivityIcon type={item.type} />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-muted-foreground">
-                      {item.message}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {format(new Date(item.occurredAt), "MMM d, h:mm a")}
-                    </p>
-                  </div>
+      {showActivity && (
+        <PanelErrorBoundary label="recent activity feed">
+          <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-border bg-secondary/50">
+              <h2 className="font-semibold text-muted-foreground">
+                Recent Activity
+              </h2>
+            </div>
+            <div className="divide-y divide-gray-100">
+              {activity?.length === 0 ? (
+                <div className="p-8 text-center text-muted-foreground text-sm">
+                  No recent activity. Once your AI starts taking calls, they
+                  will appear here.
                 </div>
-              ))
-            )}
+              ) : (
+                activity?.map((item: ActivityItem) => (
+                  <div
+                    key={item.id}
+                    className="p-4 px-6 flex items-start gap-4 hover:bg-secondary transition-colors"
+                  >
+                    <ActivityIcon type={item.type} />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-muted-foreground">
+                        {item.message}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {format(new Date(item.occurredAt), "MMM d, h:mm a")}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
-        </div>
-      </PanelErrorBoundary>
+        </PanelErrorBoundary>
+      )}
     </AppLayout>
   );
 }

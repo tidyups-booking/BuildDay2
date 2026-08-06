@@ -121,12 +121,14 @@ const MATRIX: Record<string, Role[]> = {
   "POST /bookings/:id/confirm-time": ["owner", "dispatcher"],
   "POST /bookings/:id/send-reschedule-text": ["owner", "dispatcher"],
   "POST /bookings/:id/sync-jobber": ["owner", "dispatcher"],
-  // Dashboard: company-wide numbers are dispatch work, not crew work.
-  "GET /dashboard/summary": ["owner", "dispatcher"],
+  // Dashboard: crew may read the headline counts, but the activity feed quotes
+  // customer phone numbers and deposit amounts, so it stays dispatch-only.
+  "GET /dashboard/summary": ["owner", "dispatcher", "cleaner"],
   "GET /dashboard/activity": ["owner", "dispatcher"],
-  // Live map: dispatch work, never crew — it shows every cleaner and job.
-  "GET /map/config": ["owner", "dispatcher"],
-  "GET /map/data": ["owner", "dispatcher"],
+  // Live map: crew may watch the day (jobs, coworkers, saved pins); only
+  // dispatch may add or remove the saved pins.
+  "GET /map/config": ["owner", "dispatcher", "cleaner"],
+  "GET /map/data": ["owner", "dispatcher", "cleaner"],
   "POST /map/pins": ["owner", "dispatcher"],
   "DELETE /map/pins/:id": ["owner", "dispatcher"],
   // Location reporting: any authenticated seat, so a cleaner's phone can post.

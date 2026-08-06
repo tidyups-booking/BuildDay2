@@ -29,19 +29,21 @@ export function Sidebar({ company }: SidebarProps) {
   const isCleaner = role === "cleaner";
   const isOwner = role === "owner";
 
-  // A cleaner's whole job is the list of jobs they are on. Everything else is
-  // dispatch work they have no access to on the API either.
+  // Crew get the day's headline numbers, their own jobs, the live map and the
+  // schedule. Calls stay dispatch-only (customer phone numbers and
+  // recordings), as does Team.
   const navItems = isCleaner
     ? [
+        { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
         { href: "/bookings", label: "My Jobs", icon: CalendarCheck },
-        // Cleaners get the schedule too — the API scopes it to their own day.
+        { href: "/map", label: "Map", icon: Map },
+        // The API scopes a cleaner's schedule to their own day.
         { href: "/schedule", label: "Schedule", icon: CalendarDays },
       ]
     : [
         { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
         { href: "/calls", label: "Calls", icon: PhoneCall },
         { href: "/bookings", label: "Bookings", icon: CalendarCheck },
-        // Live positions are dispatch work, so owners and dispatchers only.
         { href: "/map", label: "Map", icon: Map },
         { href: "/schedule", label: "Schedule", icon: CalendarDays },
         ...(isOwner ? [{ href: "/team", label: "Team", icon: Users }] : []),

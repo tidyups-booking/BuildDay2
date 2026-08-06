@@ -41,12 +41,22 @@ export function MarketingPage() {
                 Contact
               </span>
             </div>
-            <Link
-              href="/sign-in"
-              className="text-sm font-medium text-muted-foreground hover:text-white transition-colors"
-            >
-              Log in
-            </Link>
+            {/* Two doors into the same account system: the choice only sets
+                where you land, never what you are allowed to see. */}
+            <div className="flex items-center gap-1.5">
+              <Link
+                href="/sign-in?as=dispatch"
+                className="rounded-full px-4 py-2 text-sm font-semibold text-muted-foreground hover:text-white hover:bg-white/5 transition-colors"
+              >
+                Dispatch Login
+              </Link>
+              <Link
+                href="/sign-in?as=cleaner"
+                className="rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-white/90 hover:border-brand-pink/60 hover:bg-white/5 hover:text-white transition-colors"
+              >
+                Cleaner Login
+              </Link>
+            </div>
             <Link href="/sign-up">
               <Button className="rounded-full px-6 font-bold brand-gradient border-0 hover:opacity-90 shadow-[0_0_20px_rgba(236,72,153,0.3)] text-white">
                 Get Your Free Quote

@@ -13,9 +13,11 @@ const router: IRouter = Router();
 
 router.use(requireAuth);
 
+// Headline counts only — no customer names, phone numbers or money — so crew
+// may read them. The activity feed below is a different matter.
 router.get(
   "/dashboard/summary",
-  requireRole("owner", "dispatcher"),
+  requireRole("owner", "dispatcher", "cleaner"),
   async (req, res): Promise<void> => {
     const company = await getCompanyForUser(req.userId!);
     if (!company) {
@@ -76,6 +78,8 @@ router.get(
   },
 );
 
+// Stays dispatch-only even though the rest of the dashboard is open to crew:
+// these messages quote customer phone numbers and deposit amounts verbatim.
 router.get(
   "/dashboard/activity",
   requireRole("owner", "dispatcher"),

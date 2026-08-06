@@ -31,7 +31,7 @@ const router: IRouter = Router();
 router.get(
   "/map/config",
   requireAuth,
-  requireRole("owner", "dispatcher"),
+  requireRole("owner", "dispatcher", "cleaner"),
   async (_req, res): Promise<void> => {
     const apiKey = process.env["GOOGLE_MAPS_API_KEY"] ?? "";
     res.json(
@@ -43,10 +43,12 @@ router.get(
   },
 );
 
+// Crew may watch the day unfold — jobs, coworkers and saved pins. Editing the
+// saved pins below stays with dispatch.
 router.get(
   "/map/data",
   requireAuth,
-  requireRole("owner", "dispatcher"),
+  requireRole("owner", "dispatcher", "cleaner"),
   async (req, res): Promise<void> => {
     const query = GetMapDataQueryParams.safeParse(req.query);
     if (!query.success) {

@@ -12,7 +12,6 @@ import {
   getGetMapDataQueryKey,
   MapData,
 } from "@workspace/api-client-react";
-import { Redirect } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,12 +47,6 @@ import {
 const REFRESH_MS = 30 * 1000;
 
 export function MapPage() {
-  const { data: me } = useGetCurrentUser();
-  const role = me?.role ?? "owner";
-  // Live positions are dispatch-only; a cleaner has no business tracking peers,
-  // and the API blocks them too. Keep the whole page behind the same gate.
-  if (role === "cleaner") return <Redirect to="/schedule" />;
-
   return (
     <AppLayout>
       <PanelErrorBoundary label="live map">
@@ -182,6 +175,12 @@ function LiveMap({
   lastUpdated: number;
   isFetching: boolean;
 }) {
+  const { data: me } = useGetCurrentUser();
+  // Crew may watch the map, but adding and removing saved pins is dispatch
+  // work and the API rejects it — so don't offer them a control that fails.
+  // Positive check on purpose: while the role is still loading we show nothing
+  // rather than flashing controls a cleaner could click into a 403.
+  const canEditPins = me?.role === "owner" || me?.role === "dispatcher";
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<any>(null);
   const infoWindowRef = useRef<any>(null);
@@ -422,7 +421,7 @@ function LiveMap({
         </div>
 
         <div className="space-y-4">
-          <PinManager date={date} pins={mapData?.pins ?? []} />
+          {canEditPins && <PinManager date={date} pins={mapData?.pins ?? []} />}
           {unlocatedJobs.length > 0 && (
             <div className="bg-card border border-border rounded-xl shadow-sm p-4">
               <h3 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-2">
