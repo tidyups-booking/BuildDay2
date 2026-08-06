@@ -50,6 +50,22 @@ export type Caller = {
 const BOOTSTRAP_RECHECK_MS = 60_000;
 const bootstrapNegativeCache = new Map<string, number>();
 
+/**
+ * The address to stamp on a company at creation, so ownership survives the
+ * login that created it. Verified only, and null rather than a guess when
+ * Clerk can't say — a wrong address here would be an ownership handle pointing
+ * at the wrong person.
+ */
+export async function ownerEmailFor(userId: string): Promise<string | null> {
+  try {
+    const [first] = await verifiedEmailsFor(userId);
+    return first ?? null;
+  } catch (err) {
+    logger.error({ err, userId }, "[callerRole] owner email lookup failed");
+    return null;
+  }
+}
+
 /** Verified addresses only — verification is what proves the caller owns it. */
 async function verifiedEmailsFor(userId: string): Promise<string[]> {
   const user = await clerkClient.users.getUser(userId);
@@ -140,6 +156,64 @@ async function reclaimAbandonedSeat(
 }
 
 /**
+ * The same rescue as `reclaimAbandonedSeat`, for the person who owns the
+ * place. An owner has no seat to fall back on: when `owner_user_id` points at
+ * an account that no longer exists, the company still holds every booking,
+ * call and setting, but nobody on earth can reach it — the owner signs in, is
+ * told they have no workspace, and is invited to build a second empty one
+ * beside it. Forever, on every attempt.
+ *
+ * `owner_email` is the handle that survives the login. Re-attaching still
+ * demands both halves: the caller's email is VERIFIED and matches, and the
+ * stored account is confirmed gone.
+ */
+async function reclaimAbandonedCompany(
+  userId: string,
+  emails: string[],
+): Promise<Company | null> {
+  const orphans = await db
+    .select({
+      id: companiesTable.id,
+      ownerUserId: companiesTable.ownerUserId,
+    })
+    .from(companiesTable)
+    .where(
+      and(
+        isNotNull(companiesTable.ownerEmail),
+        ne(companiesTable.ownerUserId, userId),
+        inArray(sql`lower(${companiesTable.ownerEmail})`, emails),
+      ),
+    )
+    .orderBy(companiesTable.id)
+    .limit(5);
+
+  for (const orphan of orphans) {
+    if (!(await clerkUserIsGone(orphan.ownerUserId))) continue;
+
+    const [taken] = await db
+      .update(companiesTable)
+      .set({ ownerUserId: userId })
+      .where(
+        and(
+          eq(companiesTable.id, orphan.id),
+          eq(companiesTable.ownerUserId, orphan.ownerUserId),
+        ),
+      )
+      .returning();
+
+    if (taken) {
+      logger.warn(
+        { userId, companyId: orphan.id, staleUserId: orphan.ownerUserId },
+        "[callerRole] company re-attached to its owner after a dead login",
+      );
+      return taken;
+    }
+  }
+
+  return null;
+}
+
+/**
  * First sign-in for an invited person: match a VERIFIED Clerk email to a seat
  * that nobody has claimed yet and attach the account to it.
  *
@@ -162,6 +236,21 @@ async function tryClaimSeat(userId: string): Promise<Caller | null> {
   }
 
   if (emails.length > 0) {
+    // Ownership is checked before invites, matching the order in
+    // `resolveCaller`: someone who owns a company is its owner even if that
+    // same address was also invited onto another team.
+    const reattached = await reclaimAbandonedCompany(userId, emails);
+    if (reattached) {
+      bootstrapNegativeCache.delete(userId);
+      return {
+        role: "owner",
+        company: reattached,
+        teamMemberId: null,
+        name: "",
+        email: "",
+      };
+    }
+
     // Oldest matching invite wins, so the outcome is deterministic when two
     // companies happen to have invited the same address.
     const [pending] = await db

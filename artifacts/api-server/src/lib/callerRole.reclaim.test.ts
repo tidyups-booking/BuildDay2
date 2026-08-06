@@ -67,9 +67,12 @@ import { resolveCaller, forgetDeniedCaller } from "./callerRole";
 
 const runId = Math.random().toString(36).slice(2, 8);
 const SEAT_EMAIL = `joseph_${runId}@test.invalid`;
+const OWNER_EMAIL = `owner_${runId}@test.invalid`;
 const GHOST_USER = `user_ghost_${runId}`;
+const GHOST_OWNER = `user_ghostowner_${runId}`;
 const LIVE_USER = `user_live_${runId}`;
 const RETURNING_USER = `user_returning_${runId}`;
+const RETURNING_OWNER = `user_returningowner_${runId}`;
 
 let companyId: number;
 let seatId: number;
@@ -78,7 +81,8 @@ beforeAll(async () => {
   const [company] = await db
     .insert(companiesTable)
     .values({
-      ownerUserId: `user_owner_${runId}`,
+      ownerUserId: GHOST_OWNER,
+      ownerEmail: OWNER_EMAIL,
       name: `Reclaim Co ${runId}`,
       timezone: "America/Edmonton",
     })
@@ -113,12 +117,16 @@ beforeEach(async () => {
   clerkUnreachable = false;
   clerkAccounts.clear();
   forgetDeniedCaller();
-  // Back to the broken state: the seat is held by an account Clerk no longer
-  // knows about.
+  // Back to the broken state: the seat and the company are both held by
+  // accounts Clerk no longer knows about.
   await db
     .update(teamMembersTable)
     .set({ clerkUserId: GHOST_USER })
     .where(eq(teamMembersTable.id, seatId));
+  await db
+    .update(companiesTable)
+    .set({ ownerUserId: GHOST_OWNER, ownerEmail: OWNER_EMAIL })
+    .where(eq(companiesTable.id, companyId));
 });
 
 describe("a seat held by a deleted Clerk account", () => {
@@ -200,7 +208,7 @@ describe("a seat held by a deleted Clerk account", () => {
     expect(row?.clerkUserId).toBe(GHOST_USER);
   });
 
-  it("leaves other companies' seats alone", async () => {
+  it("leaves a seat alone when the email belongs to nobody here", async () => {
     clerkAccounts.set(RETURNING_USER, {
       emails: [{ address: `stranger_${runId}@test.invalid`, verified: true }],
     });
@@ -213,5 +221,121 @@ describe("a seat held by a deleted Clerk account", () => {
       .from(teamMembersTable)
       .where(inArray(teamMembersTable.id, [seatId]));
     expect(rows[0]?.clerkUserId).toBe(GHOST_USER);
+  });
+});
+
+describe("a company whose owner login no longer exists", () => {
+  it("re-attaches to the owner's verified email", async () => {
+    clerkAccounts.set(RETURNING_OWNER, {
+      emails: [{ address: OWNER_EMAIL, verified: true }],
+    });
+
+    const caller = await resolveCaller(RETURNING_OWNER);
+
+    // Their company — with every booking, call and setting still in it —
+    // rather than an invitation to build an empty second one.
+    expect(caller.role).toBe("owner");
+    expect(caller.company?.id).toBe(companyId);
+
+    const [row] = await db
+      .select({ ownerUserId: companiesTable.ownerUserId })
+      .from(companiesTable)
+      .where(eq(companiesTable.id, companyId));
+    expect(row?.ownerUserId).toBe(RETURNING_OWNER);
+  });
+
+  it("wins over an invite to somebody else's team", async () => {
+    // The same address owns this company AND holds an abandoned seat on it.
+    // Owning has to win, or they'd come back as their own dispatcher.
+    await db
+      .update(teamMembersTable)
+      .set({ email: OWNER_EMAIL })
+      .where(eq(teamMembersTable.id, seatId));
+    clerkAccounts.set(RETURNING_OWNER, {
+      emails: [{ address: OWNER_EMAIL, verified: true }],
+    });
+
+    const caller = await resolveCaller(RETURNING_OWNER);
+
+    expect(caller.role).toBe("owner");
+    expect(caller.teamMemberId).toBeNull();
+
+    await db
+      .update(teamMembersTable)
+      .set({ email: SEAT_EMAIL })
+      .where(eq(teamMembersTable.id, seatId));
+  });
+
+  it("stays put when the owner's account still exists", async () => {
+    await db
+      .update(companiesTable)
+      .set({ ownerUserId: LIVE_USER })
+      .where(eq(companiesTable.id, companyId));
+    clerkAccounts.set(LIVE_USER, {
+      emails: [{ address: OWNER_EMAIL, verified: true }],
+    });
+    clerkAccounts.set(RETURNING_OWNER, {
+      emails: [{ address: OWNER_EMAIL, verified: true }],
+    });
+
+    const caller = await resolveCaller(RETURNING_OWNER);
+
+    // A shared address must never take a working company off its owner.
+    expect(caller.company).toBeNull();
+    const [row] = await db
+      .select({ ownerUserId: companiesTable.ownerUserId })
+      .from(companiesTable)
+      .where(eq(companiesTable.id, companyId));
+    expect(row?.ownerUserId).toBe(LIVE_USER);
+  });
+
+  it("stays put for an unverified email", async () => {
+    clerkAccounts.set(RETURNING_OWNER, {
+      emails: [{ address: OWNER_EMAIL, verified: false }],
+    });
+
+    const caller = await resolveCaller(RETURNING_OWNER);
+
+    expect(caller.company).toBeNull();
+    const [row] = await db
+      .select({ ownerUserId: companiesTable.ownerUserId })
+      .from(companiesTable)
+      .where(eq(companiesTable.id, companyId));
+    expect(row?.ownerUserId).toBe(GHOST_OWNER);
+  });
+
+  it("stays put while Clerk is unreachable", async () => {
+    clerkAccounts.set(RETURNING_OWNER, {
+      emails: [{ address: OWNER_EMAIL, verified: true }],
+    });
+    clerkUnreachable = true;
+
+    const caller = await resolveCaller(RETURNING_OWNER);
+
+    expect(caller.company).toBeNull();
+    const [row] = await db
+      .select({ ownerUserId: companiesTable.ownerUserId })
+      .from(companiesTable)
+      .where(eq(companiesTable.id, companyId));
+    expect(row?.ownerUserId).toBe(GHOST_OWNER);
+  });
+
+  it("ignores a company that never recorded an owner email", async () => {
+    await db
+      .update(companiesTable)
+      .set({ ownerEmail: null })
+      .where(eq(companiesTable.id, companyId));
+    clerkAccounts.set(RETURNING_OWNER, {
+      emails: [{ address: OWNER_EMAIL, verified: true }],
+    });
+
+    const caller = await resolveCaller(RETURNING_OWNER);
+
+    expect(caller.company).toBeNull();
+    const [row] = await db
+      .select({ ownerUserId: companiesTable.ownerUserId })
+      .from(companiesTable)
+      .where(eq(companiesTable.id, companyId));
+    expect(row?.ownerUserId).toBe(GHOST_OWNER);
   });
 });

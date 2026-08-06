@@ -22,6 +22,14 @@ export type JobberOauthState = {
 export const companiesTable = pgTable("companies", {
   id: serial("id").primaryKey(),
   ownerUserId: text("owner_user_id").notNull().unique(),
+  // The address the owner signed up with, kept so ownership survives its login.
+  // A Clerk account can be deleted, and a database moved between Clerk
+  // instances carries ids that were never valid in the new one — in both cases
+  // owner_user_id points at nothing and the company becomes unreachable, with
+  // its owner sent to onboarding forever. Matching a VERIFIED email against
+  // this column is what lets them back in. Null for companies created before
+  // the column existed.
+  ownerEmail: text("owner_email"),
   name: text("name").notNull(),
   greeting: text("greeting").notNull().default(""),
   collectFields: text("collect_fields").array().notNull().default([]),

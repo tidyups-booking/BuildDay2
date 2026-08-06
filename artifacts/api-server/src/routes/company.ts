@@ -22,6 +22,7 @@ import {
 import { requireAuth } from "../middlewares/requireAuth";
 import { requireRole } from "../middlewares/requireRole";
 import { getCompanyForUser, serializeCompany } from "../lib/company";
+import { ownerEmailFor } from "../lib/callerRole";
 import {
   getJobberCredentials,
   generatePkcePair,
@@ -179,10 +180,15 @@ router.post(
       return;
     }
 
+    // Stamp the creator's verified address on the company. This is what lets
+    // them back in if the login behind it ever stops existing.
+    const ownerEmail = await ownerEmailFor(req.userId!);
+
     const [company] = await db
       .insert(companiesTable)
       .values({
         ownerUserId: req.userId!,
+        ...(ownerEmail ? { ownerEmail } : {}),
         name: parsed.data.name,
         ...(parsed.data.timezone ? { timezone: parsed.data.timezone } : {}),
         greeting: `Thanks for calling ${parsed.data.name}! How can I help you today?`,

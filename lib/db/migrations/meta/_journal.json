@@ -134,6 +134,20 @@
       "when": 1785923800000,
       "tag": "0018_jobber_calendar_sync",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1785981600000,
+      "tag": "0019_company_owner_email",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1785981900000,
+      "tag": "0020_repair_orphaned_owner_email",
+      "breakpoints": true
     }
   ]
 }
