@@ -13,6 +13,10 @@ import {
   ListCallsResponse,
   GetCallParams,
   GetCallResponse,
+  GetCallBookingDraftParams,
+  GetCallBookingDraftResponse,
+  DraftBookingFromTextBody,
+  DraftBookingFromTextResponse,
   SimulateTestCallResponse,
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/requireAuth";
@@ -24,6 +28,7 @@ import {
   setQuoNeedsReauth,
 } from "../lib/company";
 import { buildSimulatedCall } from "../lib/simulateCall";
+import { buildBookingDraft, buildDraftFromText } from "../lib/bookingDraft";
 import { backfillCalls } from "../lib/quoIngest";
 import { listPhoneNumbers } from "../lib/quo";
 import { SyncCallsFromQuoResponse } from "@workspace/api-zod";
@@ -162,6 +167,62 @@ router.get(
       return;
     }
     res.json(GetCallResponse.parse(serializeCallDetail(call)));
+  },
+);
+
+/**
+ * What the New Booking form pre-fills from a call. Declared after
+ * `/calls/:id` — Express matches in order and the paths don't collide, but
+ * keeping them together makes the pair obvious.
+ */
+router.get(
+  "/calls/:id/booking-draft",
+  requireRole("owner", "dispatcher"),
+  async (req, res): Promise<void> => {
+    const params = GetCallBookingDraftParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ error: params.error.message });
+      return;
+    }
+    const company = await getCompanyForUser(req.userId!);
+    if (!company) {
+      res.status(404).json({ error: "Call not found" });
+      return;
+    }
+    const [call] = await db
+      .select()
+      .from(callsTable)
+      .where(
+        and(
+          eq(callsTable.id, params.data.id),
+          eq(callsTable.companyId, company.id),
+        ),
+      );
+    if (!call) {
+      res.status(404).json({ error: "Call not found" });
+      return;
+    }
+    res.json(GetCallBookingDraftResponse.parse(buildBookingDraft(call)));
+  },
+);
+
+/**
+ * The same thing for a call Quo hasn't transcribed yet — the dispatcher's own
+ * microphone, while the customer is still talking. Nothing is saved: this only
+ * reads text and hands back suggestions.
+ */
+router.post(
+  "/booking-drafts",
+  requireRole("owner", "dispatcher"),
+  async (req, res): Promise<void> => {
+    const parsed = DraftBookingFromTextBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+    res.json(
+      DraftBookingFromTextResponse.parse(buildDraftFromText(parsed.data.text)),
+    );
   },
 );
 

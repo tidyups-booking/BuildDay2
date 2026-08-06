@@ -21,6 +21,7 @@ import { SetupPage } from "@/pages/setup";
 import { OnboardingPage } from "@/pages/onboarding";
 import { CallsPage } from "@/pages/calls";
 import { BookingsPage } from "@/pages/bookings";
+import { NewBookingPage } from "@/pages/new-booking";
 import { TeamPage } from "@/pages/team";
 import { SettingsPage } from "@/pages/settings";
 import { MapPage } from "@/pages/map";
@@ -319,6 +320,15 @@ function ClerkProviderWithRoutes() {
               component={() => (
                 <Show when="signed-in" fallback={<Redirect to="/sign-in" />}>
                   <DashboardPage />
+                </Show>
+              )}
+            />
+            {/* Before /bookings so wouter doesn't read "new" as a booking id. */}
+            <Route
+              path="/bookings/new"
+              component={() => (
+                <Show when="signed-in" fallback={<Redirect to="/sign-in" />}>
+                  <NewBookingPage />
                 </Show>
               )}
             />

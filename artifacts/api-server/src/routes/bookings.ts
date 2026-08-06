@@ -94,6 +94,71 @@ async function loadCrews(
   return crews;
 }
 
+/**
+ * The subset of `requested` that this company may actually put on a job.
+ *
+ * Only this company's own people, so a guessed id cannot put a stranger on the
+ * schedule or leak their name back in the response. Off the roster means off
+ * the schedule too — enforced here rather than only hidden in the picker, so
+ * the toggle on the staff card is a real rule and not a suggestion.
+ *
+ * Callers compare the length against what they asked for: a short result means
+ * at least one id was somebody else's, or somebody switched off.
+ */
+async function eligibleCrew(
+  companyId: number,
+  requested: number[],
+): Promise<CrewMember[]> {
+  if (requested.length === 0) return [];
+  return db
+    .select({
+      id: teamMembersTable.id,
+      name: teamMembersTable.name,
+      role: teamMembersTable.role,
+    })
+    .from(teamMembersTable)
+    .where(
+      and(
+        eq(teamMembersTable.companyId, companyId),
+        inArray(teamMembersTable.id, requested),
+        eq(teamMembersTable.active, true),
+      ),
+    );
+}
+
+/**
+ * The address as a human would write it, from the separate boxes the booking
+ * desk types into. Bookings taken before those boxes existed keep the whole
+ * address in `customerAddress`, so this returns that unchanged for them.
+ */
+export function joinAddress(b: {
+  customerAddress: string | null;
+  addressCity: string | null;
+  addressProvince: string | null;
+  addressPostal: string | null;
+}): string | null {
+  const cityLine = [b.addressCity, b.addressProvince]
+    .map((p) => p?.trim())
+    .filter(Boolean)
+    .join(", ");
+  const joined = [b.customerAddress?.trim(), cityLine, b.addressPostal?.trim()]
+    .filter(Boolean)
+    .join(", ");
+  return joined || null;
+}
+
+const FREQUENCY_LABELS: Record<string, string> = {
+  one_time: "One time",
+  weekly: "Weekly",
+  biweekly: "Every 2 weeks",
+  monthly: "Monthly",
+};
+
+/** Falls back to the stored value so an unknown code still reads as something. */
+function frequencyLabel(frequency: string): string {
+  return FREQUENCY_LABELS[frequency] ?? frequency;
+}
+
 function serializeBooking(
   company: Company,
   b: Booking,
@@ -130,6 +195,18 @@ function serializeBooking(
     lng: b.lng ?? null,
     geocodedAt: b.geocodedAt ? b.geocodedAt.toISOString() : null,
     durationMinutes: b.durationMinutes ?? null,
+    // Intake detail collected on the phone. Explicitly nulled rather than
+    // spread through, because every booking taken before these columns
+    // existed has them undefined, and undefined fails the response schema.
+    customerEmail: b.customerEmail ?? null,
+    addressCity: b.addressCity ?? null,
+    addressProvince: b.addressProvince ?? null,
+    addressPostal: b.addressPostal ?? null,
+    bedrooms: b.bedrooms ?? null,
+    bathrooms: b.bathrooms ?? null,
+    extras: b.extras ?? null,
+    frequency: b.frequency ?? null,
+    internalNotes: b.internalNotes ?? null,
   };
 }
 
@@ -324,29 +401,7 @@ router.put(
     }
 
     const requested = [...new Set(parsed.data.teamMemberIds)];
-
-    // Only this company's own people, so a guessed id cannot put a stranger on
-    // the schedule or leak their name back in the response.
-    const eligible =
-      requested.length > 0
-        ? await db
-            .select({
-              id: teamMembersTable.id,
-              name: teamMembersTable.name,
-              role: teamMembersTable.role,
-            })
-            .from(teamMembersTable)
-            .where(
-              and(
-                eq(teamMembersTable.companyId, company.id),
-                inArray(teamMembersTable.id, requested),
-                // Off the roster means off the schedule. Enforced here rather
-                // than only hidden in the picker, so the toggle on the staff
-                // card is a real rule and not a suggestion.
-                eq(teamMembersTable.active, true),
-              ),
-            )
-        : [];
+    const eligible = await eligibleCrew(company.id, requested);
 
     if (eligible.length !== requested.length) {
       res.status(400).json({
@@ -409,9 +464,19 @@ router.patch("/bookings/:id", async (req, res): Promise<void> => {
   if (d.status !== undefined) updates.status = d.status;
   if (d.customerName !== undefined) updates.customerName = d.customerName;
   if (d.customerPhone !== undefined) updates.customerPhone = d.customerPhone;
+  if (d.customerEmail !== undefined) updates.customerEmail = d.customerEmail;
   if (d.customerAddress !== undefined)
     updates.customerAddress = d.customerAddress;
+  if (d.addressCity !== undefined) updates.addressCity = d.addressCity;
+  if (d.addressProvince !== undefined)
+    updates.addressProvince = d.addressProvince;
+  if (d.addressPostal !== undefined) updates.addressPostal = d.addressPostal;
   if (d.service !== undefined) updates.service = d.service;
+  if (d.bedrooms !== undefined) updates.bedrooms = d.bedrooms;
+  if (d.bathrooms !== undefined) updates.bathrooms = d.bathrooms;
+  if (d.extras !== undefined) updates.extras = d.extras;
+  if (d.frequency !== undefined) updates.frequency = d.frequency;
+  if (d.internalNotes !== undefined) updates.internalNotes = d.internalNotes;
   if (d.quoteHours !== undefined) updates.quoteHours = d.quoteHours;
   if (d.quoteCrewLabel !== undefined) updates.quoteCrewLabel = d.quoteCrewLabel;
   if (d.quoteHourlyRate !== undefined)
@@ -515,39 +580,86 @@ router.post(
       return;
     }
 
-    const [booking] = await db
-      .insert(bookingsTable)
-      .values({
-        companyId: company.id,
-        // Hand-entered bookings have no originating call.
-        callId: null,
-        customerName: parsed.data.customerName,
-        customerPhone: parsed.data.customerPhone,
-        customerAddress: parsed.data.customerAddress ?? null,
-        service: parsed.data.service,
-        scheduledFor: when,
-        status: parsed.data.status ?? "pending",
-        quoteHours: parsed.data.quoteHours ?? null,
-        quoteCrewLabel: parsed.data.quoteCrewLabel ?? null,
-        quoteHourlyRate: parsed.data.quoteHourlyRate ?? null,
-        quoteFuelSurcharge: parsed.data.quoteFuelSurcharge ?? null,
-        quoteDiscountAmount: parsed.data.quoteDiscountAmount ?? null,
-        quoteReferralSource: parsed.data.quoteReferralSource ?? null,
-        quotedAmount: parsed.data.quotedAmount ?? null,
-        quoteDeposit: parsed.data.quoteDeposit ?? null,
-        quoteNotes: parsed.data.quoteNotes ?? null,
-      })
-      .returning();
+    // Checked before the insert, so a bad crew id doesn't leave a saved
+    // booking behind with an error message on top of it — the dispatcher is
+    // still on the phone and would have no idea it half-worked.
+    const requestedCrew = [...new Set(parsed.data.teamMemberIds ?? [])];
+    const eligible = await eligibleCrew(company.id, requestedCrew);
+    if (eligible.length !== requestedCrew.length) {
+      res.status(400).json({
+        error: "One or more people are not on your team, or are off the roster",
+      });
+      return;
+    }
 
-    await db.insert(activityTable).values({
-      companyId: company.id,
-      type: "booking_created",
-      message: `Booking added by hand for ${booking!.customerName} — ${booking!.service}.`,
+    // One transaction for the booking, its crew and the activity lines. The
+    // dispatcher is on the phone: an error message must mean "nothing was
+    // saved", never "saved, but nobody is assigned to it".
+    const booking = await db.transaction(async (tx) => {
+      const [row] = await tx
+        .insert(bookingsTable)
+        .values({
+          companyId: company.id,
+          // Hand-entered bookings have no originating call.
+          callId: null,
+          customerName: parsed.data.customerName,
+          customerPhone: parsed.data.customerPhone,
+          customerEmail: parsed.data.customerEmail ?? null,
+          customerAddress: parsed.data.customerAddress ?? null,
+          addressCity: parsed.data.addressCity ?? null,
+          addressProvince: parsed.data.addressProvince ?? null,
+          addressPostal: parsed.data.addressPostal ?? null,
+          service: parsed.data.service,
+          bedrooms: parsed.data.bedrooms ?? null,
+          bathrooms: parsed.data.bathrooms ?? null,
+          extras: parsed.data.extras ?? null,
+          frequency: parsed.data.frequency ?? null,
+          internalNotes: parsed.data.internalNotes ?? null,
+          scheduledFor: when,
+          status: parsed.data.status ?? "pending",
+          quoteHours: parsed.data.quoteHours ?? null,
+          quoteCrewLabel: parsed.data.quoteCrewLabel ?? null,
+          quoteHourlyRate: parsed.data.quoteHourlyRate ?? null,
+          quoteFuelSurcharge: parsed.data.quoteFuelSurcharge ?? null,
+          quoteDiscountAmount: parsed.data.quoteDiscountAmount ?? null,
+          quoteReferralSource: parsed.data.quoteReferralSource ?? null,
+          quotedAmount: parsed.data.quotedAmount ?? null,
+          quoteDeposit: parsed.data.quoteDeposit ?? null,
+          quoteNotes: parsed.data.quoteNotes ?? null,
+        })
+        .returning();
+
+      if (eligible.length > 0) {
+        await tx.insert(bookingAssignmentsTable).values(
+          eligible.map((m) => ({
+            bookingId: row!.id,
+            teamMemberId: m.id,
+          })),
+        );
+      }
+
+      const activity = [
+        {
+          companyId: company.id,
+          type: "booking_created",
+          message: `Booking added by hand for ${row!.customerName} — ${row!.service}.`,
+        },
+      ];
+      if (eligible.length > 0) {
+        activity.push({
+          companyId: company.id,
+          type: "crew_assigned",
+          message: `${eligible.map((m) => m.name).join(", ")} assigned to ${row!.customerName}'s job.`,
+        });
+      }
+      await tx.insert(activityTable).values(activity);
+
+      return row!;
     });
 
     res
       .status(201)
-      .json(CreateBookingResponse.parse(serializeBooking(company, booking!)));
+      .json(CreateBookingResponse.parse(serializeBooking(company, booking)));
   },
 );
 
@@ -969,7 +1081,15 @@ router.post(
       const [call] = await db
         .select()
         .from(callsTable)
-        .where(eq(callsTable.id, existing.callId));
+        // Scoped to the company as well as the id. A booking should only ever
+        // point at its own company's call, but this note is sent outside the
+        // system, so it is not the place to take that on trust.
+        .where(
+          and(
+            eq(callsTable.id, existing.callId),
+            eq(callsTable.companyId, company.id),
+          ),
+        );
       extractedAnswers =
         (call?.extractedAnswers as typeof extractedAnswers) ?? [];
     }
@@ -980,23 +1100,45 @@ router.post(
         name: existing.customerName,
         phone: existing.customerPhone,
       });
+      // In the company's own timezone, not the server's — otherwise the time
+      // in Jobber is a different hour from the one the dispatcher picked and
+      // the one the customer was told.
       const scheduled = existing.scheduledFor.toLocaleString("en-US", {
         dateStyle: "full",
         timeStyle: "short",
+        timeZone: company.timezone,
       });
+      // Jobber gets the whole address on one line — the separate city and
+      // postal boxes on the booking desk are for the person typing, not for
+      // Jobber, which takes a single string.
+      const fullAddress = joinAddress(existing);
       const request = await createJobberRequest(accessToken, {
         clientId: client.id,
         title: `${existing.service} — ${existing.customerName} (requested ${scheduled})`,
-        address: existing.customerAddress,
+        address: fullAddress,
       });
+
+      const scope = [
+        existing.bedrooms != null ? `${existing.bedrooms} bed` : null,
+        existing.bathrooms != null ? `${existing.bathrooms} bath` : null,
+      ].filter(Boolean);
 
       const noteLines = [
         `Booking captured by the Book My Cleaning AI receptionist.`,
         `Service: ${existing.service}`,
         `Requested time: ${scheduled}`,
         `Phone: ${existing.customerPhone}`,
-        ...(existing.customerAddress
-          ? [`Address: ${existing.customerAddress}`]
+        ...(existing.customerEmail ? [`Email: ${existing.customerEmail}`] : []),
+        ...(fullAddress ? [`Address: ${fullAddress}`] : []),
+        ...(scope.length > 0 ? [`Home: ${scope.join(", ")}`] : []),
+        ...(existing.extras && existing.extras.length > 0
+          ? [`Extras: ${existing.extras.join(", ")}`]
+          : []),
+        ...(existing.frequency && existing.frequency !== "one_time"
+          ? [`Frequency: ${frequencyLabel(existing.frequency)}`]
+          : []),
+        ...(existing.internalNotes
+          ? [`Entry notes: ${existing.internalNotes}`]
           : []),
         ...extractedAnswers.map((a) => `${a.field}: ${a.value}`),
       ];

@@ -5,6 +5,7 @@
  * Book My Cleaning — AI receptionist for Jobber cleaning companies
  * OpenAPI spec version: 0.1.0
  */
+import type { BookingCreateFrequency } from './bookingCreateFrequency';
 import type { BookingCreateStatus } from './bookingCreateStatus';
 
 export interface BookingCreate {
@@ -13,9 +14,46 @@ export interface BookingCreate {
   /** @minLength 1 */
   customerPhone: string;
   /** @nullable */
+  customerEmail?: string | null;
+  /** @nullable */
   customerAddress?: string | null;
+  /**
+     * @maxLength 120
+     * @nullable
+     */
+  addressCity?: string | null;
+  /**
+     * @maxLength 60
+     * @nullable
+     */
+  addressProvince?: string | null;
+  /**
+     * @maxLength 20
+     * @nullable
+     */
+  addressPostal?: string | null;
   /** @minLength 1 */
   service: string;
+  /**
+     * @minimum 0
+     * @maximum 50
+     * @nullable
+     */
+  bedrooms?: number | null;
+  /**
+     * @minimum 0
+     * @maximum 50
+     * @nullable
+     */
+  bathrooms?: number | null;
+  extras?: string[] | null;
+  frequency?: BookingCreateFrequency;
+  /**
+     * @maxLength 4000
+     * @nullable
+     */
+  internalNotes?: string | null;
+  teamMemberIds?: number[] | null;
   scheduledFor: string;
   status?: BookingCreateStatus;
   /**

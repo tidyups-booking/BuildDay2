@@ -9,6 +9,7 @@
 - [API date serialization](api-date-serialization.md) — a new nullable timestamp column 500s the whole list endpoint once one row sets it; update the route serializer in the same change.
 - [Booking times use company timezone](company-timezone-display.md) — never render or parse booking times in browser-local time; dispatcher and customer must see the same hour.
 - [Activity type enum lives in OpenAPI](db-migrations-practice.md) — new activity `type` values must be added to the ActivityItem enum + codegen and given a dashboard icon, or the feed fails zod validation at runtime.
+- [Booking draft extraction](booking-draft-extraction.md) — filling the form from a call is deterministic pattern matching on purpose; never guess city/province, never parse the date.
 - [Quote pricing rules](quote-pricing.md) — totals derive from stored inputs, but a texted quote is frozen at send; money rounding can't use bare toFixed or Math.round.
 - [Customer quote link](public-quote-link.md) — the quote page is a bearer link with no auth in Express *or* the SPA; approval is claimed via a conditional update.
 - [Cancellation sweeps need a complete pull](sync-cancellation-sweeps.md) — reconcile-by-absence must be gated on proven completeness; widening a sync window scales the blast radius of every early `break`.

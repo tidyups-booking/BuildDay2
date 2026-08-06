@@ -23,8 +23,31 @@ export const bookingsTable = pgTable("bookings", {
   callId: integer("call_id").unique(),
   customerName: text("customer_name").notNull(),
   customerPhone: text("customer_phone").notNull(),
+  // The street line only. City/province/postal are separate below because the
+  // booking desk types them into separate boxes and Jobber wants them apart —
+  // but everything that displays or geocodes an address joins them back up, so
+  // a booking taken over the phone before those boxes existed still works.
   customerAddress: text("customer_address"),
+  customerEmail: text("customer_email"),
+  addressCity: text("address_city"),
+  addressProvince: text("address_province"),
+  addressPostal: text("address_postal"),
   service: text("service").notNull(),
+  // What the dispatcher is walking through on the phone. All optional: a
+  // caller who won't say how many bathrooms they have still gets a booking.
+  bedrooms: integer("bedrooms"),
+  bathrooms: integer("bathrooms"),
+  // Extra rooms/appliances chosen as chips, e.g. ["Oven", "Fridge"]. Free
+  // strings rather than an enum so a company can be asked for its own list
+  // later without a migration.
+  extras: jsonb("extras").$type<string[]>(),
+  // one_time | weekly | biweekly | monthly. Recurrence is recorded here but
+  // NOT expanded into future bookings — this is what the customer asked for,
+  // not a schedule. Jobber owns recurring visits.
+  frequency: text("frequency"),
+  // Gate codes, dogs, where the key is. Crew-visible, never sent to the
+  // customer and never part of a quote.
+  internalNotes: text("internal_notes"),
   scheduledFor: timestamp("scheduled_for", { withTimezone: true }).notNull(),
   status: text("status").notNull().default("pending"), // pending | confirmed | completed | canceled
   // Quoting lives here rather than in Jobber, so companies that skip Jobber

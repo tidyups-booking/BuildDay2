@@ -118,7 +118,11 @@ const MATRIX: Record<string, Role[]> = {
   "GET /calls": ["owner", "dispatcher"],
   "POST /calls/sync": ["owner", "dispatcher"],
   "GET /calls/:id": ["owner", "dispatcher"],
+  "GET /calls/:id/booking-draft": ["owner", "dispatcher"],
   "POST /calls/simulate": ["owner", "dispatcher"],
+  // Reads text and hands back suggestions; saves nothing. Still dispatch-only,
+  // because what it reads is a customer talking on the phone.
+  "POST /booking-drafts": ["owner", "dispatcher"],
   // Bookings: cleaners see their own jobs (scoping asserted separately below).
   "GET /bookings": ["owner", "dispatcher", "cleaner"],
   // Calendar rows for the live map. Cleaner-safe by construction — the shape

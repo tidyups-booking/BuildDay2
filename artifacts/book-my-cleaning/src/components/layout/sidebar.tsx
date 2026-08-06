@@ -2,6 +2,7 @@ import { Link, useLocation } from "wouter";
 import {
   LayoutDashboard,
   PhoneCall,
+  PhoneIncoming,
   CalendarCheck,
   Users,
   Settings,
@@ -42,6 +43,7 @@ export function Sidebar({ company }: SidebarProps) {
       ]
     : [
         { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+        { href: "/bookings/new", label: "New Booking", icon: PhoneIncoming },
         { href: "/calls", label: "Calls", icon: PhoneCall },
         { href: "/bookings", label: "Bookings", icon: CalendarCheck },
         { href: "/map", label: "Live Map", icon: Map },

@@ -415,6 +415,42 @@ export interface CallDetail {
   extractedAnswers: ExtractedAnswer[];
 }
 
+export interface DraftBookingFromTextInput {
+  /**
+     * @minLength 1
+     * @maxLength 20000
+     */
+  text: string;
+}
+
+export interface BookingDraft {
+  /** @nullable */
+  callId: number | null;
+  /** @nullable */
+  customerName?: string | null;
+  /** @nullable */
+  customerPhone?: string | null;
+  /** @nullable */
+  customerAddress?: string | null;
+  /** @nullable */
+  addressCity?: string | null;
+  /** @nullable */
+  addressProvince?: string | null;
+  /** @nullable */
+  addressPostal?: string | null;
+  /** @nullable */
+  service?: string | null;
+  /** @nullable */
+  bedrooms?: number | null;
+  /** @nullable */
+  bathrooms?: number | null;
+  /** @nullable */
+  preferredTime?: string | null;
+  /** @nullable */
+  internalNotes?: string | null;
+  filledFields: string[];
+}
+
 export type BookingStatus = typeof BookingStatus[keyof typeof BookingStatus];
 
 
@@ -454,8 +490,25 @@ export interface Booking {
   customerName: string;
   customerPhone: string;
   /** @nullable */
+  customerEmail?: string | null;
+  /** @nullable */
   customerAddress?: string | null;
+  /** @nullable */
+  addressCity?: string | null;
+  /** @nullable */
+  addressProvince?: string | null;
+  /** @nullable */
+  addressPostal?: string | null;
   service: string;
+  /** @nullable */
+  bedrooms?: number | null;
+  /** @nullable */
+  bathrooms?: number | null;
+  extras?: string[] | null;
+  /** @nullable */
+  frequency?: string | null;
+  /** @nullable */
+  internalNotes?: string | null;
   scheduledFor: string;
   status: BookingStatus;
   /** @nullable */
@@ -526,6 +579,16 @@ export const BookingUpdateStatus = {
   canceled: 'canceled',
 } as const;
 
+export type BookingUpdateFrequency = typeof BookingUpdateFrequency[keyof typeof BookingUpdateFrequency] | null;
+
+
+export const BookingUpdateFrequency = {
+  one_time: 'one_time',
+  weekly: 'weekly',
+  biweekly: 'biweekly',
+  monthly: 'monthly',
+} as const;
+
 export interface BookingUpdate {
   status?: BookingUpdateStatus;
   scheduledFor?: string;
@@ -534,9 +597,45 @@ export interface BookingUpdate {
   /** @minLength 1 */
   customerPhone?: string;
   /** @nullable */
+  customerEmail?: string | null;
+  /** @nullable */
   customerAddress?: string | null;
+  /**
+     * @maxLength 120
+     * @nullable
+     */
+  addressCity?: string | null;
+  /**
+     * @maxLength 60
+     * @nullable
+     */
+  addressProvince?: string | null;
+  /**
+     * @maxLength 20
+     * @nullable
+     */
+  addressPostal?: string | null;
   /** @minLength 1 */
   service?: string;
+  /**
+     * @minimum 0
+     * @maximum 50
+     * @nullable
+     */
+  bedrooms?: number | null;
+  /**
+     * @minimum 0
+     * @maximum 50
+     * @nullable
+     */
+  bathrooms?: number | null;
+  extras?: string[] | null;
+  frequency?: BookingUpdateFrequency;
+  /**
+     * @maxLength 4000
+     * @nullable
+     */
+  internalNotes?: string | null;
   /**
      * @minimum 0
      * @maximum 24
@@ -587,6 +686,16 @@ export interface BookingUpdate {
   quoteNotes?: string | null;
 }
 
+export type BookingCreateFrequency = typeof BookingCreateFrequency[keyof typeof BookingCreateFrequency] | null;
+
+
+export const BookingCreateFrequency = {
+  one_time: 'one_time',
+  weekly: 'weekly',
+  biweekly: 'biweekly',
+  monthly: 'monthly',
+} as const;
+
 export type BookingCreateStatus = typeof BookingCreateStatus[keyof typeof BookingCreateStatus];
 
 
@@ -603,9 +712,46 @@ export interface BookingCreate {
   /** @minLength 1 */
   customerPhone: string;
   /** @nullable */
+  customerEmail?: string | null;
+  /** @nullable */
   customerAddress?: string | null;
+  /**
+     * @maxLength 120
+     * @nullable
+     */
+  addressCity?: string | null;
+  /**
+     * @maxLength 60
+     * @nullable
+     */
+  addressProvince?: string | null;
+  /**
+     * @maxLength 20
+     * @nullable
+     */
+  addressPostal?: string | null;
   /** @minLength 1 */
   service: string;
+  /**
+     * @minimum 0
+     * @maximum 50
+     * @nullable
+     */
+  bedrooms?: number | null;
+  /**
+     * @minimum 0
+     * @maximum 50
+     * @nullable
+     */
+  bathrooms?: number | null;
+  extras?: string[] | null;
+  frequency?: BookingCreateFrequency;
+  /**
+     * @maxLength 4000
+     * @nullable
+     */
+  internalNotes?: string | null;
+  teamMemberIds?: number[] | null;
   scheduledFor: string;
   status?: BookingCreateStatus;
   /**

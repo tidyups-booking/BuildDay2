@@ -765,8 +765,17 @@ export const SetBookingCrewResponse = zod.object({
   "callId": zod.int().nullish(),
   "customerName": zod.string(),
   "customerPhone": zod.string(),
+  "customerEmail": zod.string().nullish(),
   "customerAddress": zod.string().nullish(),
+  "addressCity": zod.string().nullish(),
+  "addressProvince": zod.string().nullish(),
+  "addressPostal": zod.string().nullish(),
   "service": zod.string(),
+  "bedrooms": zod.int().nullish(),
+  "bathrooms": zod.int().nullish(),
+  "extras": zod.union([zod.array(zod.string()),zod.null()]).optional(),
+  "frequency": zod.string().nullish(),
+  "internalNotes": zod.string().nullish(),
   "scheduledFor": zod.string(),
   "status": zod.enum(['pending', 'confirmed', 'completed', 'canceled']),
   "quoteHours": zod.number().nullish(),
@@ -1027,6 +1036,59 @@ export const GetCallResponse = zod.object({
 
 
 /**
+ * @summary Everything the New Booking form can pre-fill from what the caller said
+ */
+export const GetCallBookingDraftParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const GetCallBookingDraftResponse = zod.object({
+  "callId": zod.int().nullable(),
+  "customerName": zod.string().nullish(),
+  "customerPhone": zod.string().nullish(),
+  "customerAddress": zod.string().nullish(),
+  "addressCity": zod.string().nullish(),
+  "addressProvince": zod.string().nullish(),
+  "addressPostal": zod.string().nullish(),
+  "service": zod.string().nullish(),
+  "bedrooms": zod.int().nullish(),
+  "bathrooms": zod.int().nullish(),
+  "preferredTime": zod.string().nullish(),
+  "internalNotes": zod.string().nullish(),
+  "filledFields": zod.array(zod.string())
+})
+
+
+/**
+ * Takes the running transcript from the dispatcher's microphone and returns the same shape as a draft built from a Quo call, so the New Booking form fills itself in the same way either way. Nothing is saved.
+ * @summary Read booking details out of what was said on a live call
+ */
+export const draftBookingFromTextBodyTextMax = 20000;
+
+
+
+export const DraftBookingFromTextBody = zod.object({
+  "text": zod.string().min(1).max(draftBookingFromTextBodyTextMax)
+})
+
+export const DraftBookingFromTextResponse = zod.object({
+  "callId": zod.int().nullable(),
+  "customerName": zod.string().nullish(),
+  "customerPhone": zod.string().nullish(),
+  "customerAddress": zod.string().nullish(),
+  "addressCity": zod.string().nullish(),
+  "addressProvince": zod.string().nullish(),
+  "addressPostal": zod.string().nullish(),
+  "service": zod.string().nullish(),
+  "bedrooms": zod.int().nullish(),
+  "bathrooms": zod.int().nullish(),
+  "preferredTime": zod.string().nullish(),
+  "internalNotes": zod.string().nullish(),
+  "filledFields": zod.array(zod.string())
+})
+
+
+/**
  * @summary Run a simulated test call using the company's receptionist configuration
  */
 export const SimulateTestCallResponse = zod.object({
@@ -1094,8 +1156,17 @@ export const ListBookingsResponseItem = zod.object({
   "callId": zod.int().nullish(),
   "customerName": zod.string(),
   "customerPhone": zod.string(),
+  "customerEmail": zod.string().nullish(),
   "customerAddress": zod.string().nullish(),
+  "addressCity": zod.string().nullish(),
+  "addressProvince": zod.string().nullish(),
+  "addressPostal": zod.string().nullish(),
   "service": zod.string(),
+  "bedrooms": zod.int().nullish(),
+  "bathrooms": zod.int().nullish(),
+  "extras": zod.union([zod.array(zod.string()),zod.null()]).optional(),
+  "frequency": zod.string().nullish(),
+  "internalNotes": zod.string().nullish(),
   "scheduledFor": zod.string(),
   "status": zod.enum(['pending', 'confirmed', 'completed', 'canceled']),
   "quoteHours": zod.number().nullish(),
@@ -1174,6 +1245,26 @@ export const ListBookingsResponse = zod.array(ListBookingsResponseItem)
  */
 
 
+export const createBookingBodyAddressCityMax = 120;
+
+export const createBookingBodyAddressProvinceMax = 60;
+
+export const createBookingBodyAddressPostalMax = 20;
+
+
+export const createBookingBodyBedroomsMin = 0;
+export const createBookingBodyBedroomsMax = 50;
+
+export const createBookingBodyBathroomsMin = 0;
+export const createBookingBodyBathroomsMax = 50;
+
+export const createBookingBodyExtrasOneItemMax = 60;
+
+export const createBookingBodyExtrasOneMax = 30;
+
+export const createBookingBodyInternalNotesMax = 4000;
+
+export const createBookingBodyTeamMemberIdsOneMax = 20;
 
 export const createBookingBodyQuoteHoursMin = 0;
 export const createBookingBodyQuoteHoursMax = 24;
@@ -1202,8 +1293,18 @@ export const createBookingBodyQuoteDepositMax = 1000000;
 export const CreateBookingBody = zod.object({
   "customerName": zod.string().min(1),
   "customerPhone": zod.string().min(1),
+  "customerEmail": zod.string().nullish(),
   "customerAddress": zod.string().nullish(),
+  "addressCity": zod.string().max(createBookingBodyAddressCityMax).nullish(),
+  "addressProvince": zod.string().max(createBookingBodyAddressProvinceMax).nullish(),
+  "addressPostal": zod.string().max(createBookingBodyAddressPostalMax).nullish(),
   "service": zod.string().min(1),
+  "bedrooms": zod.int().min(createBookingBodyBedroomsMin).max(createBookingBodyBedroomsMax).nullish(),
+  "bathrooms": zod.int().min(createBookingBodyBathroomsMin).max(createBookingBodyBathroomsMax).nullish(),
+  "extras": zod.union([zod.array(zod.string().min(1).max(createBookingBodyExtrasOneItemMax)).max(createBookingBodyExtrasOneMax),zod.null()]).optional(),
+  "frequency": zod.union([zod.enum(['one_time', 'weekly', 'biweekly', 'monthly']),zod.null()]).optional(),
+  "internalNotes": zod.string().max(createBookingBodyInternalNotesMax).nullish(),
+  "teamMemberIds": zod.union([zod.array(zod.int()).max(createBookingBodyTeamMemberIdsOneMax),zod.null()]).optional(),
   "scheduledFor": zod.string(),
   "status": zod.enum(['pending', 'confirmed', 'completed', 'canceled']).optional(),
   "quoteHours": zod.number().min(createBookingBodyQuoteHoursMin).max(createBookingBodyQuoteHoursMax).nullish(),
@@ -1226,8 +1327,17 @@ export const CreateBookingResponse = zod.object({
   "callId": zod.int().nullish(),
   "customerName": zod.string(),
   "customerPhone": zod.string(),
+  "customerEmail": zod.string().nullish(),
   "customerAddress": zod.string().nullish(),
+  "addressCity": zod.string().nullish(),
+  "addressProvince": zod.string().nullish(),
+  "addressPostal": zod.string().nullish(),
   "service": zod.string(),
+  "bedrooms": zod.int().nullish(),
+  "bathrooms": zod.int().nullish(),
+  "extras": zod.union([zod.array(zod.string()),zod.null()]).optional(),
+  "frequency": zod.string().nullish(),
+  "internalNotes": zod.string().nullish(),
   "scheduledFor": zod.string(),
   "status": zod.enum(['pending', 'confirmed', 'completed', 'canceled']),
   "quoteHours": zod.number().nullish(),
@@ -1506,8 +1616,17 @@ export const SendQuoteResponse = zod.object({
   "callId": zod.int().nullish(),
   "customerName": zod.string(),
   "customerPhone": zod.string(),
+  "customerEmail": zod.string().nullish(),
   "customerAddress": zod.string().nullish(),
+  "addressCity": zod.string().nullish(),
+  "addressProvince": zod.string().nullish(),
+  "addressPostal": zod.string().nullish(),
   "service": zod.string(),
+  "bedrooms": zod.int().nullish(),
+  "bathrooms": zod.int().nullish(),
+  "extras": zod.union([zod.array(zod.string()),zod.null()]).optional(),
+  "frequency": zod.string().nullish(),
+  "internalNotes": zod.string().nullish(),
   "scheduledFor": zod.string(),
   "status": zod.enum(['pending', 'confirmed', 'completed', 'canceled']),
   "quoteHours": zod.number().nullish(),
@@ -1586,6 +1705,24 @@ export const UpdateBookingParams = zod.object({
 
 
 
+export const updateBookingBodyAddressCityMax = 120;
+
+export const updateBookingBodyAddressProvinceMax = 60;
+
+export const updateBookingBodyAddressPostalMax = 20;
+
+
+export const updateBookingBodyBedroomsMin = 0;
+export const updateBookingBodyBedroomsMax = 50;
+
+export const updateBookingBodyBathroomsMin = 0;
+export const updateBookingBodyBathroomsMax = 50;
+
+export const updateBookingBodyExtrasOneItemMax = 60;
+
+export const updateBookingBodyExtrasOneMax = 30;
+
+export const updateBookingBodyInternalNotesMax = 4000;
 
 export const updateBookingBodyQuoteHoursMin = 0;
 export const updateBookingBodyQuoteHoursMax = 24;
@@ -1616,8 +1753,17 @@ export const UpdateBookingBody = zod.object({
   "scheduledFor": zod.string().optional(),
   "customerName": zod.string().min(1).optional(),
   "customerPhone": zod.string().min(1).optional(),
+  "customerEmail": zod.string().nullish(),
   "customerAddress": zod.string().nullish(),
+  "addressCity": zod.string().max(updateBookingBodyAddressCityMax).nullish(),
+  "addressProvince": zod.string().max(updateBookingBodyAddressProvinceMax).nullish(),
+  "addressPostal": zod.string().max(updateBookingBodyAddressPostalMax).nullish(),
   "service": zod.string().min(1).optional(),
+  "bedrooms": zod.int().min(updateBookingBodyBedroomsMin).max(updateBookingBodyBedroomsMax).nullish(),
+  "bathrooms": zod.int().min(updateBookingBodyBathroomsMin).max(updateBookingBodyBathroomsMax).nullish(),
+  "extras": zod.union([zod.array(zod.string().min(1).max(updateBookingBodyExtrasOneItemMax)).max(updateBookingBodyExtrasOneMax),zod.null()]).optional(),
+  "frequency": zod.union([zod.enum(['one_time', 'weekly', 'biweekly', 'monthly']),zod.null()]).optional(),
+  "internalNotes": zod.string().max(updateBookingBodyInternalNotesMax).nullish(),
   "quoteHours": zod.number().min(updateBookingBodyQuoteHoursMin).max(updateBookingBodyQuoteHoursMax).nullish(),
   "quoteCrewLabel": zod.string().max(updateBookingBodyQuoteCrewLabelMax).nullish(),
   "quoteHourlyRate": zod.number().min(updateBookingBodyQuoteHourlyRateMin).max(updateBookingBodyQuoteHourlyRateMax).nullish(),
@@ -1638,8 +1784,17 @@ export const UpdateBookingResponse = zod.object({
   "callId": zod.int().nullish(),
   "customerName": zod.string(),
   "customerPhone": zod.string(),
+  "customerEmail": zod.string().nullish(),
   "customerAddress": zod.string().nullish(),
+  "addressCity": zod.string().nullish(),
+  "addressProvince": zod.string().nullish(),
+  "addressPostal": zod.string().nullish(),
   "service": zod.string(),
+  "bedrooms": zod.int().nullish(),
+  "bathrooms": zod.int().nullish(),
+  "extras": zod.union([zod.array(zod.string()),zod.null()]).optional(),
+  "frequency": zod.string().nullish(),
+  "internalNotes": zod.string().nullish(),
   "scheduledFor": zod.string(),
   "status": zod.enum(['pending', 'confirmed', 'completed', 'canceled']),
   "quoteHours": zod.number().nullish(),
@@ -1728,8 +1883,17 @@ export const ConfirmBookingTimeResponse = zod.object({
   "callId": zod.int().nullish(),
   "customerName": zod.string(),
   "customerPhone": zod.string(),
+  "customerEmail": zod.string().nullish(),
   "customerAddress": zod.string().nullish(),
+  "addressCity": zod.string().nullish(),
+  "addressProvince": zod.string().nullish(),
+  "addressPostal": zod.string().nullish(),
   "service": zod.string(),
+  "bedrooms": zod.int().nullish(),
+  "bathrooms": zod.int().nullish(),
+  "extras": zod.union([zod.array(zod.string()),zod.null()]).optional(),
+  "frequency": zod.string().nullish(),
+  "internalNotes": zod.string().nullish(),
   "scheduledFor": zod.string(),
   "status": zod.enum(['pending', 'confirmed', 'completed', 'canceled']),
   "quoteHours": zod.number().nullish(),
@@ -1818,8 +1982,17 @@ export const SendRescheduleTextResponse = zod.object({
   "callId": zod.int().nullish(),
   "customerName": zod.string(),
   "customerPhone": zod.string(),
+  "customerEmail": zod.string().nullish(),
   "customerAddress": zod.string().nullish(),
+  "addressCity": zod.string().nullish(),
+  "addressProvince": zod.string().nullish(),
+  "addressPostal": zod.string().nullish(),
   "service": zod.string(),
+  "bedrooms": zod.int().nullish(),
+  "bathrooms": zod.int().nullish(),
+  "extras": zod.union([zod.array(zod.string()),zod.null()]).optional(),
+  "frequency": zod.string().nullish(),
+  "internalNotes": zod.string().nullish(),
   "scheduledFor": zod.string(),
   "status": zod.enum(['pending', 'confirmed', 'completed', 'canceled']),
   "quoteHours": zod.number().nullish(),
@@ -1908,8 +2081,17 @@ export const SyncBookingToJobberResponse = zod.object({
   "callId": zod.int().nullish(),
   "customerName": zod.string(),
   "customerPhone": zod.string(),
+  "customerEmail": zod.string().nullish(),
   "customerAddress": zod.string().nullish(),
+  "addressCity": zod.string().nullish(),
+  "addressProvince": zod.string().nullish(),
+  "addressPostal": zod.string().nullish(),
   "service": zod.string(),
+  "bedrooms": zod.int().nullish(),
+  "bathrooms": zod.int().nullish(),
+  "extras": zod.union([zod.array(zod.string()),zod.null()]).optional(),
+  "frequency": zod.string().nullish(),
+  "internalNotes": zod.string().nullish(),
   "scheduledFor": zod.string(),
   "status": zod.enum(['pending', 'confirmed', 'completed', 'canceled']),
   "quoteHours": zod.number().nullish(),

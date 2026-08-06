@@ -16,8 +16,25 @@ export interface Booking {
   customerName: string;
   customerPhone: string;
   /** @nullable */
+  customerEmail?: string | null;
+  /** @nullable */
   customerAddress?: string | null;
+  /** @nullable */
+  addressCity?: string | null;
+  /** @nullable */
+  addressProvince?: string | null;
+  /** @nullable */
+  addressPostal?: string | null;
   service: string;
+  /** @nullable */
+  bedrooms?: number | null;
+  /** @nullable */
+  bathrooms?: number | null;
+  extras?: string[] | null;
+  /** @nullable */
+  frequency?: string | null;
+  /** @nullable */
+  internalNotes?: string | null;
   scheduledFor: string;
   status: BookingStatus;
   /** @nullable */

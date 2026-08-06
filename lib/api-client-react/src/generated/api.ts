@@ -23,6 +23,7 @@ import type {
   ActivityItem,
   Booking,
   BookingCreate,
+  BookingDraft,
   BookingRange,
   BookingUpdate,
   Call,
@@ -34,6 +35,7 @@ import type {
   CreatePinInput,
   CurrentUser,
   DashboardSummary,
+  DraftBookingFromTextInput,
   GetMapDataParams,
   GetScheduleParams,
   HealthStatus,
@@ -2047,6 +2049,155 @@ export function useGetCall<TData = Awaited<ReturnType<typeof getCall>>, TError =
 
 
 
+
+export const getGetCallBookingDraftUrl = (id: number,) => {
+
+
+
+
+  return `/api/calls/${id}/booking-draft`
+}
+
+/**
+ * @summary Everything the New Booking form can pre-fill from what the caller said
+ */
+export const getCallBookingDraft = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<BookingDraft> => {
+
+  return customFetch<BookingDraft>(getGetCallBookingDraftUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCallBookingDraftQueryKey = (id: number,) => {
+    return [
+    `/api/calls/${id}/booking-draft`
+    ] as const;
+    }
+
+
+export const getGetCallBookingDraftQueryOptions = <TData = Awaited<ReturnType<typeof getCallBookingDraft>>, TError = ErrorType<void>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCallBookingDraft>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCallBookingDraftQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCallBookingDraft>>> = ({ signal }) => getCallBookingDraft(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCallBookingDraft>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCallBookingDraftQueryResult = NonNullable<Awaited<ReturnType<typeof getCallBookingDraft>>>
+export type GetCallBookingDraftQueryError = ErrorType<void>
+
+
+/**
+ * @summary Everything the New Booking form can pre-fill from what the caller said
+ */
+
+export function useGetCallBookingDraft<TData = Awaited<ReturnType<typeof getCallBookingDraft>>, TError = ErrorType<void>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCallBookingDraft>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCallBookingDraftQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getDraftBookingFromTextUrl = () => {
+
+
+
+
+  return `/api/booking-drafts`
+}
+
+/**
+ * Takes the running transcript from the dispatcher's microphone and returns the same shape as a draft built from a Quo call, so the New Booking form fills itself in the same way either way. Nothing is saved.
+ * @summary Read booking details out of what was said on a live call
+ */
+export const draftBookingFromText = async (draftBookingFromTextInput: DraftBookingFromTextInput, options?: Parameters<typeof customFetch>[1]): Promise<BookingDraft> => {
+
+  return customFetch<BookingDraft>(getDraftBookingFromTextUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(draftBookingFromTextInput)
+  }
+);}
+
+
+
+
+
+export const getDraftBookingFromTextMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof draftBookingFromText>>, TError,{data: BodyType<DraftBookingFromTextInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof draftBookingFromText>>, TError,{data: BodyType<DraftBookingFromTextInput>}, TContext> => {
+
+const mutationKey = ['draftBookingFromText'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof draftBookingFromText>>, {data: BodyType<DraftBookingFromTextInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  draftBookingFromText(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DraftBookingFromTextMutationResult = NonNullable<Awaited<ReturnType<typeof draftBookingFromText>>>
+    export type DraftBookingFromTextMutationBody = BodyType<DraftBookingFromTextInput>
+    export type DraftBookingFromTextMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Read booking details out of what was said on a live call
+ */
+export const useDraftBookingFromText = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof draftBookingFromText>>, TError,{data: BodyType<DraftBookingFromTextInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof draftBookingFromText>>,
+        TError,
+        {data: BodyType<DraftBookingFromTextInput>},
+        TContext
+      > => {
+      return useMutation(getDraftBookingFromTextMutationOptions(options));
+    }
 
 export const getSimulateTestCallUrl = () => {
 

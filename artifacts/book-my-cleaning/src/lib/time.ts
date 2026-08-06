@@ -105,6 +105,61 @@ export function zoneLabel(timeZone: string, at: Date = new Date()): string {
   return parts.find((p) => p.type === "timeZoneName")?.value ?? timeZone;
 }
 
+/** Today in the company's zone, as a `YYYY-MM-DD` date-input value. */
+export function todayInZone(timeZone: string): string {
+  return isoToZonedInput(new Date().toISOString(), timeZone).slice(0, 10);
+}
+
+const WEEKDAYS = [
+  "sunday",
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+];
+
+/**
+ * Turns what the caller said about timing — "today", "tomorrow", "next
+ * Tuesday" — into a real date in the company's zone, for the date box on the
+ * booking desk.
+ *
+ * Returns null for anything vaguer than a specific day ("sometime next week",
+ * "after the long weekend"). A vague phrase left in the notes gets asked
+ * about; a wrong date gets a crew sent out on the wrong morning.
+ *
+ * A weekday name always means the *next* one — "Tuesday" said on a Tuesday is
+ * the Tuesday coming, not today.
+ */
+export function resolveSpokenDate(
+  phrase: string | null | undefined,
+  timeZone: string,
+): string | null {
+  if (!phrase) return null;
+  const text = phrase.toLowerCase();
+  const today = todayInZone(timeZone);
+  const [y, m, d] = today.split("-").map(Number);
+  const base = Date.UTC(y!, m! - 1, d!);
+  const shift = (days: number) =>
+    new Date(base + days * 86400000).toISOString().slice(0, 10);
+
+  if (/\btoday\b/.test(text)) return today;
+  if (/\btomorrow\b/.test(text)) return shift(1);
+
+  const weekday = WEEKDAYS.findIndex((name) =>
+    new RegExp(`\\b${name}\\b`).test(text),
+  );
+  if (weekday === -1) return null;
+
+  const todayIndex = new Date(base).getUTCDay();
+  let ahead = (weekday - todayIndex + 7) % 7;
+  if (ahead === 0) ahead = 7;
+  // "next Tuesday" said early in the week usually means the week after.
+  if (/\bnext\b/.test(text) && ahead < 7 && todayIndex <= weekday) ahead += 7;
+  return shift(ahead);
+}
+
 /** Tomorrow at 9am in the company's zone, as a `datetime-local` value. */
 export function defaultScheduledFor(timeZone: string): string {
   const now = new Date();

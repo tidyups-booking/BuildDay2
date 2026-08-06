@@ -468,6 +468,48 @@ paths:
                 $ref: "#/components/schemas/CallDetail"
         "404":
           description: Not found
+  /calls/{id}/booking-draft:
+    get:
+      operationId: getCallBookingDraft
+      tags: [calls]
+      summary: Everything the New Booking form can pre-fill from what the caller said
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Draft booking fields
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookingDraft"
+        "404":
+          description: Not found
+  /booking-drafts:
+    post:
+      operationId: draftBookingFromText
+      tags: [bookings]
+      summary: Read booking details out of what was said on a live call
+      description: >
+        Takes the running transcript from the dispatcher's microphone and
+        returns the same shape as a draft built from a Quo call, so the New
+        Booking form fills itself in the same way either way. Nothing is saved.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DraftBookingFromTextInput"
+      responses:
+        "200":
+          description: Draft booking fields
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookingDraft"
   /calls/simulate:
     post:
       operationId: simulateTestCall
@@ -1333,6 +1375,42 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ExtractedAnswer"
+    DraftBookingFromTextInput:
+      type: object
+      required: [text]
+      properties:
+        # Capped because this is a running microphone transcript, and a
+        # forgotten open mic would otherwise post an ever-growing body.
+        text: { type: string, minLength: 1, maxLength: 20000 }
+    BookingDraft:
+      type: object
+      # A suggestion, never a saved booking. Every field is nullable because
+      # a caller who mumbles their address simply leaves that box empty for
+      # the dispatcher to fill in.
+      required: [callId, filledFields]
+      properties:
+        # Null when the draft came from the dispatcher's microphone rather
+        # than from a call Quo transcribed.
+        callId: { type: ["integer", "null"] }
+        customerName: { type: ["string", "null"] }
+        customerPhone: { type: ["string", "null"] }
+        customerAddress: { type: ["string", "null"] }
+        addressCity: { type: ["string", "null"] }
+        addressProvince: { type: ["string", "null"] }
+        addressPostal: { type: ["string", "null"] }
+        service: { type: ["string", "null"] }
+        bedrooms: { type: ["integer", "null"] }
+        bathrooms: { type: ["integer", "null"] }
+        # What the caller said about timing, in their words ("next Tuesday").
+        # Deliberately not a date: guessing one and being wrong is worse than
+        # showing the dispatcher the phrase and letting them pick.
+        preferredTime: { type: ["string", "null"] }
+        internalNotes: { type: ["string", "null"] }
+        # Which of the above we actually found something for, so the form can
+        # highlight the boxes it filled instead of the dispatcher hunting.
+        filledFields:
+          type: array
+          items: { type: string }
     Booking:
       type: object
       required:
@@ -1353,8 +1431,28 @@ components:
         callId: { type: ["integer", "null"] }
         customerName: { type: string }
         customerPhone: { type: string }
+        customerEmail: { type: ["string", "null"] }
+        # Street line only — city/province/postal are separate, because the
+        # booking desk types them into separate boxes and Jobber wants them
+        # apart. Older bookings have the whole address in this one field.
         customerAddress: { type: ["string", "null"] }
+        addressCity: { type: ["string", "null"] }
+        addressProvince: { type: ["string", "null"] }
+        addressPostal: { type: ["string", "null"] }
         service: { type: string }
+        # Job scope as walked through on the phone. All optional.
+        bedrooms: { type: ["integer", "null"] }
+        bathrooms: { type: ["integer", "null"] }
+        extras:
+          oneOf:
+            - type: array
+              items: { type: string }
+            - type: "null"
+        # one_time | weekly | biweekly | monthly — what the customer asked
+        # for. Recurring visits themselves live in Jobber, not here.
+        frequency: { type: ["string", "null"] }
+        # Gate codes, dogs, where the key is. Never shown to the customer.
+        internalNotes: { type: ["string", "null"] }
         scheduledFor: { type: string }
         status:
           { type: string, enum: [pending, confirmed, completed, canceled] }
@@ -1422,8 +1520,26 @@ components:
         scheduledFor: { type: string }
         customerName: { type: string, minLength: 1 }
         customerPhone: { type: string, minLength: 1 }
+        customerEmail: { type: ["string", "null"] }
         customerAddress: { type: ["string", "null"] }
+        addressCity: { type: ["string", "null"], maxLength: 120 }
+        addressProvince: { type: ["string", "null"], maxLength: 60 }
+        addressPostal: { type: ["string", "null"], maxLength: 20 }
         service: { type: string, minLength: 1 }
+        bedrooms: { type: ["integer", "null"], minimum: 0, maximum: 50 }
+        bathrooms: { type: ["integer", "null"], minimum: 0, maximum: 50 }
+        extras:
+          oneOf:
+            - type: array
+              items: { type: string, minLength: 1, maxLength: 60 }
+              maxItems: 30
+            - type: "null"
+        frequency:
+          oneOf:
+            - type: string
+              enum: [one_time, weekly, biweekly, monthly]
+            - type: "null"
+        internalNotes: { type: ["string", "null"], maxLength: 4000 }
         # Bounded so a typo can't produce a nonsense quote: a cleaning job is
         # not 5000 hours long, and no crew costs $1m an hour.
         quoteHours: { type: ["number", "null"], minimum: 0, maximum: 24 }
@@ -1444,8 +1560,34 @@ components:
       properties:
         customerName: { type: string, minLength: 1 }
         customerPhone: { type: string, minLength: 1 }
+        customerEmail: { type: ["string", "null"] }
         customerAddress: { type: ["string", "null"] }
+        addressCity: { type: ["string", "null"], maxLength: 120 }
+        addressProvince: { type: ["string", "null"], maxLength: 60 }
+        addressPostal: { type: ["string", "null"], maxLength: 20 }
         service: { type: string, minLength: 1 }
+        bedrooms: { type: ["integer", "null"], minimum: 0, maximum: 50 }
+        bathrooms: { type: ["integer", "null"], minimum: 0, maximum: 50 }
+        extras:
+          oneOf:
+            - type: array
+              items: { type: string, minLength: 1, maxLength: 60 }
+              maxItems: 30
+            - type: "null"
+        frequency:
+          oneOf:
+            - type: string
+              enum: [one_time, weekly, biweekly, monthly]
+            - type: "null"
+        internalNotes: { type: ["string", "null"], maxLength: 4000 }
+        # Who should work it, chosen while the customer is still on the phone.
+        # Same rule as the crew picker: this company's active people only.
+        teamMemberIds:
+          oneOf:
+            - type: array
+              items: { type: integer }
+              maxItems: 20
+            - type: "null"
         scheduledFor: { type: string }
         status:
           { type: string, enum: [pending, confirmed, completed, canceled] }
