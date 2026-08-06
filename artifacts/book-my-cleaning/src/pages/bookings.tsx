@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { PanelErrorBoundary } from "@/components/PanelErrorBoundary";
 import { PageHeader, LoadingSpinner } from "@/components/ui/shared";
 import {
   useListBookings,
@@ -352,251 +353,257 @@ export function BookingsPage() {
         )}
       </PageHeader>
 
-      {isLoading ? (
-        <LoadingSpinner className="mt-20" />
-      ) : !bookings || bookings.length === 0 ? (
-        <div className="bg-card border border-border rounded-xl shadow-sm p-12 text-center">
-          <div className="w-12 h-12 bg-secondary rounded-full flex items-center justify-center mx-auto mb-4">
-            <Calendar className="w-6 h-6 text-muted-foreground" />
+      <PanelErrorBoundary label="bookings list">
+        {isLoading ? (
+          <LoadingSpinner className="mt-20" />
+        ) : !bookings || bookings.length === 0 ? (
+          <div className="bg-card border border-border rounded-xl shadow-sm p-12 text-center">
+            <div className="w-12 h-12 bg-secondary rounded-full flex items-center justify-center mx-auto mb-4">
+              <Calendar className="w-6 h-6 text-muted-foreground" />
+            </div>
+            <h3 className="font-semibold text-muted-foreground mb-1">
+              No bookings yet
+            </h3>
+            <p className="text-sm text-muted-foreground max-w-sm mx-auto mb-5">
+              When your AI receptionist books a customer it will appear here —
+              or add one yourself for a walk-in or repeat client.
+            </p>
+            <Button onClick={openNew} variant="outline" className="gap-2">
+              <Plus className="w-4 h-4" /> Add your first booking
+            </Button>
           </div>
-          <h3 className="font-semibold text-muted-foreground mb-1">
-            No bookings yet
-          </h3>
-          <p className="text-sm text-muted-foreground max-w-sm mx-auto mb-5">
-            When your AI receptionist books a customer it will appear here — or
-            add one yourself for a walk-in or repeat client.
-          </p>
-          <Button onClick={openNew} variant="outline" className="gap-2">
-            <Plus className="w-4 h-4" /> Add your first booking
-          </Button>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {bookings.map((booking: Booking) => (
-            <div
-              key={booking.id}
-              className="bg-card border border-border rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col"
-            >
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h3 className="font-bold text-lg text-foreground">
-                    {booking.customerName}
-                  </h3>
-                  <div className="flex items-center gap-2 mt-1 flex-wrap">
-                    <BookingStatusBadge status={booking.status} />
-                    {booking.quoteApprovedAt ? (
-                      // Approval supersedes "quote sent" — showing both just
-                      // adds noise to a row the dispatcher scans at a glance.
-                      <span className="flex items-center gap-1 text-xs font-medium text-green-400 bg-green-500/10 px-2 py-0.5 rounded-full border border-green-500/20">
-                        <ThumbsUp className="w-3 h-3" /> Quote approved
-                      </span>
-                    ) : booking.quoteSentAt ? (
-                      <span className="flex items-center gap-1 text-xs font-medium text-brand-blue bg-brand-blue/10 px-2 py-0.5 rounded-full border border-brand-blue/20">
-                        <MessageSquareText className="w-3 h-3" /> Quote sent
-                      </span>
-                    ) : null}
-                    {booking.depositPaidAt && (
-                      <span className="flex items-center gap-1 text-xs font-medium text-brand-pink bg-brand-pink/10 px-2 py-0.5 rounded-full border border-brand-pink/20">
-                        <CreditCard className="w-3 h-3" /> Deposit paid
-                      </span>
-                    )}
-                    {booking.jobberSynced && (
-                      <span className="flex items-center gap-1 text-xs font-medium text-green-400 bg-green-500/10 px-2 py-0.5 rounded-full border border-green-500/20">
-                        <CheckCircle2 className="w-3 h-3" /> Jobber
-                      </span>
-                    )}
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {bookings.map((booking: Booking) => (
+              <div
+                key={booking.id}
+                className="bg-card border border-border rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col"
+              >
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <h3 className="font-bold text-lg text-foreground">
+                      {booking.customerName}
+                    </h3>
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                      <BookingStatusBadge status={booking.status} />
+                      {booking.quoteApprovedAt ? (
+                        // Approval supersedes "quote sent" — showing both just
+                        // adds noise to a row the dispatcher scans at a glance.
+                        <span className="flex items-center gap-1 text-xs font-medium text-green-400 bg-green-500/10 px-2 py-0.5 rounded-full border border-green-500/20">
+                          <ThumbsUp className="w-3 h-3" /> Quote approved
+                        </span>
+                      ) : booking.quoteSentAt ? (
+                        <span className="flex items-center gap-1 text-xs font-medium text-brand-blue bg-brand-blue/10 px-2 py-0.5 rounded-full border border-brand-blue/20">
+                          <MessageSquareText className="w-3 h-3" /> Quote sent
+                        </span>
+                      ) : null}
+                      {booking.depositPaidAt && (
+                        <span className="flex items-center gap-1 text-xs font-medium text-brand-pink bg-brand-pink/10 px-2 py-0.5 rounded-full border border-brand-pink/20">
+                          <CreditCard className="w-3 h-3" /> Deposit paid
+                        </span>
+                      )}
+                      {booking.jobberSynced && (
+                        <span className="flex items-center gap-1 text-xs font-medium text-green-400 bg-green-500/10 px-2 py-0.5 rounded-full border border-green-500/20">
+                          <CheckCircle2 className="w-3 h-3" /> Jobber
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <BookingPrice booking={booking} />
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                        >
+                          <MoreHorizontal className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {canDispatch && (
+                          <>
+                            <DropdownMenuItem onClick={() => openEdit(booking)}>
+                              <Pencil className="w-4 h-4 mr-2" /> Edit &amp;
+                              reschedule
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => setCrewBooking(booking)}
+                            >
+                              <Users className="w-4 h-4 mr-2" /> Assign crew
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() =>
+                            handleStatusChange(booking.id, "confirmed")
+                          }
+                        >
+                          Mark Confirmed
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() =>
+                            handleStatusChange(booking.id, "completed")
+                          }
+                        >
+                          Mark Completed
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() =>
+                            handleStatusChange(booking.id, "canceled")
+                          }
+                          className="text-red-400"
+                        >
+                          Cancel Booking
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <BookingPrice booking={booking} />
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                      >
-                        <MoreHorizontal className="w-4 h-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      {canDispatch && (
-                        <>
-                          <DropdownMenuItem onClick={() => openEdit(booking)}>
-                            <Pencil className="w-4 h-4 mr-2" /> Edit &amp;
-                            reschedule
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => setCrewBooking(booking)}
-                          >
-                            <Users className="w-4 h-4 mr-2" /> Assign crew
-                          </DropdownMenuItem>
-                        </>
-                      )}
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onClick={() =>
-                          handleStatusChange(booking.id, "confirmed")
-                        }
-                      >
-                        Mark Confirmed
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() =>
-                          handleStatusChange(booking.id, "completed")
-                        }
-                      >
-                        Mark Completed
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() =>
-                          handleStatusChange(booking.id, "canceled")
-                        }
-                        className="text-red-400"
-                      >
-                        Cancel Booking
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </div>
 
-              <div className="space-y-2 text-sm text-muted-foreground flex-1">
-                <div className="flex items-start gap-3">
-                  <Calendar className="w-4 h-4 mt-0.5 shrink-0" />
-                  <span>
-                    {formatZoned(booking.scheduledFor, timeZone)}{" "}
-                    <span className="text-xs opacity-60">
-                      {zoneLabel(timeZone)}
+                <div className="space-y-2 text-sm text-muted-foreground flex-1">
+                  <div className="flex items-start gap-3">
+                    <Calendar className="w-4 h-4 mt-0.5 shrink-0" />
+                    <span>
+                      {formatZoned(booking.scheduledFor, timeZone)}{" "}
+                      <span className="text-xs opacity-60">
+                        {zoneLabel(timeZone)}
+                      </span>
                     </span>
-                  </span>
-                </div>
-                <div className="flex items-start gap-3">
-                  <MapPin className="w-4 h-4 mt-0.5 shrink-0" />
-                  <span>
-                    {booking.customerAddress || "Address not provided"}
-                  </span>
-                </div>
-                <div className="flex items-start gap-3">
-                  <Phone className="w-4 h-4 mt-0.5 shrink-0" />
-                  <span>{booking.customerPhone}</span>
-                </div>
-                <div className="flex items-start gap-3">
-                  <Users className="w-4 h-4 mt-0.5 shrink-0" />
-                  {booking.crew && booking.crew.length > 0 ? (
-                    <span>{booking.crew.map((c) => c.name).join(", ")}</span>
-                  ) : canDispatch ? (
-                    <button
-                      type="button"
-                      onClick={() => setCrewBooking(booking)}
-                      className="text-brand-pink hover:underline"
-                    >
-                      Assign crew
-                    </button>
-                  ) : (
-                    <span className="opacity-60">No crew assigned</span>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <MapPin className="w-4 h-4 mt-0.5 shrink-0" />
+                    <span>
+                      {booking.customerAddress || "Address not provided"}
+                    </span>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <Phone className="w-4 h-4 mt-0.5 shrink-0" />
+                    <span>{booking.customerPhone}</span>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <Users className="w-4 h-4 mt-0.5 shrink-0" />
+                    {booking.crew && booking.crew.length > 0 ? (
+                      <span>{booking.crew.map((c) => c.name).join(", ")}</span>
+                    ) : canDispatch ? (
+                      <button
+                        type="button"
+                        onClick={() => setCrewBooking(booking)}
+                        className="text-brand-pink hover:underline"
+                      >
+                        Assign crew
+                      </button>
+                    ) : (
+                      <span className="opacity-60">No crew assigned</span>
+                    )}
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <User className="w-4 h-4 mt-0.5 shrink-0" />
+                    <span className="font-medium text-foreground">
+                      Requested: {booking.service}
+                    </span>
+                  </div>
+                  {booking.quoteSentAt && (
+                    <div className="flex items-start gap-3">
+                      <MessageSquareText className="w-4 h-4 mt-0.5 shrink-0" />
+                      <span>
+                        Quote texted{" "}
+                        {formatDistanceToNow(new Date(booking.quoteSentAt), {
+                          addSuffix: true,
+                        })}
+                      </span>
+                    </div>
                   )}
                 </div>
-                <div className="flex items-start gap-3">
-                  <User className="w-4 h-4 mt-0.5 shrink-0" />
-                  <span className="font-medium text-foreground">
-                    Requested: {booking.service}
-                  </span>
-                </div>
-                {booking.quoteSentAt && (
-                  <div className="flex items-start gap-3">
-                    <MessageSquareText className="w-4 h-4 mt-0.5 shrink-0" />
-                    <span>
-                      Quote texted{" "}
-                      {formatDistanceToNow(new Date(booking.quoteSentAt), {
-                        addSuffix: true,
-                      })}
-                    </span>
+
+                {/* Quoting, money and Jobber are dispatch work. Hidden for
+                  cleaners to match what the API will actually allow. */}
+                {canDispatch && (
+                  <div className="mt-5 pt-4 border-t border-border grid gap-2">
+                    <Button
+                      variant="outline"
+                      className="w-full gap-2 text-brand-blue border-brand-blue/20 hover:bg-brand-blue/10 hover:text-brand-blue"
+                      onClick={() => setQuoteBooking(booking)}
+                    >
+                      <MessageSquareText className="w-4 h-4" />
+                      {booking.quoteSentAt
+                        ? "Send updated quote"
+                        : "Send quote"}
+                    </Button>
+
+                    {jobberNeedsReauth && !booking.jobberSynced ? (
+                      <Link href="/setup">
+                        <Button
+                          variant="outline"
+                          className="w-full gap-2 text-amber-400 border-amber-800 hover:bg-amber-950 hover:text-amber-300"
+                        >
+                          <RefreshCw className="w-4 h-4" /> Reconnect Jobber to
+                          sync
+                        </Button>
+                      </Link>
+                    ) : jobberConnected && !booking.jobberSynced ? (
+                      <div className="grid gap-2">
+                        {booking.jobberSyncError && (
+                          <div
+                            className="rounded-md border border-red-800 bg-red-950/50 px-3 py-2 text-xs text-red-400"
+                            data-testid={`text-sync-error-${booking.id}`}
+                          >
+                            <div className="flex items-start gap-2">
+                              <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                              <div>
+                                <span className="font-medium">
+                                  Last sync failed:
+                                </span>{" "}
+                                {booking.jobberSyncError}
+                                {booking.jobberSyncErrorAt && (
+                                  <span className="block text-red-400/70 mt-0.5">
+                                    {formatDistanceToNow(
+                                      new Date(booking.jobberSyncErrorAt),
+                                      { addSuffix: true },
+                                    )}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        <Button
+                          variant="outline"
+                          className="w-full text-primary hover:text-primary hover:bg-primary/5 border-primary/20 gap-2"
+                          onClick={() => handleSync(booking.id)}
+                          disabled={syncJobber.isPending}
+                        >
+                          <RefreshCw
+                            className={`w-4 h-4 ${syncJobber.isPending ? "animate-spin" : ""}`}
+                          />
+                          {syncJobber.isPending
+                            ? "Syncing..."
+                            : "Sync to Jobber"}
+                        </Button>
+                      </div>
+                    ) : booking.jobberSynced && booking.jobberWebUri ? (
+                      <a
+                        href={booking.jobberWebUri}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <Button
+                          variant="outline"
+                          className="w-full gap-2 text-green-400 border-green-800 hover:bg-green-950 hover:text-green-300"
+                        >
+                          <ExternalLink className="w-4 h-4" /> View in Jobber
+                        </Button>
+                      </a>
+                    ) : null}
                   </div>
                 )}
               </div>
-
-              {/* Quoting, money and Jobber are dispatch work. Hidden for
-                  cleaners to match what the API will actually allow. */}
-              {canDispatch && (
-                <div className="mt-5 pt-4 border-t border-border grid gap-2">
-                  <Button
-                    variant="outline"
-                    className="w-full gap-2 text-brand-blue border-brand-blue/20 hover:bg-brand-blue/10 hover:text-brand-blue"
-                    onClick={() => setQuoteBooking(booking)}
-                  >
-                    <MessageSquareText className="w-4 h-4" />
-                    {booking.quoteSentAt ? "Send updated quote" : "Send quote"}
-                  </Button>
-
-                  {jobberNeedsReauth && !booking.jobberSynced ? (
-                    <Link href="/setup">
-                      <Button
-                        variant="outline"
-                        className="w-full gap-2 text-amber-400 border-amber-800 hover:bg-amber-950 hover:text-amber-300"
-                      >
-                        <RefreshCw className="w-4 h-4" /> Reconnect Jobber to
-                        sync
-                      </Button>
-                    </Link>
-                  ) : jobberConnected && !booking.jobberSynced ? (
-                    <div className="grid gap-2">
-                      {booking.jobberSyncError && (
-                        <div
-                          className="rounded-md border border-red-800 bg-red-950/50 px-3 py-2 text-xs text-red-400"
-                          data-testid={`text-sync-error-${booking.id}`}
-                        >
-                          <div className="flex items-start gap-2">
-                            <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                            <div>
-                              <span className="font-medium">
-                                Last sync failed:
-                              </span>{" "}
-                              {booking.jobberSyncError}
-                              {booking.jobberSyncErrorAt && (
-                                <span className="block text-red-400/70 mt-0.5">
-                                  {formatDistanceToNow(
-                                    new Date(booking.jobberSyncErrorAt),
-                                    { addSuffix: true },
-                                  )}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                      <Button
-                        variant="outline"
-                        className="w-full text-primary hover:text-primary hover:bg-primary/5 border-primary/20 gap-2"
-                        onClick={() => handleSync(booking.id)}
-                        disabled={syncJobber.isPending}
-                      >
-                        <RefreshCw
-                          className={`w-4 h-4 ${syncJobber.isPending ? "animate-spin" : ""}`}
-                        />
-                        {syncJobber.isPending ? "Syncing..." : "Sync to Jobber"}
-                      </Button>
-                    </div>
-                  ) : booking.jobberSynced && booking.jobberWebUri ? (
-                    <a
-                      href={booking.jobberWebUri}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <Button
-                        variant="outline"
-                        className="w-full gap-2 text-green-400 border-green-800 hover:bg-green-950 hover:text-green-300"
-                      >
-                        <ExternalLink className="w-4 h-4" /> View in Jobber
-                      </Button>
-                    </a>
-                  ) : null}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
+      </PanelErrorBoundary>
 
       <BookingFormDialog
         key={formBooking?.id ?? "new"}

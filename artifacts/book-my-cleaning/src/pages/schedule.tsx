@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { PanelErrorBoundary } from "@/components/PanelErrorBoundary";
 import { PageHeader, LoadingSpinner } from "@/components/ui/shared";
 import {
   useGetSchedule,
@@ -83,35 +84,37 @@ export function SchedulePage() {
         </div>
       </PageHeader>
 
-      {isLoading ? (
-        <LoadingSpinner className="mt-20" />
-      ) : !hasCleaners && !hasUnassigned ? (
-        <div className="bg-card border border-border rounded-xl shadow-sm p-12 text-center">
-          <div className="w-12 h-12 bg-secondary rounded-full flex items-center justify-center mx-auto mb-4">
-            <Calendar className="w-6 h-6 text-muted-foreground" />
+      <PanelErrorBoundary label="schedule">
+        {isLoading ? (
+          <LoadingSpinner className="mt-20" />
+        ) : !hasCleaners && !hasUnassigned ? (
+          <div className="bg-card border border-border rounded-xl shadow-sm p-12 text-center">
+            <div className="w-12 h-12 bg-secondary rounded-full flex items-center justify-center mx-auto mb-4">
+              <Calendar className="w-6 h-6 text-muted-foreground" />
+            </div>
+            <h3 className="font-semibold text-foreground mb-1">
+              Nobody scheduled for this day
+            </h3>
+            <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+              There are no jobs on {formatDateHeading(date)}. Assign crews from
+              the Bookings page and they&apos;ll show up here.
+            </p>
           </div>
-          <h3 className="font-semibold text-foreground mb-1">
-            Nobody scheduled for this day
-          </h3>
-          <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-            There are no jobs on {formatDateHeading(date)}. Assign crews from
-            the Bookings page and they&apos;ll show up here.
-          </p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-start">
-          {schedule!.cleaners.map((cleaner) => (
-            <CleanerLane
-              key={cleaner.teamMemberId}
-              cleaner={cleaner}
-              timeZone={timeZone}
-            />
-          ))}
-          {hasUnassigned && (
-            <UnassignedLane jobs={schedule!.unassigned} timeZone={timeZone} />
-          )}
-        </div>
-      )}
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-start">
+            {schedule!.cleaners.map((cleaner) => (
+              <CleanerLane
+                key={cleaner.teamMemberId}
+                cleaner={cleaner}
+                timeZone={timeZone}
+              />
+            ))}
+            {hasUnassigned && (
+              <UnassignedLane jobs={schedule!.unassigned} timeZone={timeZone} />
+            )}
+          </div>
+        )}
+      </PanelErrorBoundary>
     </AppLayout>
   );
 }

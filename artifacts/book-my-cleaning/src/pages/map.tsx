@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { PanelErrorBoundary } from "@/components/PanelErrorBoundary";
 import { PageHeader, LoadingSpinner } from "@/components/ui/shared";
 import {
   useGetMapConfig,
@@ -55,7 +56,9 @@ export function MapPage() {
 
   return (
     <AppLayout>
-      <MapView />
+      <PanelErrorBoundary label="live map">
+        <MapView />
+      </PanelErrorBoundary>
     </AppLayout>
   );
 }
