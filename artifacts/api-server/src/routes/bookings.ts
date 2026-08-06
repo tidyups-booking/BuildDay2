@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, lt } from "drizzle-orm";
 import {
   db,
   bookingsTable,
@@ -11,6 +11,8 @@ import {
 } from "@workspace/db";
 import {
   ListBookingsResponse,
+  ListBookingsInRangeQueryParams,
+  ListBookingsInRangeResponse,
   CreateBookingBody,
   CreateBookingResponse,
   UpdateBookingParams,
@@ -34,6 +36,7 @@ import {
 import { requireAuth } from "../middlewares/requireAuth";
 import { requireRole } from "../middlewares/requireRole";
 import { getCompanyForUser, companyQuoKey } from "../lib/company";
+import { companyDayBounds } from "../lib/dayBounds";
 import { getCaller } from "../middlewares/requireRole";
 import { listPhoneNumbers, sendMessage, toE164 } from "../lib/quo";
 import {
@@ -129,6 +132,116 @@ function serializeBooking(
     durationMinutes: b.durationMinutes ?? null,
   };
 }
+
+/**
+ * The calendar views on the live map need every booking in a span of days —
+ * including the ones we couldn't put on the map, because "no pin" and "no job"
+ * look identical to a dispatcher otherwise.
+ *
+ * Deliberately thin: a name, a time, who's on it, and whether it has a pin.
+ * No price, no address, no phone number, so a cleaner can be served the exact
+ * same rows as the owner without a redaction pass.
+ *
+ * Declared before `/bookings` and the `/bookings/:id` routes so Express
+ * doesn't read "range" as an id.
+ */
+const MAX_RANGE_DAYS = 62;
+
+router.get("/bookings/range", async (req, res): Promise<void> => {
+  const query = ListBookingsInRangeQueryParams.safeParse(req.query);
+  if (!query.success) {
+    res.status(400).json({ error: query.error.message });
+    return;
+  }
+  const { start: startDate, end: endDate } = query.data;
+
+  const caller = await getCaller(req);
+  if (!caller.company) {
+    res.json(
+      ListBookingsInRangeResponse.parse({
+        start: startDate,
+        end: endDate,
+        bookings: [],
+      }),
+    );
+    return;
+  }
+  const company = caller.company;
+
+  const from = companyDayBounds(startDate, company.timezone);
+  const to = companyDayBounds(endDate, company.timezone);
+  if (to.start < from.start) {
+    res.status(400).json({ error: "end must not be before start" });
+    return;
+  }
+  // A month grid spills into the neighbouring months, so the cap is generous —
+  // it exists to stop a hand-typed range from pulling the whole table.
+  const spanDays = Math.round(
+    (to.start.getTime() - from.start.getTime()) / 86_400_000,
+  );
+  if (spanDays > MAX_RANGE_DAYS) {
+    res
+      .status(400)
+      .json({ error: `range must be ${MAX_RANGE_DAYS} days or less` });
+    return;
+  }
+
+  const inRange = and(
+    eq(bookingsTable.companyId, company.id),
+    gte(bookingsTable.scheduledFor, from.start),
+    lt(bookingsTable.scheduledFor, to.end),
+  );
+
+  // Same rule as the bookings list: a cleaner only ever sees their own jobs.
+  const scope =
+    caller.role === "cleaner" && caller.teamMemberId !== null
+      ? and(
+          inRange,
+          inArray(
+            bookingsTable.id,
+            db
+              .select({ id: bookingAssignmentsTable.bookingId })
+              .from(bookingAssignmentsTable)
+              .where(
+                eq(bookingAssignmentsTable.teamMemberId, caller.teamMemberId),
+              ),
+          ),
+        )
+      : inRange;
+
+  const rows = await db
+    .select({
+      id: bookingsTable.id,
+      customerName: bookingsTable.customerName,
+      scheduledFor: bookingsTable.scheduledFor,
+      status: bookingsTable.status,
+      lat: bookingsTable.lat,
+      lng: bookingsTable.lng,
+    })
+    .from(bookingsTable)
+    .where(scope)
+    .orderBy(bookingsTable.scheduledFor);
+
+  const crews = await loadCrews(rows.map((r) => r.id));
+
+  res.json(
+    ListBookingsInRangeResponse.parse({
+      start: from.date,
+      end: to.date,
+      bookings: rows.map((r) => ({
+        bookingId: r.id,
+        customerName: r.customerName,
+        scheduledFor: r.scheduledFor.toISOString(),
+        status: r.status,
+        located: r.lat !== null && r.lng !== null,
+        assignees: (crews.get(r.id) ?? []).map((c) => ({
+          teamMemberId: c.id,
+          name: c.name,
+        })),
+      })),
+    }),
+  );
+});
 
 router.get("/bookings", async (req, res): Promise<void> => {
   const caller = await getCaller(req);

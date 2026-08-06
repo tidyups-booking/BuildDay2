@@ -956,6 +956,32 @@ export const SimulateTestCallResponse = zod.object({
 
 
 /**
+ * Everything the day/3-day/week/month calendars need to lay out blocks and count busy days, including bookings that have no coordinates yet. Never carries price or contact details, so crew can use the same view.
+ * @summary Lightweight bookings across a span of days, for the map's calendar views
+ */
+export const ListBookingsInRangeQueryParams = zod.object({
+  "start": zod.coerce.string().describe('First day of the range, YYYY-MM-DD in the company\'s timezone.'),
+  "end": zod.coerce.string().describe('Last day of the range (inclusive), YYYY-MM-DD in the company\'s timezone.')
+})
+
+export const ListBookingsInRangeResponse = zod.object({
+  "start": zod.string(),
+  "end": zod.string(),
+  "bookings": zod.array(zod.object({
+  "bookingId": zod.int(),
+  "customerName": zod.string(),
+  "scheduledFor": zod.string(),
+  "status": zod.enum(['pending', 'confirmed', 'completed', 'canceled']),
+  "located": zod.boolean(),
+  "assignees": zod.array(zod.object({
+  "teamMemberId": zod.int(),
+  "name": zod.string()
+}))
+}))
+})
+
+
+/**
  * @summary List bookings created from calls
  */
 
@@ -1894,7 +1920,8 @@ export const GetMapConfigResponse = zod.object({
  * @summary Live cleaner positions, that day's job pins, and saved pins
  */
 export const GetMapDataQueryParams = zod.object({
-  "date": zod.coerce.string().optional().describe('Day to show jobs for, YYYY-MM-DD in the company\'s timezone.')
+  "date": zod.coerce.string().optional().describe('Day to show jobs for, YYYY-MM-DD in the company\'s timezone.'),
+  "end": zod.coerce.string().optional().describe('Last day of the range, YYYY-MM-DD in the company\'s timezone. When given, jobs cover every day from `date` to `end` inclusive so the week and month views can pin a whole span at once. Omit for a single day.')
 })
 
 export const GetMapDataResponse = zod.object({

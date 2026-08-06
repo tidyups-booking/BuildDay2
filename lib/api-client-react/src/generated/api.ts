@@ -23,6 +23,7 @@ import type {
   ActivityItem,
   Booking,
   BookingCreate,
+  BookingRange,
   BookingUpdate,
   Call,
   CallDetail,
@@ -38,6 +39,7 @@ import type {
   HealthStatus,
   JobberConnectStart,
   JobberSkipInput,
+  ListBookingsInRangeParams,
   ListCallsParams,
   MapConfig,
   MapData,
@@ -1895,6 +1897,91 @@ export const useSimulateTestCall = <TError = ErrorType<unknown>,
       > => {
       return useMutation(getSimulateTestCallMutationOptions(options));
     }
+
+export const getListBookingsInRangeUrl = (params: ListBookingsInRangeParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/bookings/range?${stringifiedParams}` : `/api/bookings/range`
+}
+
+/**
+ * Everything the day/3-day/week/month calendars need to lay out blocks and count busy days, including bookings that have no coordinates yet. Never carries price or contact details, so crew can use the same view.
+ * @summary Lightweight bookings across a span of days, for the map's calendar views
+ */
+export const listBookingsInRange = async (params: ListBookingsInRangeParams, options?: Parameters<typeof customFetch>[1]): Promise<BookingRange> => {
+
+  return customFetch<BookingRange>(getListBookingsInRangeUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListBookingsInRangeQueryKey = (params?: ListBookingsInRangeParams,) => {
+    return [
+    `/api/bookings/range`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListBookingsInRangeQueryOptions = <TData = Awaited<ReturnType<typeof listBookingsInRange>>, TError = ErrorType<void>>(params: ListBookingsInRangeParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listBookingsInRange>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListBookingsInRangeQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listBookingsInRange>>> = ({ signal }) => listBookingsInRange(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listBookingsInRange>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListBookingsInRangeQueryResult = NonNullable<Awaited<ReturnType<typeof listBookingsInRange>>>
+export type ListBookingsInRangeQueryError = ErrorType<void>
+
+
+/**
+ * @summary Lightweight bookings across a span of days, for the map's calendar views
+ */
+
+export function useListBookingsInRange<TData = Awaited<ReturnType<typeof listBookingsInRange>>, TError = ErrorType<void>>(
+ params: ListBookingsInRangeParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listBookingsInRange>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListBookingsInRangeQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getListBookingsUrl = () => {
 

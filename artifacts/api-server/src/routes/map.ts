@@ -61,7 +61,15 @@ router.get(
       return;
     }
 
-    const { start, end } = companyDayBounds(query.data.date, company.timezone);
+    // A single day unless the caller asked for a span: the week and month
+    // views pin every job in view at once, so the map matches the calendar
+    // above it instead of only the highlighted day.
+    const from = companyDayBounds(query.data.date, company.timezone);
+    const to = query.data.end
+      ? companyDayBounds(query.data.end, company.timezone)
+      : from;
+    const start = from.start;
+    const end = to.end > from.end ? to.end : from.end;
 
     // Latest position per cleaner in this company (one row each — the phone
     // upserts rather than appends). Joined to the seat for the display name.

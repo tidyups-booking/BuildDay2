@@ -381,6 +381,105 @@ describe("GET /map/data", () => {
     expect(body.jobs.map((j) => j.bookingId)).toEqual([jobCompanyBId]);
     expect(body.jobs.map((j) => j.bookingId)).not.toContain(jobAssignedId);
   });
+
+  it("pins a whole span when the week/month view asks for one", async () => {
+    const res = await call("GET", `/map/data?date=${DAY}&end=2030-05-16`, {
+      as: "dispatcherA",
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { jobs: Array<{ bookingId: number }> };
+    const jobIds = body.jobs.map((j) => j.bookingId);
+    // The next day now counts — that's the point of the range.
+    expect(jobIds).toContain(jobAssignedId);
+    expect(jobIds).toContain(jobOtherDayId);
+    // Still no pinless job and still no other company.
+    expect(jobIds).not.toContain(jobUnassignedId);
+    expect(jobIds).not.toContain(jobCompanyBId);
+  });
+});
+
+describe("GET /bookings/range", () => {
+  it("returns every booking in the span, pinned or not", async () => {
+    const res = await call(
+      "GET",
+      `/bookings/range?start=${DAY}&end=2030-05-16`,
+      { as: "dispatcherA" },
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      start: string;
+      end: string;
+      bookings: Array<{
+        bookingId: number;
+        located: boolean;
+        assignees: Array<{ name: string }>;
+      }>;
+    };
+    expect(body.start).toBe(DAY);
+    expect(body.end).toBe("2030-05-16");
+
+    const ids = body.bookings.map((b) => b.bookingId);
+    expect(ids).toContain(jobAssignedId);
+    expect(ids).toContain(jobOtherDayId);
+    // The un-geocoded job MUST show — a calendar that hides it makes a busy
+    // afternoon look free.
+    expect(ids).toContain(jobUnassignedId);
+    expect(ids).not.toContain(jobCompanyBId);
+
+    const unlocated = body.bookings.find(
+      (b) => b.bookingId === jobUnassignedId,
+    )!;
+    expect(unlocated.located).toBe(false);
+    const located = body.bookings.find((b) => b.bookingId === jobAssignedId)!;
+    expect(located.located).toBe(true);
+    expect(located.assignees.map((a) => a.name)).toEqual(["Cleaner A One"]);
+  });
+
+  it("carries no price, address or phone number, so crew can read it", async () => {
+    const res = await call("GET", `/bookings/range?start=${DAY}&end=${DAY}`, {
+      as: "dispatcherA",
+    });
+    const text = await res.text();
+    expect(text).not.toContain("1 Assigned St");
+    expect(text).not.toContain("5550000001");
+    expect(text).not.toContain("250");
+  });
+
+  it("scopes a cleaner to their own jobs", async () => {
+    const res = await call(
+      "GET",
+      `/bookings/range?start=${DAY}&end=2030-05-16`,
+      { as: "cleanerA" },
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      bookings: Array<{ bookingId: number }>;
+    };
+    expect(body.bookings.map((b) => b.bookingId)).toEqual([jobAssignedId]);
+  });
+
+  it("rejects a backwards range and an oversized one", async () => {
+    const backwards = await call(
+      "GET",
+      `/bookings/range?start=${DAY}&end=2030-05-14`,
+      { as: "dispatcherA" },
+    );
+    expect(backwards.status).toBe(400);
+
+    const huge = await call(
+      "GET",
+      `/bookings/range?start=2030-01-01&end=2030-12-31`,
+      { as: "dispatcherA" },
+    );
+    expect(huge.status).toBe(400);
+  });
+
+  it("requires both ends of the range", async () => {
+    const res = await call("GET", `/bookings/range?start=${DAY}`, {
+      as: "dispatcherA",
+    });
+    expect(res.status).toBe(400);
+  });
 });
 
 describe("POST /staff/location", () => {

@@ -746,6 +746,31 @@ export interface MapData {
   pins: MapPin[];
 }
 
+export type BookingRangeItemStatus = typeof BookingRangeItemStatus[keyof typeof BookingRangeItemStatus];
+
+
+export const BookingRangeItemStatus = {
+  pending: 'pending',
+  confirmed: 'confirmed',
+  completed: 'completed',
+  canceled: 'canceled',
+} as const;
+
+export interface BookingRangeItem {
+  bookingId: number;
+  customerName: string;
+  scheduledFor: string;
+  status: BookingRangeItemStatus;
+  located: boolean;
+  assignees: MapJobAssignee[];
+}
+
+export interface BookingRange {
+  start: string;
+  end: string;
+  bookings: BookingRangeItem[];
+}
+
 export interface StaffLocationInput {
   /**
      * @minimum -90
@@ -830,6 +855,17 @@ export type ListCallsParams = {
 status?: string;
 };
 
+export type ListBookingsInRangeParams = {
+/**
+ * First day of the range, YYYY-MM-DD in the company's timezone.
+ */
+start: string;
+/**
+ * Last day of the range (inclusive), YYYY-MM-DD in the company's timezone.
+ */
+end: string;
+};
+
 export type PayPublicQuote200 = {
   checkoutUrl: string;
 };
@@ -839,6 +875,10 @@ export type GetMapDataParams = {
  * Day to show jobs for, YYYY-MM-DD in the company's timezone.
  */
 date?: string;
+/**
+ * Last day of the range, YYYY-MM-DD in the company's timezone. When given, jobs cover every day from `date` to `end` inclusive so the week and month views can pin a whole span at once. Omit for a single day.
+ */
+end?: string;
 };
 
 export type GetScheduleParams = {

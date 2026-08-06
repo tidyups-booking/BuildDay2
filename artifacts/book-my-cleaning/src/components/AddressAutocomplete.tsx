@@ -33,6 +33,7 @@ export function AddressAutocomplete({
   apiKey,
   value,
   onChange,
+  onSelect,
   placeholder,
   bias,
   disabled,
@@ -40,6 +41,12 @@ export function AddressAutocomplete({
   apiKey: string;
   value: string;
   onChange: (value: string) => void;
+  /**
+   * Fired once the caller has actually *picked* a suggestion, with the best
+   * address we have for it. Typing alone never fires this — only a deliberate
+   * choice — so a caller can act on the selection without acting on keystrokes.
+   */
+  onSelect?: (address: string) => void;
   placeholder?: string;
   /** Nudges results toward the area the crew actually works in. */
   bias?: { lat: number; lng: number };
@@ -165,19 +172,27 @@ export function AddressAutocomplete({
     // keystroke's lookup separately instead of the session as one.
     const place = suggestion.toPlace?.();
     sessionRef.current = null;
-    if (!place) return;
+    if (!place) {
+      onSelect?.(suggestion.full);
+      return;
+    }
 
     void (async () => {
+      let chosen = suggestion.full;
       try {
         await place.fetchFields({ fields: ["formattedAddress"] });
         const formatted = place.formattedAddress;
         if (typeof formatted === "string" && formatted.length > 0) {
+          chosen = formatted;
           skipNextLookupRef.current = true;
           onChange(formatted);
         }
       } catch {
         // The prediction text is already in the box and geocodes fine.
       }
+      // Announced after the tidy-up so the caller acts on the best address we
+      // have, not the abbreviated prediction text.
+      onSelect?.(chosen);
     })();
   };
 

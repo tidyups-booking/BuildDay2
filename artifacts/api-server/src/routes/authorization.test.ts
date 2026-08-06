@@ -113,6 +113,9 @@ const MATRIX: Record<string, Role[]> = {
   "POST /calls/simulate": ["owner", "dispatcher"],
   // Bookings: cleaners see their own jobs (scoping asserted separately below).
   "GET /bookings": ["owner", "dispatcher", "cleaner"],
+  // Calendar rows for the live map. Cleaner-safe by construction — the shape
+  // carries no price, address or phone number (see the route's comment).
+  "GET /bookings/range": ["owner", "dispatcher", "cleaner"],
   "POST /bookings": ["owner", "dispatcher"],
   "PATCH /bookings/:id": ["owner", "dispatcher", "cleaner"],
   "PUT /bookings/:id/crew": ["owner", "dispatcher"],

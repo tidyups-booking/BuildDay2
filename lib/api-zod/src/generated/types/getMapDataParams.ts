@@ -11,4 +11,8 @@ export type GetMapDataParams = {
  * Day to show jobs for, YYYY-MM-DD in the company's timezone.
  */
 date?: string;
+/**
+ * Last day of the range, YYYY-MM-DD in the company's timezone. When given, jobs cover every day from `date` to `end` inclusive so the week and month views can pin a whole span at once. Omit for a single day.
+ */
+end?: string;
 };

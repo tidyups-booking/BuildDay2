@@ -412,6 +412,37 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CallDetail"
+  /bookings/range:
+    get:
+      operationId: listBookingsInRange
+      tags: [bookings]
+      summary: Lightweight bookings across a span of days, for the map's calendar views
+      description: >-
+        Everything the day/3-day/week/month calendars need to lay out blocks and
+        count busy days, including bookings that have no coordinates yet. Never
+        carries price or contact details, so crew can use the same view.
+      parameters:
+        - name: start
+          in: query
+          required: true
+          description: First day of the range, YYYY-MM-DD in the company's timezone.
+          schema:
+            type: string
+        - name: end
+          in: query
+          required: true
+          description: Last day of the range (inclusive), YYYY-MM-DD in the company's timezone.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Bookings in range
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookingRange"
+        "400":
+          description: Missing, malformed, or too wide a range
   /bookings:
     get:
       operationId: listBookings
@@ -702,6 +733,16 @@ paths:
           in: query
           required: false
           description: Day to show jobs for, YYYY-MM-DD in the company's timezone.
+          schema:
+            type: string
+        - name: end
+          in: query
+          required: false
+          description: >-
+            Last day of the range, YYYY-MM-DD in the company's timezone. When
+            given, jobs cover every day from `date` to `end` inclusive so the
+            week and month views can pin a whole span at once. Omit for a
+            single day.
           schema:
             type: string
       responses:
@@ -1486,6 +1527,33 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/MapPin"
+    BookingRangeItem:
+      type: object
+      required:
+        [bookingId, customerName, scheduledFor, status, located, assignees]
+      properties:
+        bookingId: { type: integer }
+        customerName: { type: string }
+        scheduledFor: { type: string }
+        status:
+          { type: string, enum: [pending, confirmed, completed, canceled] }
+        # False when the booking has an address we haven't resolved yet (or no
+        # address at all) — the calendar still shows it, the map can't pin it.
+        located: { type: boolean }
+        assignees:
+          type: array
+          items:
+            $ref: "#/components/schemas/MapJobAssignee"
+    BookingRange:
+      type: object
+      required: [start, end, bookings]
+      properties:
+        start: { type: string }
+        end: { type: string }
+        bookings:
+          type: array
+          items:
+            $ref: "#/components/schemas/BookingRangeItem"
     StaffLocationInput:
       type: object
       required: [lat, lng]
