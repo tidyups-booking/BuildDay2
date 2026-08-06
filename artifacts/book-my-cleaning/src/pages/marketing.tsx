@@ -25,21 +25,18 @@ export function MarketingPage() {
           </div>
           <div className="flex items-center gap-6">
             <div className="hidden md:flex items-center gap-6 text-sm font-medium text-muted-foreground mr-4">
-              <span className="hover:text-white cursor-pointer transition-colors">
+              <a
+                href="#services"
+                className="hover:text-white transition-colors"
+              >
                 Services
-              </span>
-              <span className="hover:text-white cursor-pointer transition-colors">
+              </a>
+              <a href="#why-us" className="hover:text-white transition-colors">
                 Why Us
-              </span>
-              <span className="hover:text-white cursor-pointer transition-colors">
-                Gallery
-              </span>
-              <span className="hover:text-white cursor-pointer transition-colors">
-                Reviews
-              </span>
-              <span className="hover:text-white cursor-pointer transition-colors">
+              </a>
+              <a href="#contact" className="hover:text-white transition-colors">
                 Contact
-              </span>
+              </a>
             </div>
             {/* Two doors into the same account system: the choice only sets
                 where you land, never what you are allowed to see. */}
@@ -67,7 +64,10 @@ export function MarketingPage() {
       </nav>
 
       {/* Hero Section */}
-      <section className="pt-40 pb-20 px-6 overflow-hidden relative">
+      <section
+        id="why-us"
+        className="pt-40 pb-20 px-6 overflow-hidden relative"
+      >
         {/* Abstract background shapes */}
         <div className="absolute top-[10%] right-[-5%] w-[600px] h-[600px] bg-brand-purple/10 rounded-full blur-[120px] pointer-events-none" />
         <div className="absolute top-[30%] left-[-10%] w-[500px] h-[500px] bg-brand-pink/10 rounded-full blur-[120px] pointer-events-none" />
@@ -249,7 +249,7 @@ export function MarketingPage() {
       </div>
 
       {/* How it works */}
-      <section className="py-24 bg-background relative z-10">
+      <section id="services" className="py-24 bg-background relative z-10">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center max-w-2xl mx-auto mb-20">
             <div className="text-brand-pink text-xs font-bold uppercase tracking-widest mb-4">
@@ -306,7 +306,10 @@ export function MarketingPage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-24 px-6 bg-[#1a1523] border-t border-white/5 relative overflow-hidden">
+      <section
+        id="contact"
+        className="py-24 px-6 bg-[#1a1523] border-t border-white/5 relative overflow-hidden"
+      >
         <div
           className="absolute inset-0 opacity-20 mix-blend-overlay"
           style={{
