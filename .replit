@@ -89,3 +89,8 @@ channel = "stable-25_05"
 
 [objectStorage]
 defaultBucketID = "replit-objstore-32199dae-37e4-4fcd-a03f-e18aecc48aa5"
+
+[userenv]
+
+[userenv.production]
+PUBLIC_APP_URL = "https://bookmycleaning.net"

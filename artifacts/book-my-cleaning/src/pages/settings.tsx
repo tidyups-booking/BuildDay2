@@ -35,7 +35,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Trash2, Edit2, CheckCircle2, AlertTriangle } from "lucide-react";
+import {
+  Plus,
+  Trash2,
+  Edit2,
+  CheckCircle2,
+  AlertTriangle,
+  Copy,
+  Check,
+} from "lucide-react";
 
 export function SettingsPage() {
   const { data: company, isLoading } = useGetCompany();
@@ -220,6 +228,8 @@ function GeneralSettings({ company }: { company: any }) {
                 : "Connect Account"}
           </Button>
         </div>
+
+        <JobberCallbackUrl url={company.jobberRedirectUri} />
       </div>
 
       <Button
@@ -845,5 +855,83 @@ function ServiceModal({
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/**
+ * The exact address Jobber has to send the owner back to.
+ *
+ * Jobber will only complete a connection if the redirect URI registered in
+ * their app matches the one we send, character for character. Left to guess,
+ * an owner registers the domain they happen to be looking at — and every
+ * connection attempt then dies at the final redirect with nothing on screen
+ * explaining why. So the real string is shown here, ready to copy, rather than
+ * described in words.
+ */
+function JobberCallbackUrl({ url }: { url: string }) {
+  const { toast } = useToast();
+  const [copied, setCopied] = useState(false);
+  // The workspace runs on a throwaway preview domain. Registering that one in
+  // Jobber is the exact mistake this panel exists to prevent, so it has to be
+  // called out rather than quietly handed over with a copy button.
+  const isPreviewDomain = url.includes(".replit.dev");
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard access can be refused outright; the address is on screen
+      // either way, so say so rather than failing silently.
+      toast({
+        title: "Couldn't copy",
+        description: "Select the address and copy it manually.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  return (
+    <div className="mt-3 rounded-lg border border-border bg-card p-3">
+      <div className="text-sm font-medium">
+        Redirect URL for your Jobber app
+      </div>
+      <p className="text-xs text-muted-foreground mt-1">
+        Paste this into your app's settings in the Jobber Developer Center. It
+        has to match exactly, or connecting will fail at the last step.
+      </p>
+      {isPreviewDomain && (
+        <p className="text-xs text-amber-600 mt-1.5 flex items-start gap-1.5">
+          <AlertTriangle className="w-3.5 h-3.5 mt-px shrink-0" />
+          <span>
+            This is your temporary preview address, and it changes. Register the
+            one shown on your published site instead.
+          </span>
+        </p>
+      )}
+      <div className="flex items-center gap-2 mt-2">
+        <code
+          className="flex-1 truncate rounded-md bg-secondary px-2 py-1.5 text-xs text-foreground"
+          title={url}
+          data-testid="text-jobber-redirect-uri"
+        >
+          {url}
+        </code>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={copy}
+          data-testid="button-copy-jobber-redirect"
+        >
+          {copied ? (
+            <Check className="w-3.5 h-3.5" />
+          ) : (
+            <Copy className="w-3.5 h-3.5" />
+          )}
+          <span className="ml-1.5">{copied ? "Copied" : "Copy"}</span>
+        </Button>
+      </div>
+    </div>
   );
 }

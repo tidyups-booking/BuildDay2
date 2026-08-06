@@ -9,6 +9,7 @@ import { listPhoneNumbers, QuoError } from "./quo";
 import { decryptQuoKey } from "./secretBox";
 import { notifyOwnerQuoKeyDead, notifyOwnerQuoRestored } from "./ownerNotify";
 import { logger } from "./logger";
+import { jobberRedirectUri } from "./publicUrl";
 
 /**
  * The company this account works for — either because they own it or because
@@ -123,6 +124,7 @@ export async function serializeCompany(company: Company) {
     jobberSkipped: company.jobberSkipped,
     jobberAccountName: company.jobberAccountName,
     jobberNeedsReauth: company.jobberNeedsReauth,
+    jobberRedirectUri: jobberRedirectUri(),
     quoConnected: company.quoConnected,
     quoWorkspaceName: company.quoWorkspaceName,
     quoKeyLast4: company.quoKeyLast4,

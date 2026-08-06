@@ -963,6 +963,7 @@ components:
           jobberConnected,
           jobberSkipped,
           jobberNeedsReauth,
+          jobberRedirectUri,
           quoConnected,
           quoNeedsReauth,
           watchedNumbers,
@@ -999,6 +1000,10 @@ components:
         jobberSkipped: { type: boolean }
         jobberAccountName: { type: ["string", "null"] }
         jobberNeedsReauth: { type: boolean }
+        # The exact redirect URI this server will send to Jobber. Shown in
+        # settings so the owner registers the string we actually use, rather
+        # than one that looks right and fails at the last step.
+        jobberRedirectUri: { type: string }
         quoConnected: { type: boolean }
         quoWorkspaceName: { type: ["string", "null"] }
         quoKeyLast4: { type: ["string", "null"] }

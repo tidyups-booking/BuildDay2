@@ -130,6 +130,7 @@ export interface Company {
   /** @nullable */
   jobberAccountName?: string | null;
   jobberNeedsReauth: boolean;
+  jobberRedirectUri: string;
   quoConnected: boolean;
   /** @nullable */
   quoWorkspaceName?: string | null;
