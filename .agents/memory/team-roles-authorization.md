@@ -44,6 +44,19 @@ boundary because the authenticated response is directly readable.
 data must run the cleaner projection; contract keeps one Booking shape with
 those fields nullable.
 
+The same rule applies to **free-text** payloads. Activity feed messages are
+prose written for dispatch and quote phone numbers and dollar figures inline,
+so opening that feed to crew required masking those patterns on the way out
+rather than a field-level projection.
+
+**Why:** the owner's standing preference is that crew see customer names,
+addresses and times but never contact numbers or what a job is worth. Refusing
+crew the whole feed was the safe first move; the owner asked for a trimmed
+version instead.
+**How to apply:** when a role gains access to anything containing operator-
+written text, check the text itself, not just the column list. Loose phone
+regexes must be filtered by digit count or they eat ISO dates and job numbers.
+
 # Seat claiming
 
 An invited person is matched to their seat on first sign-in by **verified**

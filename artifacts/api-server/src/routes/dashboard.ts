@@ -6,8 +6,9 @@ import {
   GetRecentActivityResponse,
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/requireAuth";
-import { requireRole } from "../middlewares/requireRole";
+import { requireRole, getCaller } from "../middlewares/requireRole";
 import { getCompanyForUser } from "../lib/company";
+import { redactForCrew } from "../lib/crewRedaction";
 
 const router: IRouter = Router();
 
@@ -78,11 +79,12 @@ router.get(
   },
 );
 
-// Stays dispatch-only even though the rest of the dashboard is open to crew:
-// these messages quote customer phone numbers and deposit amounts verbatim.
+// Crew may follow along, but these messages quote customer phone numbers and
+// deposit amounts verbatim — neither of which crew are shown anywhere else in
+// the app — so those are masked out for cleaners before the feed leaves here.
 router.get(
   "/dashboard/activity",
-  requireRole("owner", "dispatcher"),
+  requireRole("owner", "dispatcher", "cleaner"),
   async (req, res): Promise<void> => {
     const company = await getCompanyForUser(req.userId!);
     if (!company) {
@@ -96,9 +98,16 @@ router.get(
       .orderBy(desc(activityTable.occurredAt))
       .limit(20);
 
+    const caller = await getCaller(req);
+    const redact = caller.role === "cleaner";
+
     res.json(
       GetRecentActivityResponse.parse(
-        items.map((i) => ({ ...i, occurredAt: i.occurredAt.toISOString() })),
+        items.map((i) => ({
+          ...i,
+          message: redact ? redactForCrew(i.message) : i.message,
+          occurredAt: i.occurredAt.toISOString(),
+        })),
       ),
     );
   },

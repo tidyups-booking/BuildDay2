@@ -121,10 +121,11 @@ const MATRIX: Record<string, Role[]> = {
   "POST /bookings/:id/confirm-time": ["owner", "dispatcher"],
   "POST /bookings/:id/send-reschedule-text": ["owner", "dispatcher"],
   "POST /bookings/:id/sync-jobber": ["owner", "dispatcher"],
-  // Dashboard: crew may read the headline counts, but the activity feed quotes
-  // customer phone numbers and deposit amounts, so it stays dispatch-only.
+  // Dashboard: crew may read the headline counts and follow the activity feed.
+  // The feed quotes customer phone numbers and deposit amounts, so those are
+  // masked for cleaners in the handler (see crewRedaction.ts).
   "GET /dashboard/summary": ["owner", "dispatcher", "cleaner"],
-  "GET /dashboard/activity": ["owner", "dispatcher"],
+  "GET /dashboard/activity": ["owner", "dispatcher", "cleaner"],
   // Live map: crew may watch the day (jobs, coworkers, saved pins); only
   // dispatch may add or remove the saved pins.
   "GET /map/config": ["owner", "dispatcher", "cleaner"],

@@ -1,7 +1,6 @@
 import {
   useGetDashboardSummary,
   useGetRecentActivity,
-  getGetRecentActivityQueryKey,
   useGetCurrentUser,
   ActivityItem,
   useGetCompany,
@@ -49,21 +48,14 @@ import {
 
 export function DashboardPage() {
   const { data: me } = useGetCurrentUser();
-  // Crew read the headline numbers, but the feed quotes customer phone
-  // numbers and deposit amounts, so the API refuses it for them. Don't even
-  // ask — an unconditional call would error the panel for every cleaner.
+  // Crew see the whole dashboard except the owner/dispatch nudges below. The
+  // feed itself is safe for them: the API masks customer phone numbers and
+  // dollar amounts out of the messages before a cleaner ever receives them.
   const isCleaner = me?.role === "cleaner";
-  const showActivity = me !== undefined && !isCleaner;
   const { data: summary, isLoading: isSummaryLoading } =
     useGetDashboardSummary();
-  const { data: activity, isLoading: isActivityLoading } = useGetRecentActivity(
-    {
-      query: {
-        queryKey: getGetRecentActivityQueryKey(),
-        enabled: showActivity,
-      },
-    },
-  );
+  const { data: activity, isLoading: isActivityLoading } =
+    useGetRecentActivity();
   const { data: company } = useGetCompany();
 
   if (isSummaryLoading || isActivityLoading) {
@@ -228,42 +220,40 @@ export function DashboardPage() {
         </div>
       </PanelErrorBoundary>
 
-      {showActivity && (
-        <PanelErrorBoundary label="recent activity feed">
-          <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-border bg-secondary/50">
-              <h2 className="font-semibold text-muted-foreground">
-                Recent Activity
-              </h2>
-            </div>
-            <div className="divide-y divide-gray-100">
-              {activity?.length === 0 ? (
-                <div className="p-8 text-center text-muted-foreground text-sm">
-                  No recent activity. Once your AI starts taking calls, they
-                  will appear here.
-                </div>
-              ) : (
-                activity?.map((item: ActivityItem) => (
-                  <div
-                    key={item.id}
-                    className="p-4 px-6 flex items-start gap-4 hover:bg-secondary transition-colors"
-                  >
-                    <ActivityIcon type={item.type} />
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-muted-foreground">
-                        {item.message}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {format(new Date(item.occurredAt), "MMM d, h:mm a")}
-                      </p>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
+      <PanelErrorBoundary label="recent activity feed">
+        <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+          <div className="px-6 py-4 border-b border-border bg-secondary/50">
+            <h2 className="font-semibold text-muted-foreground">
+              Recent Activity
+            </h2>
           </div>
-        </PanelErrorBoundary>
-      )}
+          <div className="divide-y divide-gray-100">
+            {activity?.length === 0 ? (
+              <div className="p-8 text-center text-muted-foreground text-sm">
+                No recent activity. Once your AI starts taking calls, they will
+                appear here.
+              </div>
+            ) : (
+              activity?.map((item: ActivityItem) => (
+                <div
+                  key={item.id}
+                  className="p-4 px-6 flex items-start gap-4 hover:bg-secondary transition-colors"
+                >
+                  <ActivityIcon type={item.type} />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-muted-foreground">
+                      {item.message}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {format(new Date(item.occurredAt), "MMM d, h:mm a")}
+                    </p>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </PanelErrorBoundary>
     </AppLayout>
   );
 }
