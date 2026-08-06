@@ -30,22 +30,31 @@ import type {
   CompanyInput,
   CompanyUpdate,
   ConnectQuoInput,
+  CreatePinInput,
   CurrentUser,
   DashboardSummary,
+  GetMapDataParams,
+  GetScheduleParams,
   HealthStatus,
   JobberConnectStart,
   JobberSkipInput,
   ListCallsParams,
+  MapConfig,
+  MapData,
+  MapPin,
   PayPublicQuote200,
   PublicQuote,
   QuoNumber,
   QuoNumberSelection,
   QuotePreview,
+  Schedule,
   SendQuoteInput,
   Service,
   ServiceInput,
   ServiceUpdate,
   SetBookingCrewInput,
+  StaffLocation,
+  StaffLocationInput,
   SyncResult,
   TeamMember,
   TeamMemberInput
@@ -2895,6 +2904,464 @@ export function useGetRecentActivity<TData = Awaited<ReturnType<typeof getRecent
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetRecentActivityQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetMapConfigUrl = () => {
+
+
+
+
+  return `/api/map/config`
+}
+
+/**
+ * @summary Google Maps key for the dispatcher's browser (owner/dispatcher only)
+ */
+export const getMapConfig = async ( options?: Parameters<typeof customFetch>[1]): Promise<MapConfig> => {
+
+  return customFetch<MapConfig>(getGetMapConfigUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMapConfigQueryKey = () => {
+    return [
+    `/api/map/config`
+    ] as const;
+    }
+
+
+export const getGetMapConfigQueryOptions = <TData = Awaited<ReturnType<typeof getMapConfig>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMapConfig>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMapConfigQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMapConfig>>> = ({ signal }) => getMapConfig({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMapConfig>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMapConfigQueryResult = NonNullable<Awaited<ReturnType<typeof getMapConfig>>>
+export type GetMapConfigQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Google Maps key for the dispatcher's browser (owner/dispatcher only)
+ */
+
+export function useGetMapConfig<TData = Awaited<ReturnType<typeof getMapConfig>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMapConfig>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMapConfigQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetMapDataUrl = (params?: GetMapDataParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/map/data?${stringifiedParams}` : `/api/map/data`
+}
+
+/**
+ * @summary Live cleaner positions, that day's job pins, and saved pins
+ */
+export const getMapData = async (params?: GetMapDataParams, options?: Parameters<typeof customFetch>[1]): Promise<MapData> => {
+
+  return customFetch<MapData>(getGetMapDataUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMapDataQueryKey = (params?: GetMapDataParams,) => {
+    return [
+    `/api/map/data`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetMapDataQueryOptions = <TData = Awaited<ReturnType<typeof getMapData>>, TError = ErrorType<unknown>>(params?: GetMapDataParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMapData>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMapDataQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMapData>>> = ({ signal }) => getMapData(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMapData>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMapDataQueryResult = NonNullable<Awaited<ReturnType<typeof getMapData>>>
+export type GetMapDataQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Live cleaner positions, that day's job pins, and saved pins
+ */
+
+export function useGetMapData<TData = Awaited<ReturnType<typeof getMapData>>, TError = ErrorType<unknown>>(
+ params?: GetMapDataParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMapData>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMapDataQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateMapPinUrl = () => {
+
+
+
+
+  return `/api/map/pins`
+}
+
+/**
+ * @summary Save a map pin, geocoding the address when coordinates are absent
+ */
+export const createMapPin = async (createPinInput: CreatePinInput, options?: Parameters<typeof customFetch>[1]): Promise<MapPin> => {
+
+  return customFetch<MapPin>(getCreateMapPinUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createPinInput)
+  }
+);}
+
+
+
+
+
+export const getCreateMapPinMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createMapPin>>, TError,{data: BodyType<CreatePinInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createMapPin>>, TError,{data: BodyType<CreatePinInput>}, TContext> => {
+
+const mutationKey = ['createMapPin'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createMapPin>>, {data: BodyType<CreatePinInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createMapPin(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateMapPinMutationResult = NonNullable<Awaited<ReturnType<typeof createMapPin>>>
+    export type CreateMapPinMutationBody = BodyType<CreatePinInput>
+    export type CreateMapPinMutationError = ErrorType<void>
+
+    /**
+ * @summary Save a map pin, geocoding the address when coordinates are absent
+ */
+export const useCreateMapPin = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createMapPin>>, TError,{data: BodyType<CreatePinInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createMapPin>>,
+        TError,
+        {data: BodyType<CreatePinInput>},
+        TContext
+      > => {
+      return useMutation(getCreateMapPinMutationOptions(options));
+    }
+
+export const getDeleteMapPinUrl = (id: number,) => {
+
+
+
+
+  return `/api/map/pins/${id}`
+}
+
+/**
+ * @summary Delete a map pin
+ */
+export const deleteMapPin = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteMapPinUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteMapPinMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteMapPin>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteMapPin>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteMapPin'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteMapPin>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteMapPin(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteMapPinMutationResult = NonNullable<Awaited<ReturnType<typeof deleteMapPin>>>
+
+    export type DeleteMapPinMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Delete a map pin
+ */
+export const useDeleteMapPin = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteMapPin>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteMapPin>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteMapPinMutationOptions(options));
+    }
+
+export const getReportStaffLocationUrl = () => {
+
+
+
+
+  return `/api/staff/location`
+}
+
+/**
+ * @summary The calling team member reports their own GPS position
+ */
+export const reportStaffLocation = async (staffLocationInput: StaffLocationInput, options?: Parameters<typeof customFetch>[1]): Promise<StaffLocation> => {
+
+  return customFetch<StaffLocation>(getReportStaffLocationUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(staffLocationInput)
+  }
+);}
+
+
+
+
+
+export const getReportStaffLocationMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reportStaffLocation>>, TError,{data: BodyType<StaffLocationInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reportStaffLocation>>, TError,{data: BodyType<StaffLocationInput>}, TContext> => {
+
+const mutationKey = ['reportStaffLocation'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reportStaffLocation>>, {data: BodyType<StaffLocationInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  reportStaffLocation(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReportStaffLocationMutationResult = NonNullable<Awaited<ReturnType<typeof reportStaffLocation>>>
+    export type ReportStaffLocationMutationBody = BodyType<StaffLocationInput>
+    export type ReportStaffLocationMutationError = ErrorType<unknown>
+
+    /**
+ * @summary The calling team member reports their own GPS position
+ */
+export const useReportStaffLocation = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reportStaffLocation>>, TError,{data: BodyType<StaffLocationInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reportStaffLocation>>,
+        TError,
+        {data: BodyType<StaffLocationInput>},
+        TContext
+      > => {
+      return useMutation(getReportStaffLocationMutationOptions(options));
+    }
+
+export const getGetScheduleUrl = (params?: GetScheduleParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/schedule?${stringifiedParams}` : `/api/schedule`
+}
+
+/**
+ * @summary The day's schedule — owners/dispatchers see all, cleaners see their own
+ */
+export const getSchedule = async (params?: GetScheduleParams, options?: Parameters<typeof customFetch>[1]): Promise<Schedule> => {
+
+  return customFetch<Schedule>(getGetScheduleUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetScheduleQueryKey = (params?: GetScheduleParams,) => {
+    return [
+    `/api/schedule`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetScheduleQueryOptions = <TData = Awaited<ReturnType<typeof getSchedule>>, TError = ErrorType<unknown>>(params?: GetScheduleParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSchedule>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetScheduleQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSchedule>>> = ({ signal }) => getSchedule(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSchedule>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetScheduleQueryResult = NonNullable<Awaited<ReturnType<typeof getSchedule>>>
+export type GetScheduleQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary The day's schedule — owners/dispatchers see all, cleaners see their own
+ */
+
+export function useGetSchedule<TData = Awaited<ReturnType<typeof getSchedule>>, TError = ErrorType<unknown>>(
+ params?: GetScheduleParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSchedule>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetScheduleQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

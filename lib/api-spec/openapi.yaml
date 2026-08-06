@@ -16,6 +16,9 @@ tags:
   - name: calls
   - name: bookings
   - name: dashboard
+  - name: map
+  - name: schedule
+  - name: staff
 paths:
   /healthz:
     get:
@@ -677,6 +680,108 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/ActivityItem"
+  /map/config:
+    get:
+      operationId: getMapConfig
+      tags: [map]
+      summary: Google Maps key for the dispatcher's browser (owner/dispatcher only)
+      responses:
+        "200":
+          description: Map config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MapConfig"
+  /map/data:
+    get:
+      operationId: getMapData
+      tags: [map]
+      summary: Live cleaner positions, that day's job pins, and saved pins
+      parameters:
+        - name: date
+          in: query
+          required: false
+          description: Day to show jobs for, YYYY-MM-DD in the company's timezone.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Map data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MapData"
+  /map/pins:
+    post:
+      operationId: createMapPin
+      tags: [map]
+      summary: Save a map pin, geocoding the address when coordinates are absent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePinInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MapPin"
+        "400":
+          description: Could not resolve the pin to coordinates
+  /map/pins/{id}:
+    delete:
+      operationId: deleteMapPin
+      tags: [map]
+      summary: Delete a map pin
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+  /staff/location:
+    post:
+      operationId: reportStaffLocation
+      tags: [staff]
+      summary: The calling team member reports their own GPS position
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StaffLocationInput"
+      responses:
+        "200":
+          description: Recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StaffLocation"
+  /schedule:
+    get:
+      operationId: getSchedule
+      tags: [schedule]
+      summary: The day's schedule — owners/dispatchers see all, cleaners see their own
+      parameters:
+        - name: date
+          in: query
+          required: false
+          description: Day to show, YYYY-MM-DD in the company's timezone.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Schedule
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Schedule"
 components:
   schemas:
     HealthStatus:
@@ -1116,6 +1221,13 @@ components:
         jobberWebUri: { type: ["string", "null"] }
         jobberSyncError: { type: ["string", "null"] }
         jobberSyncErrorAt: { type: ["string", "null"] }
+        # Geocoded position of the job's address, for the live dispatch map.
+        # Null until the address is resolved.
+        lat: { type: ["number", "null"] }
+        lng: { type: ["number", "null"] }
+        geocodedAt: { type: ["string", "null"] }
+        # Expected job length in minutes, for laying it out on the schedule.
+        durationMinutes: { type: ["integer", "null"] }
         # The cleaners working this job. Empty until a crew is assigned.
         crew:
           type: array
@@ -1308,3 +1420,129 @@ components:
           }
         message: { type: string }
         occurredAt: { type: string }
+    MapConfig:
+      type: object
+      required: [apiKey, configured]
+      properties:
+        # The Google Maps JS key, served to authenticated dispatchers only so it
+        # never has to be baked into the client bundle. Empty when unconfigured.
+        apiKey: { type: string }
+        configured: { type: boolean }
+    MapCleaner:
+      type: object
+      required: [teamMemberId, name, lat, lng, updatedAt]
+      properties:
+        teamMemberId: { type: integer }
+        name: { type: string }
+        lat: { type: number }
+        lng: { type: number }
+        accuracy: { type: ["number", "null"] }
+        updatedAt: { type: string }
+    MapJobAssignee:
+      type: object
+      required: [teamMemberId, name]
+      properties:
+        teamMemberId: { type: integer }
+        name: { type: string }
+    MapJob:
+      type: object
+      required:
+        [bookingId, customerName, lat, lng, scheduledFor, status, assignees]
+      properties:
+        bookingId: { type: integer }
+        customerName: { type: string }
+        customerAddress: { type: ["string", "null"] }
+        lat: { type: number }
+        lng: { type: number }
+        scheduledFor: { type: string }
+        status:
+          { type: string, enum: [pending, confirmed, completed, canceled] }
+        assignees:
+          type: array
+          items:
+            $ref: "#/components/schemas/MapJobAssignee"
+    MapPin:
+      type: object
+      required: [id, name, lat, lng]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        address: { type: ["string", "null"] }
+        lat: { type: number }
+        lng: { type: number }
+    MapData:
+      type: object
+      required: [cleaners, jobs, pins]
+      properties:
+        cleaners:
+          type: array
+          items:
+            $ref: "#/components/schemas/MapCleaner"
+        jobs:
+          type: array
+          items:
+            $ref: "#/components/schemas/MapJob"
+        pins:
+          type: array
+          items:
+            $ref: "#/components/schemas/MapPin"
+    StaffLocationInput:
+      type: object
+      required: [lat, lng]
+      properties:
+        lat: { type: number, minimum: -90, maximum: 90 }
+        lng: { type: number, minimum: -180, maximum: 180 }
+        accuracy: { type: ["number", "null"], minimum: 0 }
+    StaffLocation:
+      type: object
+      required: [teamMemberId, lat, lng, updatedAt]
+      properties:
+        teamMemberId: { type: integer }
+        lat: { type: number }
+        lng: { type: number }
+        accuracy: { type: ["number", "null"] }
+        updatedAt: { type: string }
+    ScheduleJob:
+      type: object
+      required: [bookingId, customerName, scheduledFor, durationMinutes, status]
+      properties:
+        bookingId: { type: integer }
+        customerName: { type: string }
+        customerAddress: { type: ["string", "null"] }
+        scheduledFor: { type: string }
+        # Falls back to the service's duration, else 120 minutes.
+        durationMinutes: { type: integer }
+        status:
+          { type: string, enum: [pending, confirmed, completed, canceled] }
+        price: { type: ["number", "null"] }
+    ScheduleCleaner:
+      type: object
+      required: [teamMemberId, name, jobs]
+      properties:
+        teamMemberId: { type: integer }
+        name: { type: string }
+        jobs:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScheduleJob"
+    Schedule:
+      type: object
+      required: [date, cleaners, unassigned]
+      properties:
+        date: { type: string }
+        cleaners:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScheduleCleaner"
+        unassigned:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScheduleJob"
+    CreatePinInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1 }
+        address: { type: ["string", "null"] }
+        lat: { type: ["number", "null"], minimum: -90, maximum: 90 }
+        lng: { type: ["number", "null"], minimum: -180, maximum: 180 }

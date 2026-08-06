@@ -23,6 +23,8 @@ import { CallsPage } from "@/pages/calls";
 import { BookingsPage } from "@/pages/bookings";
 import { TeamPage } from "@/pages/team";
 import { SettingsPage } from "@/pages/settings";
+import { MapPage } from "@/pages/map";
+import { SchedulePage } from "@/pages/schedule";
 import QuotePage from "@/pages/quote";
 
 const clerkPubKey = publishableKeyFromHost(
@@ -246,6 +248,22 @@ function ClerkProviderWithRoutes() {
               component={() => (
                 <Show when="signed-in" fallback={<Redirect to="/sign-in" />}>
                   <TeamPage />
+                </Show>
+              )}
+            />
+            <Route
+              path="/map"
+              component={() => (
+                <Show when="signed-in" fallback={<Redirect to="/sign-in" />}>
+                  <MapPage />
+                </Show>
+              )}
+            />
+            <Route
+              path="/schedule"
+              component={() => (
+                <Show when="signed-in" fallback={<Redirect to="/sign-in" />}>
+                  <SchedulePage />
                 </Show>
               )}
             />

@@ -803,6 +803,10 @@ export const SetBookingCrewResponse = zod.object({
   "jobberWebUri": zod.string().nullish(),
   "jobberSyncError": zod.string().nullish(),
   "jobberSyncErrorAt": zod.string().nullish(),
+  "lat": zod.number().nullish(),
+  "lng": zod.number().nullish(),
+  "geocodedAt": zod.string().nullish(),
+  "durationMinutes": zod.int().nullish(),
   "crew": zod.array(zod.object({
   "id": zod.int(),
   "name": zod.string(),
@@ -1024,6 +1028,10 @@ export const ListBookingsResponseItem = zod.object({
   "jobberWebUri": zod.string().nullish(),
   "jobberSyncError": zod.string().nullish(),
   "jobberSyncErrorAt": zod.string().nullish(),
+  "lat": zod.number().nullish(),
+  "lng": zod.number().nullish(),
+  "geocodedAt": zod.string().nullish(),
+  "durationMinutes": zod.int().nullish(),
   "crew": zod.array(zod.object({
   "id": zod.int(),
   "name": zod.string(),
@@ -1152,6 +1160,10 @@ export const CreateBookingResponse = zod.object({
   "jobberWebUri": zod.string().nullish(),
   "jobberSyncError": zod.string().nullish(),
   "jobberSyncErrorAt": zod.string().nullish(),
+  "lat": zod.number().nullish(),
+  "lng": zod.number().nullish(),
+  "geocodedAt": zod.string().nullish(),
+  "durationMinutes": zod.int().nullish(),
   "crew": zod.array(zod.object({
   "id": zod.int(),
   "name": zod.string(),
@@ -1428,6 +1440,10 @@ export const SendQuoteResponse = zod.object({
   "jobberWebUri": zod.string().nullish(),
   "jobberSyncError": zod.string().nullish(),
   "jobberSyncErrorAt": zod.string().nullish(),
+  "lat": zod.number().nullish(),
+  "lng": zod.number().nullish(),
+  "geocodedAt": zod.string().nullish(),
+  "durationMinutes": zod.int().nullish(),
   "crew": zod.array(zod.object({
   "id": zod.int(),
   "name": zod.string(),
@@ -1556,6 +1572,10 @@ export const UpdateBookingResponse = zod.object({
   "jobberWebUri": zod.string().nullish(),
   "jobberSyncError": zod.string().nullish(),
   "jobberSyncErrorAt": zod.string().nullish(),
+  "lat": zod.number().nullish(),
+  "lng": zod.number().nullish(),
+  "geocodedAt": zod.string().nullish(),
+  "durationMinutes": zod.int().nullish(),
   "crew": zod.array(zod.object({
   "id": zod.int(),
   "name": zod.string(),
@@ -1642,6 +1662,10 @@ export const ConfirmBookingTimeResponse = zod.object({
   "jobberWebUri": zod.string().nullish(),
   "jobberSyncError": zod.string().nullish(),
   "jobberSyncErrorAt": zod.string().nullish(),
+  "lat": zod.number().nullish(),
+  "lng": zod.number().nullish(),
+  "geocodedAt": zod.string().nullish(),
+  "durationMinutes": zod.int().nullish(),
   "crew": zod.array(zod.object({
   "id": zod.int(),
   "name": zod.string(),
@@ -1728,6 +1752,10 @@ export const SendRescheduleTextResponse = zod.object({
   "jobberWebUri": zod.string().nullish(),
   "jobberSyncError": zod.string().nullish(),
   "jobberSyncErrorAt": zod.string().nullish(),
+  "lat": zod.number().nullish(),
+  "lng": zod.number().nullish(),
+  "geocodedAt": zod.string().nullish(),
+  "durationMinutes": zod.int().nullish(),
   "crew": zod.array(zod.object({
   "id": zod.int(),
   "name": zod.string(),
@@ -1814,6 +1842,10 @@ export const SyncBookingToJobberResponse = zod.object({
   "jobberWebUri": zod.string().nullish(),
   "jobberSyncError": zod.string().nullish(),
   "jobberSyncErrorAt": zod.string().nullish(),
+  "lat": zod.number().nullish(),
+  "lng": zod.number().nullish(),
+  "geocodedAt": zod.string().nullish(),
+  "durationMinutes": zod.int().nullish(),
   "crew": zod.array(zod.object({
   "id": zod.int(),
   "name": zod.string(),
@@ -1847,5 +1879,153 @@ export const GetRecentActivityResponseItem = zod.object({
   "occurredAt": zod.string()
 })
 export const GetRecentActivityResponse = zod.array(GetRecentActivityResponseItem)
+
+
+/**
+ * @summary Google Maps key for the dispatcher's browser (owner/dispatcher only)
+ */
+export const GetMapConfigResponse = zod.object({
+  "apiKey": zod.string(),
+  "configured": zod.boolean()
+})
+
+
+/**
+ * @summary Live cleaner positions, that day's job pins, and saved pins
+ */
+export const GetMapDataQueryParams = zod.object({
+  "date": zod.coerce.string().optional().describe('Day to show jobs for, YYYY-MM-DD in the company\'s timezone.')
+})
+
+export const GetMapDataResponse = zod.object({
+  "cleaners": zod.array(zod.object({
+  "teamMemberId": zod.int(),
+  "name": zod.string(),
+  "lat": zod.number(),
+  "lng": zod.number(),
+  "accuracy": zod.number().nullish(),
+  "updatedAt": zod.string()
+})),
+  "jobs": zod.array(zod.object({
+  "bookingId": zod.int(),
+  "customerName": zod.string(),
+  "customerAddress": zod.string().nullish(),
+  "lat": zod.number(),
+  "lng": zod.number(),
+  "scheduledFor": zod.string(),
+  "status": zod.enum(['pending', 'confirmed', 'completed', 'canceled']),
+  "assignees": zod.array(zod.object({
+  "teamMemberId": zod.int(),
+  "name": zod.string()
+}))
+})),
+  "pins": zod.array(zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "address": zod.string().nullish(),
+  "lat": zod.number(),
+  "lng": zod.number()
+}))
+})
+
+
+/**
+ * @summary Save a map pin, geocoding the address when coordinates are absent
+ */
+
+export const createMapPinBodyLatMin = -90;
+export const createMapPinBodyLatMax = 90;
+
+export const createMapPinBodyLngMin = -180;
+export const createMapPinBodyLngMax = 180;
+
+
+
+export const CreateMapPinBody = zod.object({
+  "name": zod.string().min(1),
+  "address": zod.string().nullish(),
+  "lat": zod.number().min(createMapPinBodyLatMin).max(createMapPinBodyLatMax).nullish(),
+  "lng": zod.number().min(createMapPinBodyLngMin).max(createMapPinBodyLngMax).nullish()
+})
+
+export const CreateMapPinResponse = zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "address": zod.string().nullish(),
+  "lat": zod.number(),
+  "lng": zod.number()
+})
+
+
+/**
+ * @summary Delete a map pin
+ */
+export const DeleteMapPinParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const DeleteMapPinResponse = zod.void()
+
+
+/**
+ * @summary The calling team member reports their own GPS position
+ */
+export const reportStaffLocationBodyLatMin = -90;
+export const reportStaffLocationBodyLatMax = 90;
+
+export const reportStaffLocationBodyLngMin = -180;
+export const reportStaffLocationBodyLngMax = 180;
+
+export const reportStaffLocationBodyAccuracyMin = 0;
+
+
+
+export const ReportStaffLocationBody = zod.object({
+  "lat": zod.number().min(reportStaffLocationBodyLatMin).max(reportStaffLocationBodyLatMax),
+  "lng": zod.number().min(reportStaffLocationBodyLngMin).max(reportStaffLocationBodyLngMax),
+  "accuracy": zod.number().min(reportStaffLocationBodyAccuracyMin).nullish()
+})
+
+export const ReportStaffLocationResponse = zod.object({
+  "teamMemberId": zod.int(),
+  "lat": zod.number(),
+  "lng": zod.number(),
+  "accuracy": zod.number().nullish(),
+  "updatedAt": zod.string()
+})
+
+
+/**
+ * @summary The day's schedule — owners/dispatchers see all, cleaners see their own
+ */
+export const GetScheduleQueryParams = zod.object({
+  "date": zod.coerce.string().optional().describe('Day to show, YYYY-MM-DD in the company\'s timezone.')
+})
+
+export const GetScheduleResponse = zod.object({
+  "date": zod.string(),
+  "cleaners": zod.array(zod.object({
+  "teamMemberId": zod.int(),
+  "name": zod.string(),
+  "jobs": zod.array(zod.object({
+  "bookingId": zod.int(),
+  "customerName": zod.string(),
+  "customerAddress": zod.string().nullish(),
+  "scheduledFor": zod.string(),
+  "durationMinutes": zod.int(),
+  "status": zod.enum(['pending', 'confirmed', 'completed', 'canceled']),
+  "price": zod.number().nullish()
+}))
+})),
+  "unassigned": zod.array(zod.object({
+  "bookingId": zod.int(),
+  "customerName": zod.string(),
+  "customerAddress": zod.string().nullish(),
+  "scheduledFor": zod.string(),
+  "durationMinutes": zod.int(),
+  "status": zod.enum(['pending', 'confirmed', 'completed', 'canceled']),
+  "price": zod.number().nullish()
+}))
+})
 
 

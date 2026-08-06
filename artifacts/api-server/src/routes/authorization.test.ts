@@ -124,6 +124,15 @@ const MATRIX: Record<string, Role[]> = {
   // Dashboard: company-wide numbers are dispatch work, not crew work.
   "GET /dashboard/summary": ["owner", "dispatcher"],
   "GET /dashboard/activity": ["owner", "dispatcher"],
+  // Live map: dispatch work, never crew — it shows every cleaner and job.
+  "GET /map/config": ["owner", "dispatcher"],
+  "GET /map/data": ["owner", "dispatcher"],
+  "POST /map/pins": ["owner", "dispatcher"],
+  "DELETE /map/pins/:id": ["owner", "dispatcher"],
+  // Location reporting: any authenticated seat, so a cleaner's phone can post.
+  "POST /staff/location": ["owner", "dispatcher", "cleaner"],
+  // Schedule: everyone signed in; a cleaner's view is scoped to their own jobs.
+  "GET /schedule": ["owner", "dispatcher", "cleaner"],
 };
 
 /**

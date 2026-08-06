@@ -7,6 +7,8 @@ import {
   Settings,
   LogOut,
   CheckCircle2,
+  Map,
+  CalendarDays,
 } from "lucide-react";
 import { useClerk } from "@clerk/react";
 import { Company, useGetCurrentUser } from "@workspace/api-client-react";
@@ -30,11 +32,18 @@ export function Sidebar({ company }: SidebarProps) {
   // A cleaner's whole job is the list of jobs they are on. Everything else is
   // dispatch work they have no access to on the API either.
   const navItems = isCleaner
-    ? [{ href: "/bookings", label: "My Jobs", icon: CalendarCheck }]
+    ? [
+        { href: "/bookings", label: "My Jobs", icon: CalendarCheck },
+        // Cleaners get the schedule too — the API scopes it to their own day.
+        { href: "/schedule", label: "Schedule", icon: CalendarDays },
+      ]
     : [
         { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
         { href: "/calls", label: "Calls", icon: PhoneCall },
         { href: "/bookings", label: "Bookings", icon: CalendarCheck },
+        // Live positions are dispatch work, so owners and dispatchers only.
+        { href: "/map", label: "Map", icon: Map },
+        { href: "/schedule", label: "Schedule", icon: CalendarDays },
         ...(isOwner ? [{ href: "/team", label: "Team", icon: Users }] : []),
       ];
 

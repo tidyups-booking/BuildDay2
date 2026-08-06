@@ -8,6 +8,9 @@ import meRouter from "./me";
 import callsRouter from "./calls";
 import bookingsRouter from "./bookings";
 import dashboardRouter from "./dashboard";
+import mapRouter from "./map";
+import scheduleRouter from "./schedule";
+import staffRouter from "./staff";
 import publicQuoteRouter from "./publicQuote";
 // Note: the Quo webhook receiver is mounted in app.ts ahead of the JSON body
 // parser so it can verify signatures against the raw request bytes.
@@ -26,5 +29,8 @@ router.use(teamRouter);
 router.use(callsRouter);
 router.use(bookingsRouter);
 router.use(dashboardRouter);
+router.use(mapRouter);
+router.use(scheduleRouter);
+router.use(staffRouter);
 
 export default router;

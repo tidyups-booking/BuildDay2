@@ -14,9 +14,14 @@
       "backgroundColor": "#0d0a0f"
     },
     "ios": {
-      "supportsTablet": false
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Book My Cleaning shares your location with your dispatcher while you're on shift, so they can see where your team is on the live map. You control this with an on/off switch in the app."
+      }
     },
-    "android": {},
+    "android": {
+      "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"]
+    },
     "web": {
       "favicon": "./assets/images/icon.png"
     },
@@ -28,7 +33,13 @@
         }
       ],
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Book My Cleaning shares your location with your dispatcher while you're on shift, so they can see where your team is on the live map. You control this with an on/off switch in the app."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

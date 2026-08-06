@@ -3,6 +3,7 @@ import app, { STRIPE_WEBHOOK_PATH } from "./app";
 import { logger } from "./lib/logger";
 import { runMigrations } from "./lib/migrate";
 import { startQuoHealthCheck } from "./lib/quoHealth";
+import { startGeocodeBackfill } from "./services/geocodeBackfill";
 import { getStripeSync } from "./lib/stripeClient";
 
 const rawPort = process.env["PORT"];
@@ -102,6 +103,10 @@ await initStripe();
 // Hourly background check so a revoked Quo key flips quoNeedsReauth even
 // while no webhooks or dashboard traffic touch Quo.
 startQuoHealthCheck();
+
+// Geocode upcoming bookings in the background so the live map loads pins from
+// the DB. Degrades quietly when GOOGLE_MAPS_API_KEY is absent.
+startGeocodeBackfill();
 
 app.listen(port, (err) => {
   if (err) {

@@ -453,6 +453,14 @@ export interface Booking {
   jobberSyncError?: string | null;
   /** @nullable */
   jobberSyncErrorAt?: string | null;
+  /** @nullable */
+  lat?: number | null;
+  /** @nullable */
+  lng?: number | null;
+  /** @nullable */
+  geocodedAt?: string | null;
+  /** @nullable */
+  durationMinutes?: number | null;
   crew?: CrewMember[];
   createdAt: string;
 }
@@ -681,11 +689,162 @@ export interface ActivityItem {
   occurredAt: string;
 }
 
+export interface MapConfig {
+  apiKey: string;
+  configured: boolean;
+}
+
+export interface MapCleaner {
+  teamMemberId: number;
+  name: string;
+  lat: number;
+  lng: number;
+  /** @nullable */
+  accuracy?: number | null;
+  updatedAt: string;
+}
+
+export interface MapJobAssignee {
+  teamMemberId: number;
+  name: string;
+}
+
+export type MapJobStatus = typeof MapJobStatus[keyof typeof MapJobStatus];
+
+
+export const MapJobStatus = {
+  pending: 'pending',
+  confirmed: 'confirmed',
+  completed: 'completed',
+  canceled: 'canceled',
+} as const;
+
+export interface MapJob {
+  bookingId: number;
+  customerName: string;
+  /** @nullable */
+  customerAddress?: string | null;
+  lat: number;
+  lng: number;
+  scheduledFor: string;
+  status: MapJobStatus;
+  assignees: MapJobAssignee[];
+}
+
+export interface MapPin {
+  id: number;
+  name: string;
+  /** @nullable */
+  address?: string | null;
+  lat: number;
+  lng: number;
+}
+
+export interface MapData {
+  cleaners: MapCleaner[];
+  jobs: MapJob[];
+  pins: MapPin[];
+}
+
+export interface StaffLocationInput {
+  /**
+     * @minimum -90
+     * @maximum 90
+     */
+  lat: number;
+  /**
+     * @minimum -180
+     * @maximum 180
+     */
+  lng: number;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  accuracy?: number | null;
+}
+
+export interface StaffLocation {
+  teamMemberId: number;
+  lat: number;
+  lng: number;
+  /** @nullable */
+  accuracy?: number | null;
+  updatedAt: string;
+}
+
+export type ScheduleJobStatus = typeof ScheduleJobStatus[keyof typeof ScheduleJobStatus];
+
+
+export const ScheduleJobStatus = {
+  pending: 'pending',
+  confirmed: 'confirmed',
+  completed: 'completed',
+  canceled: 'canceled',
+} as const;
+
+export interface ScheduleJob {
+  bookingId: number;
+  customerName: string;
+  /** @nullable */
+  customerAddress?: string | null;
+  scheduledFor: string;
+  durationMinutes: number;
+  status: ScheduleJobStatus;
+  /** @nullable */
+  price?: number | null;
+}
+
+export interface ScheduleCleaner {
+  teamMemberId: number;
+  name: string;
+  jobs: ScheduleJob[];
+}
+
+export interface Schedule {
+  date: string;
+  cleaners: ScheduleCleaner[];
+  unassigned: ScheduleJob[];
+}
+
+export interface CreatePinInput {
+  /** @minLength 1 */
+  name: string;
+  /** @nullable */
+  address?: string | null;
+  /**
+     * @minimum -90
+     * @maximum 90
+     * @nullable
+     */
+  lat?: number | null;
+  /**
+     * @minimum -180
+     * @maximum 180
+     * @nullable
+     */
+  lng?: number | null;
+}
+
 export type ListCallsParams = {
 status?: string;
 };
 
 export type PayPublicQuote200 = {
   checkoutUrl: string;
+};
+
+export type GetMapDataParams = {
+/**
+ * Day to show jobs for, YYYY-MM-DD in the company's timezone.
+ */
+date?: string;
+};
+
+export type GetScheduleParams = {
+/**
+ * Day to show, YYYY-MM-DD in the company's timezone.
+ */
+date?: string;
 };
 

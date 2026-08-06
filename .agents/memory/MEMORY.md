@@ -19,4 +19,5 @@
 - [Stripe live-mode switch](stripe-live-mode.md) — live keys come from the Publish pane, not code; mode-scoped keys stop webhook reconciliation from touching the live webhook; private visibility blocks webhooks.
 - [waitForJob timeout is capped](waitforjob-timeout-cap.md) — the `timeout` arg is silently clamped to ~20s; long waits need real sleeps, not a bigger number.
 - [Router-level guards leak across routers](express-router-use-guard-leak.md) — routers mount at `/`, so `router.use(requireRole)` guards other routers' routes; guards must be per-route, pinned by the authorization test matrix.
+- [Google Maps setup & loading](google-maps-key-setup.md) — `loading=async` leaves the namespace empty (importLibrary only); key needs two APIs, and each half fails invisibly in its own way.
 - [Pushing to GitHub](git-push-replit.md) — gitPush only sees `origin` (real remote is `subrepl-*`), and the GitHub connector grants API access, not push credentials.

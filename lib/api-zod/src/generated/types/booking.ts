@@ -66,6 +66,14 @@ export interface Booking {
   jobberSyncError?: string | null;
   /** @nullable */
   jobberSyncErrorAt?: string | null;
+  /** @nullable */
+  lat?: number | null;
+  /** @nullable */
+  lng?: number | null;
+  /** @nullable */
+  geocodedAt?: string | null;
+  /** @nullable */
+  durationMinutes?: number | null;
   crew?: CrewMember[];
   createdAt: string;
 }

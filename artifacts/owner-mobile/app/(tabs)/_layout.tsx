@@ -12,6 +12,7 @@ import { Redirect, Tabs } from "expo-router";
 import { Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
 import { SymbolView } from "expo-symbols";
 import colors from "@/constants/colors";
+import { LocationTrackingProvider } from "@/lib/location-tracking";
 
 const c = colors.light;
 
@@ -30,6 +31,10 @@ function NativeTabLayout({ showActivity }: { showActivity: boolean }) {
           <Label>Activity</Label>
         </NativeTabs.Trigger>
       ) : null}
+      <NativeTabs.Trigger name="location">
+        <Icon sf={{ default: "location", selected: "location.fill" }} />
+        <Label>Location</Label>
+      </NativeTabs.Trigger>
     </NativeTabs>
   );
 }
@@ -96,6 +101,18 @@ function ClassicTabLayout({ showActivity }: { showActivity: boolean }) {
             ),
         }}
       />
+      <Tabs.Screen
+        name="location"
+        options={{
+          title: "Location",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="location" tintColor={color} size={24} />
+            ) : (
+              <Feather name="navigation" size={22} color={color} />
+            ),
+        }}
+      />
     </Tabs>
   );
 }
@@ -127,8 +144,15 @@ export default function TabLayout() {
 
   const showActivity = me.data ? me.data.role !== "cleaner" : false;
 
-  if (isLiquidGlassAvailable()) {
-    return <NativeTabLayout showActivity={showActivity} />;
-  }
-  return <ClassicTabLayout showActivity={showActivity} />;
+  // The location tracker lives at the tab layout level so it survives tab
+  // switches but is torn down on sign-out (when this whole tree unmounts).
+  return (
+    <LocationTrackingProvider>
+      {isLiquidGlassAvailable() ? (
+        <NativeTabLayout showActivity={showActivity} />
+      ) : (
+        <ClassicTabLayout showActivity={showActivity} />
+      )}
+    </LocationTrackingProvider>
+  );
 }

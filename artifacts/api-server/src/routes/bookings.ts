@@ -120,6 +120,13 @@ function serializeBooking(
     quoteUrl: b.quoteToken ? quoteUrl(b.quoteToken) : null,
     depositPaidAt: b.depositPaidAt ? b.depositPaidAt.toISOString() : null,
     depositPaidAmount: b.depositPaidAmount ?? null,
+    // Map/schedule fields. Serialized the same way as the other nullable
+    // date/number columns so one geocoded row can't 500 the whole list: the
+    // timestamp becomes an ISO string, the rest pass through or null out.
+    lat: b.lat ?? null,
+    lng: b.lng ?? null,
+    geocodedAt: b.geocodedAt ? b.geocodedAt.toISOString() : null,
+    durationMinutes: b.durationMinutes ?? null,
   };
 }
 

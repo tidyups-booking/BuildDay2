@@ -3,7 +3,7 @@ import { db, bookingsTable } from "@workspace/db";
 import { logger } from "./logger";
 
 /** How far the zone is from UTC at a given instant, in ms (DST-aware). */
-function zoneOffsetMs(date: Date, timeZone: string): number {
+export function zoneOffsetMs(date: Date, timeZone: string): number {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone,
     hour12: false,
