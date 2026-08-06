@@ -70,6 +70,21 @@ import {
 
 const REFRESH_MS = 30 * 1000;
 
+/**
+ * Where the map sits before anything has been plotted on it — the city these
+ * companies work in. It is only ever the starting view: as soon as there is a
+ * job, a cleaner or a saved pin, the map fits itself around them instead.
+ */
+const HOME_CENTER = { lat: 53.5461, lng: -113.4938 }; // Edmonton
+const HOME_ZOOM = 11;
+
+/**
+ * A single pin has no width, so fitting to it would drop the map to rooftop
+ * zoom and lose all sense of where in the city it is. Cap it at a level that
+ * still shows the surrounding neighbourhoods.
+ */
+const MAX_FIT_ZOOM = 14;
+
 export function MapPage() {
   return (
     <AppLayout>
@@ -434,8 +449,8 @@ function LiveMap({
   useEffect(() => {
     if (!maps || !mapContainerRef.current || mapRef.current) return;
     mapRef.current = new maps.Map(mapContainerRef.current, {
-      center: { lat: 51.0447, lng: -114.0719 },
-      zoom: 11,
+      center: HOME_CENTER,
+      zoom: HOME_ZOOM,
       mapId: DEMO_MAP_ID,
       disableDefaultUI: false,
       clickableIcons: false,
@@ -716,6 +731,16 @@ function LiveMap({
 
     if (any && !bounds.isEmpty()) {
       map.fitBounds(bounds, 64);
+      // fitBounds settles asynchronously, so the clamp has to wait for it.
+      const listener = map.addListener("idle", () => {
+        listener.remove();
+        if (map.getZoom() > MAX_FIT_ZOOM) map.setZoom(MAX_FIT_ZOOM);
+      });
+    } else {
+      // Nothing to show for this day — sit over the service area rather than
+      // wherever the dispatcher last dragged the map to.
+      map.setCenter(HOME_CENTER);
+      map.setZoom(HOME_ZOOM);
     }
   }, [maps, mapData, locatedJobs, timeZone]);
 
