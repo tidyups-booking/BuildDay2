@@ -120,3 +120,54 @@ export function loadGoogleMaps(apiKey: string): Promise<GoogleMapsApi> {
 
 /** The map id required for AdvancedMarkerElement styling. */
 export const DEMO_MAP_ID = "DEMO_MAP_ID";
+
+/**
+ * Address autocomplete, loaded separately from the map itself.
+ *
+ * This is the *data* API rather than Google's drop-in widget: it returns plain
+ * predictions so the dropdown can be our own markup in our own theme, instead
+ * of fighting a web component's shadow DOM.
+ *
+ * Needs "Places API (New)" enabled on the key — a separate switch from Maps
+ * JavaScript API and Geocoding API. A key without it rejects the first request,
+ * which is why callers must treat failure as "no suggestions" and keep the
+ * plain text box working.
+ */
+export type GooglePlacesApi = {
+  AutocompleteSuggestion: any;
+  AutocompleteSessionToken: any;
+};
+
+let placesPromise: Promise<GooglePlacesApi> | null = null;
+
+export function loadGooglePlaces(apiKey: string): Promise<GooglePlacesApi> {
+  if (typeof window === "undefined") {
+    return Promise.reject(
+      new Error("Google Places can only load in a browser"),
+    );
+  }
+  if (placesPromise) return placesPromise;
+
+  const attempt = (async (): Promise<GooglePlacesApi> => {
+    await injectScript(apiKey);
+    const g = window.google?.maps;
+    if (!g?.importLibrary) {
+      throw new Error("Google Maps loaded without importLibrary support");
+    }
+    const places = await g.importLibrary("places");
+    if (!places?.AutocompleteSuggestion) {
+      throw new Error("Places autocomplete is not available on this key");
+    }
+    return {
+      AutocompleteSuggestion: places.AutocompleteSuggestion,
+      AutocompleteSessionToken: places.AutocompleteSessionToken,
+    };
+  })();
+
+  placesPromise = attempt;
+  attempt.catch(() => {
+    if (placesPromise === attempt) placesPromise = null;
+  });
+
+  return attempt;
+}

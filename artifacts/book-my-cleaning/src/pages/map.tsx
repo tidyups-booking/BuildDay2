@@ -15,6 +15,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 import { useToast } from "@/hooks/use-toast";
 import { companyTimeZone, formatZoned, zoneLabel } from "@/lib/time";
 import { todayInZone } from "@/lib/schedule";
@@ -232,6 +233,17 @@ function LiveMap({
     [mapData],
   );
 
+  // Anything already on the map tells us roughly where this company works, so
+  // address suggestions lead with nearby streets instead of same-named ones a
+  // province away.
+  const biasCenter = useMemo(() => {
+    const anchor =
+      (mapData?.cleaners ?? []).find(hasCoords) ??
+      locatedJobs[0] ??
+      (mapData?.pins ?? []).find(hasCoords);
+    return anchor ? { lat: anchor.lat, lng: anchor.lng } : undefined;
+  }, [mapData, locatedJobs]);
+
   // Redraw markers whenever the data changes. Every marker + listener from the
   // previous render is torn down first, so refreshes never leak markers.
   useEffect(() => {
@@ -421,7 +433,14 @@ function LiveMap({
         </div>
 
         <div className="space-y-4">
-          {canEditPins && <PinManager date={date} pins={mapData?.pins ?? []} />}
+          {canEditPins && (
+            <PinManager
+              date={date}
+              pins={mapData?.pins ?? []}
+              apiKey={apiKey}
+              bias={biasCenter}
+            />
+          )}
           {unlocatedJobs.length > 0 && (
             <div className="bg-card border border-border rounded-xl shadow-sm p-4">
               <h3 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-2">
@@ -478,7 +497,17 @@ function Legend() {
 }
 
 /** Add a homeowner pin by address (server geocodes) and delete existing pins. */
-function PinManager({ date, pins }: { date: string; pins: MapData["pins"] }) {
+function PinManager({
+  date,
+  pins,
+  apiKey,
+  bias,
+}: {
+  date: string;
+  pins: MapData["pins"];
+  apiKey: string;
+  bias?: { lat: number; lng: number };
+}) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const createPin = useCreateMapPin();
@@ -543,10 +572,12 @@ function PinManager({ date, pins }: { date: string; pins: MapData["pins"] }) {
           onChange={(e) => setName(e.target.value)}
           placeholder="Label (e.g. Smith residence)"
         />
-        <Input
+        <AddressAutocomplete
+          apiKey={apiKey}
           value={address}
-          onChange={(e) => setAddress(e.target.value)}
-          placeholder="Address to geocode"
+          onChange={setAddress}
+          bias={bias}
+          placeholder="Start typing an address"
         />
         <Button
           onClick={handleAdd}

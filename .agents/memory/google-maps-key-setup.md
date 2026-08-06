@@ -19,6 +19,11 @@ A single `GOOGLE_MAPS_API_KEY` powers two independent things, and enabling one d
 
 - **Maps JavaScript API** — draws the dispatcher map in the browser.
 - **Geocoding API** — turns a typed job address into coordinates, server-side, so pins can be placed.
+- **Places API (New)** — address autocomplete suggestions while typing.
+
+Places is a *third* switch, off by default even on a key that already draws the map and geocodes, and it fails as a plain HTTP 403 rather than through the two channels above. Verify it with a direct request to `places.googleapis.com` before assuming the client code is wrong — in the browser the failure is only a rejected promise.
+
+**Autocomplete choices worth keeping:** use the Places *data* API and render our own dropdown, not Google's drop-in element — its shadow DOM fights a dark theme. Google only bills autocomplete as one session if a place-details request closes it, so a selection handler that merely copies the prediction text pays per keystroke; fetch the place on selection or drop the session token honestly. And suggestions must degrade to a plain text box, since the server geocodes free text regardless.
 
 **Why:** a key copied from another project is usually restricted to whatever that project used. A Maps-only key looks valid, passes any "is the key set?" check, and still leaves every pin unplaceable. The two halves fail in completely different, easily-missed ways:
 
