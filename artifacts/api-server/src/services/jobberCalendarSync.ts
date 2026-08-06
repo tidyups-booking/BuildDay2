@@ -23,24 +23,21 @@ import { logger } from "../lib/logger";
 /** How often the background pull runs. */
 export const JOBBER_SYNC_INTERVAL_MS = 10 * 60 * 1000;
 /**
- * Rolling window the poller keeps fresh: three months back through a year out.
+ * Rolling window the poller keeps fresh: three months back, six months ahead.
  *
  * It reaches backwards because the map answers "where are my clients", not
  * just "where is the crew today" — a house cleaned monthly is invisible on a
- * 60-day forward window if its last visit was in the spring. Three months is
- * where the owner drew the line: far enough to catch occasional clients,
- * short enough that the bookings list isn't buried in old work.
- *
- * Forward is a full year because recurring cleans are scheduled far out, and
- * a job that exists in Jobber but not here is the failure this sync exists to
- * prevent.
+ * 60-day forward window if its last visit was in the spring. Both spans are
+ * where the owner drew the line: far enough to catch occasional clients and
+ * recurring cleans booked well ahead, short enough that the calendar isn't
+ * buried in work nobody is thinking about yet.
  */
 const WINDOW_BACK_DAYS = 90;
-const WINDOW_FORWARD_DAYS = 365;
+const WINDOW_FORWARD_DAYS = 180;
 /**
  * 100 jobs a page; a hard stop so one runaway account can't page forever.
- * The window now spans fifteen months, so the ceiling has to clear a busy
- * account's real volume — hitting it silently disables the cancellation sweep.
+ * The window spans nine months, so the ceiling has to clear a busy account's
+ * real volume — hitting it silently disables the cancellation sweep.
  */
 const PAGE_SIZE = 100;
 const MAX_PAGES = 60;
@@ -184,7 +181,7 @@ async function runSync(
    * that came back without a payload, a response missing its pagination
    * block — means "we don't know what Jobber has", and the difference between
    * "not in the pull" and "canceled in Jobber" collapses. Getting that wrong
-   * now wipes fifteen months of a company's calendar, so absence of evidence
+   * now wipes nine months of a company's calendar, so absence of evidence
    * must never be read as evidence of cancellation.
    */
   let pullComplete = true;
