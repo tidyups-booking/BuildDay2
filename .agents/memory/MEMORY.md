@@ -22,4 +22,6 @@
 - [waitForJob timeout is capped](waitforjob-timeout-cap.md) — the `timeout` arg is silently clamped to ~20s; long waits need real sleeps, not a bigger number.
 - [Router-level guards leak across routers](express-router-use-guard-leak.md) — routers mount at `/`, so `router.use(requireRole)` guards other routers' routes; guards must be per-route, pinned by the authorization test matrix.
 - [Google Maps setup & loading](google-maps-key-setup.md) — `loading=async` leaves the namespace empty (importLibrary only); key needs two APIs, and each half fails invisibly in its own way.
+- [Public base URL must be pinned](public-base-url-pin.md) — a host inferred from REPLIT_DOMAINS is wrong for any URL a third party approves in advance; pin it and show it copyable.
+- [Repairing production rows](destructive-data-migrations.md) — enumerate every scoped child table, pin ids plus an attribute, and test with fixtures seeded at the real ids.
 - [Pushing to GitHub](git-push-replit.md) — gitPush only sees `origin` (real remote is `subrepl-*`), and the GitHub connector grants API access, not push credentials.
