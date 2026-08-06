@@ -46,7 +46,7 @@ export function Sidebar({ company }: SidebarProps) {
         { href: "/bookings", label: "Bookings", icon: CalendarCheck },
         { href: "/map", label: "Map", icon: Map },
         { href: "/schedule", label: "Schedule", icon: CalendarDays },
-        ...(isOwner ? [{ href: "/team", label: "Team", icon: Users }] : []),
+        ...(isOwner ? [{ href: "/team", label: "Staff", icon: Users }] : []),
       ];
 
   const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");

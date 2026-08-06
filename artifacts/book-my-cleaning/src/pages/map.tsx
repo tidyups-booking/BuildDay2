@@ -34,6 +34,7 @@ import {
 } from "@/lib/mapCalendar";
 import {
   loadGoogleMaps,
+  reverseGeocode,
   DEMO_MAP_ID,
   type GoogleMapsApi,
 } from "@/lib/googleMaps";
@@ -63,6 +64,8 @@ import {
   CalendarRange,
   LayoutGrid,
   CalendarClock,
+  Crosshair,
+  X,
 } from "lucide-react";
 
 const REFRESH_MS = 30 * 1000;
@@ -396,6 +399,10 @@ function LiveMap({
   const [maps, setMaps] = useState<GoogleMapsApi | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [authFailed, setAuthFailed] = useState(false);
+  // "Click the map to pin it" mode. Off by default — an always-live click
+  // handler would turn every stray click while panning into a saved pin.
+  const [dropMode, setDropMode] = useState(false);
+  const [dropping, setDropping] = useState(false);
 
   // Google surfaces "key not authorized for Maps JS" ONLY through this global.
   // Without it the map silently greys out. Register it before the script runs.
@@ -434,6 +441,93 @@ function LiveMap({
     });
     infoWindowRef.current = new maps.InfoWindow();
   }, [maps]);
+
+  const dropPin = useCreateMapPin();
+  const refreshMap = useRefreshMap(mapParams);
+  const { toast } = useToast();
+
+  // The real lock. React state can't hold one: a double-click fires both
+  // events before any re-render, so both would see `dropping === false` and
+  // both would save. This flips synchronously, before any await.
+  const dropInFlightRef = useRef(false);
+
+  // Kept in a ref so the click listener below is attached once per drop-mode
+  // session instead of being torn down and rebuilt on every render.
+  const dropHandlerRef = useRef<(lat: number, lng: number) => void>(() => {});
+  const handleDrop = (lat: number, lng: number) => {
+    if (dropInFlightRef.current) return;
+    dropInFlightRef.current = true;
+    setDropping(true);
+    // One pin per click of the button. Leaving the mode on would let the next
+    // stray click save another spot.
+    setDropMode(false);
+    void (async () => {
+      const address = maps ? await reverseGeocode(maps, lat, lng) : null;
+      // No street address (rural lot, or no Geocoding API on the key)? The
+      // coordinates are a usable name — the pin is on the map either way.
+      const label = address ?? `Pin at ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+      dropPin.mutate(
+        { data: { name: label, address, lat, lng } },
+        {
+          onSuccess: () => {
+            refreshMap();
+            toast({
+              title: "Pin dropped",
+              description: address
+                ? `${address} is now a saved location.`
+                : "Saved at the spot you clicked.",
+            });
+          },
+          onError: (error: any) => {
+            toast({
+              title: "Couldn't drop that pin",
+              description: pinErrorMessage(error),
+              variant: "destructive",
+            });
+          },
+          onSettled: () => {
+            dropInFlightRef.current = false;
+            setDropping(false);
+          },
+        },
+      );
+    })();
+  };
+
+  // Synchronised after commit, not during render: an interrupted render must
+  // never leave the Maps listener holding a handler React hasn't committed.
+  useEffect(() => {
+    dropHandlerRef.current = handleDrop;
+  });
+
+  // Listen for map clicks only while drop mode is on, and put the crosshair
+  // cursor up so it's obvious the next click does something.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!maps || !map || !dropMode) return;
+    const listener = map.addListener("click", (event: any) => {
+      const lat = event?.latLng?.lat?.();
+      const lng = event?.latLng?.lng?.();
+      if (typeof lat === "number" && typeof lng === "number") {
+        dropHandlerRef.current(lat, lng);
+      }
+    });
+    map.setOptions({ draggableCursor: "crosshair" });
+    return () => {
+      listener.remove();
+      map.setOptions({ draggableCursor: null });
+    };
+  }, [maps, dropMode]);
+
+  // Escape backs out of drop mode — the same reflex as closing a dialog.
+  useEffect(() => {
+    if (!dropMode) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setDropMode(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [dropMode]);
 
   const { located: locatedJobs, unlocated: unlocatedJobs } = useMemo(
     () => partitionJobsByCoords(mapData?.jobs ?? []),
@@ -584,6 +678,41 @@ function LiveMap({
       any = true;
     }
 
+    // Staff homes — a house outline in the crew member's own colour, so it
+    // reads as the same person as their live dot without being mistaken for
+    // one. Shown all the time: "who lives nearest this job" is a question
+    // asked while planning tomorrow, when nobody is transmitting at all.
+    for (const s of mapData?.staffHomes ?? []) {
+      if (!hasCoords(s)) continue;
+      const color = colorForTeamMember(s.teamMemberId);
+      const el = document.createElement("div");
+      el.style.cssText = `width:26px;height:26px;border-radius:9999px;display:flex;align-items:center;justify-content:center;color:${color};background:#fff;border:2px solid ${color};box-shadow:0 1px 4px rgba(0,0,0,.4);opacity:${
+        s.active ? "1" : "0.5"
+      };`;
+      el.innerHTML = homeSvg();
+      const marker = new maps.AdvancedMarkerElement({
+        map,
+        position: { lat: s.lat, lng: s.lng },
+        content: el,
+        title: `${s.name} (home)`,
+        zIndex: 1,
+      });
+      attach(
+        marker,
+        `<div style="font-family:sans-serif;color:#111;min-width:150px">
+          <div style="font-weight:700">${escapeHtml(s.name)}</div>
+          <div style="font-size:12px;color:#555">${escapeHtml(
+            s.roleLabel,
+          )} · Home${s.active ? "" : " · Off roster"}</div>
+          <div style="font-size:12px;color:#555;margin-top:2px">${escapeHtml(
+            s.address || "Saved location",
+          )}</div>
+        </div>`,
+      );
+      bounds.extend({ lat: s.lat, lng: s.lng });
+      any = true;
+    }
+
     if (any && !bounds.isEmpty()) {
       map.fitBounds(bounds, 64);
     }
@@ -611,6 +740,9 @@ function LiveMap({
           apiKey={apiKey}
           bias={biasCenter}
           mapParams={mapParams}
+          dropMode={dropMode}
+          dropping={dropping}
+          onToggleDropMode={() => setDropMode((on) => !on)}
         />
       )}
 
@@ -881,10 +1013,16 @@ function AddressSearchBar({
   apiKey,
   bias,
   mapParams,
+  dropMode,
+  dropping,
+  onToggleDropMode,
 }: {
   apiKey: string;
   bias?: { lat: number; lng: number };
   mapParams: GetMapDataParams;
+  dropMode: boolean;
+  dropping: boolean;
+  onToggleDropMode: () => void;
 }) {
   const { toast } = useToast();
   const createPin = useCreateMapPin();
@@ -922,8 +1060,8 @@ function AddressSearchBar({
   };
 
   return (
-    <div className="bg-card border border-border rounded-xl shadow-sm p-3">
-      <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)_auto]">
+    <div className="bg-card border border-border rounded-xl shadow-sm p-3 space-y-2">
+      <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)_auto_auto]">
         <Input
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -950,7 +1088,34 @@ function AddressSearchBar({
           )}
           {createPin.isPending ? "Finding…" : "Find & pin"}
         </Button>
+        {/* The escape hatch for places an address can't describe — a back
+            lane, a gate, an acreage the mailing address misses by a field. */}
+        <Button
+          type="button"
+          variant={dropMode ? "default" : "outline"}
+          onClick={onToggleDropMode}
+          disabled={dropping}
+          className="gap-2"
+          aria-pressed={dropMode}
+          data-testid="button-drop-pin"
+        >
+          {dropping ? (
+            <RefreshCw className="w-4 h-4 animate-spin" />
+          ) : dropMode ? (
+            <X className="w-4 h-4" />
+          ) : (
+            <Crosshair className="w-4 h-4" />
+          )}
+          {dropping ? "Saving…" : dropMode ? "Cancel" : "Drop a pin"}
+        </Button>
       </div>
+
+      {dropMode && (
+        <p className="text-xs text-brand-purple flex items-center gap-1.5">
+          <Crosshair className="w-3.5 h-3.5 shrink-0" />
+          Click anywhere on the map to save that exact spot. Press Esc to stop.
+        </p>
+      )}
     </div>
   );
 }

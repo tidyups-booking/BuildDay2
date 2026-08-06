@@ -20,6 +20,7 @@ import { requireAuth } from "../middlewares/requireAuth";
 import { requireRole, getCaller } from "../middlewares/requireRole";
 import { getCompanyForUser } from "../lib/company";
 import { companyDayBounds } from "../lib/dayBounds";
+import { roleLabel } from "../lib/roleLabel";
 import {
   geocodeAddress,
   normalizeAddress,
@@ -102,7 +103,14 @@ router.get(
     const caller = await getCaller(req);
     const company = caller.company;
     if (!company) {
-      res.json(GetMapDataResponse.parse({ cleaners: [], jobs: [], pins: [] }));
+      res.json(
+        GetMapDataResponse.parse({
+          cleaners: [],
+          jobs: [],
+          pins: [],
+          staffHomes: [],
+        }),
+      );
       return;
     }
 
@@ -141,6 +149,35 @@ router.get(
       lng: r.lng,
       accuracy: r.accuracy ?? null,
       updatedAt: r.updatedAt.toISOString(),
+    }));
+
+    // Where the crew live. Pinned all the time, not only when someone is off
+    // duty: "who is nearest this job" is a question the owner asks while
+    // planning tomorrow, when nobody is transmitting a position at all.
+    //
+    // A colleague's home address is personal, so dispatch sees the roster's
+    // and a cleaner sees only their own.
+    const staffScope =
+      caller.role === "cleaner" && caller.teamMemberId !== null
+        ? and(
+            eq(teamMembersTable.companyId, company.id),
+            eq(teamMembersTable.id, caller.teamMemberId),
+          )
+        : eq(teamMembersTable.companyId, company.id);
+
+    const staffHomes = (
+      await db
+        .select()
+        .from(teamMembersTable)
+        .where(and(staffScope, isNotNull(teamMembersTable.homeLat)))
+    ).map((m) => ({
+      teamMemberId: m.id,
+      name: m.name,
+      roleLabel: roleLabel(m),
+      address: m.homeAddress,
+      lat: m.homeLat!,
+      lng: m.homeLng!,
+      active: m.active,
     }));
 
     // Jobs that already have coordinates — an un-geocoded booking simply has
@@ -232,7 +269,7 @@ router.get(
       lng: p.lng,
     }));
 
-    res.json(GetMapDataResponse.parse({ cleaners, jobs, pins }));
+    res.json(GetMapDataResponse.parse({ cleaners, jobs, pins, staffHomes }));
   },
 );
 

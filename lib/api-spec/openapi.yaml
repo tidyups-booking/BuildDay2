@@ -365,7 +365,57 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/TeamMember"
+  /team/import:
+    post:
+      operationId: importTeamMembers
+      tags: [team]
+      summary: Add or update staff in bulk from a spreadsheet
+      description: >-
+        Takes the rows of a staff spreadsheet the owner exported, edited and
+        uploaded again. Rows are matched to existing people by email, or by
+        name when they have no email, so a round trip updates rather than
+        duplicates. Bad rows are reported, never fatal.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImportTeamMembersInput"
+      responses:
+        "200":
+          description: Import result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportTeamMembersResult"
   /team/{id}:
+    patch:
+      operationId: updateTeamMember
+      tags: [team]
+      summary: Edit a staff member's details
+      description: >-
+        Saves whatever the owner changed on the staff card. A new home address
+        is geocoded here so it can be pinned on the live map. Adding an email
+        to someone who had none also sends them a sign-up invitation.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TeamMemberUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamMember"
     delete:
       operationId: removeTeamMember
       tags: [team]
@@ -1081,21 +1131,66 @@ components:
         createdAt: { type: string }
     TeamMemberInput:
       type: object
-      required: [name, email, role]
+      # Only the name is required. Everything else is optional because staff
+      # get added mid-shift from a phone, and a half-filled card that exists is
+      # worth more than a complete one nobody stopped to create.
+      required: [name, role]
       properties:
         name: { type: string }
-        email: { type: string }
+        # Optional: staff who don't use the app have no address. When present
+        # it is what connects them to a login, so it also triggers the invite.
+        email: { type: ["string", "null"] }
+        phone: { type: ["string", "null"] }
         # Only a dispatcher or a cleaner can be invited. The owner seat is the
         # company's Clerk account and is never created through this endpoint.
         role: { type: string, enum: [dispatcher, cleaner] }
+        # A label on their card, never a permission level — see TeamMember.
+        isLead: { type: boolean }
+        active: { type: boolean }
+        homeAddress: { type: ["string", "null"] }
+    TeamMemberUpdate:
+      type: object
+      # Every field optional: this is a patch, and the form saves whatever the
+      # owner touched without having to resend the rest of the card.
+      properties:
+        name: { type: string }
+        email: { type: ["string", "null"] }
+        phone: { type: ["string", "null"] }
+        role: { type: string, enum: [dispatcher, cleaner] }
+        isLead: { type: boolean }
+        active: { type: boolean }
+        homeAddress: { type: ["string", "null"] }
+    ImportTeamMembersInput:
+      type: object
+      required: [members]
+      properties:
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/TeamMemberInput"
+    ImportTeamMembersResult:
+      type: object
+      required: [added, updated, skipped, errors]
+      properties:
+        added: { type: integer }
+        # Matched to an existing person by email, or by name when they have no
+        # email — so re-uploading an edited export updates rather than clones.
+        updated: { type: integer }
+        skipped: { type: integer }
+        # Human-readable reasons, one per row that couldn't be taken, so the
+        # owner can fix the spreadsheet instead of guessing.
+        errors:
+          type: array
+          items: { type: string }
     TeamMember:
       type: object
       required:
         [
           id,
           name,
-          email,
           role,
+          isLead,
+          active,
           status,
           hasLogin,
           inviteEmailSent,
@@ -1105,8 +1200,20 @@ components:
       properties:
         id: { type: integer }
         name: { type: string }
-        email: { type: string }
+        # Null for staff who don't sign in to the app at all.
+        email: { type: ["string", "null"] }
+        phone: { type: ["string", "null"] }
         role: { type: string, enum: [owner, dispatcher, cleaner] }
+        # A display label, NOT a permission level: a lead cleaner sees exactly
+        # what a cleaner sees. Kept apart from `role` so it can never widen
+        # anyone's access by accident.
+        isLead: { type: boolean }
+        # On the roster. Inactive staff keep their history and their login,
+        # they just stop appearing where work gets assigned.
+        active: { type: boolean }
+        homeAddress: { type: ["string", "null"] }
+        homeLat: { type: ["number", "null"] }
+        homeLng: { type: ["number", "null"] }
         status: { type: string, enum: [active, invited] }
         # True once this person has signed up and their verified email was
         # matched to this seat, i.e. they can actually sign in.
@@ -1549,14 +1656,33 @@ components:
         address: { type: ["string", "null"] }
         lat: { type: number }
         lng: { type: number }
+    StaffHome:
+      type: object
+      required: [teamMemberId, name, roleLabel, lat, lng, active]
+      properties:
+        teamMemberId: { type: integer }
+        name: { type: string }
+        # "Lead Cleaner", "Cleaner", "Dispatcher" — what shows on their card.
+        roleLabel: { type: string }
+        address: { type: ["string", "null"] }
+        lat: { type: number }
+        lng: { type: number }
+        active: { type: boolean }
     MapData:
       type: object
-      required: [cleaners, jobs, pins]
+      required: [cleaners, jobs, pins, staffHomes]
       properties:
         cleaners:
           type: array
           items:
             $ref: "#/components/schemas/MapCleaner"
+        # Where each staff member lives. Home addresses are a colleague's
+        # personal information, so dispatch sees the whole crew's and a cleaner
+        # sees only their own.
+        staffHomes:
+          type: array
+          items:
+            $ref: "#/components/schemas/StaffHome"
         jobs:
           type: array
           items:

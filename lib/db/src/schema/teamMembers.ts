@@ -5,6 +5,8 @@ import {
   integer,
   timestamp,
   uniqueIndex,
+  boolean,
+  doublePrecision,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
@@ -19,8 +21,38 @@ export const teamMembersTable = pgTable(
       .notNull()
       .references(() => companiesTable.id),
     name: text("name").notNull(),
-    email: text("email").notNull(),
+    /**
+     * Nullable on purpose: not everyone on a cleaning crew uses the app. An
+     * address is what connects a person to a login, so a member without one is
+     * simply staff who exist on the schedule and the map and never sign in.
+     * Anything matching a caller to a seat must therefore treat a missing
+     * email as "never matches" rather than as an empty string.
+     */
+    email: text("email"),
+    phone: text("phone"),
     role: text("role").notNull(), // owner | dispatcher | cleaner
+    /**
+     * A display label, NOT a permission level. A lead cleaner sees exactly what
+     * a cleaner sees; the distinction is who the crew answers to on site, which
+     * is the owner's business and not the app's. Kept out of `role` so it can
+     * never widen anyone's access by accident.
+     */
+    isLead: boolean("is_lead").notNull().default(false),
+    /**
+     * Whether this person is currently on the roster. Distinct from `status`,
+     * which tracks the invite: someone can be fully signed up and still be
+     * off the roster for the winter. Inactive staff keep their history and
+     * their seat, they just stop appearing where work gets assigned.
+     */
+    active: boolean("active").notNull().default(true),
+    /**
+     * Where this person starts and ends their day. Pinned on the live map so
+     * dispatch can see who is nearest a job, and geocoded once on save.
+     */
+    homeAddress: text("home_address"),
+    homeLat: doublePrecision("home_lat"),
+    homeLng: doublePrecision("home_lng"),
+    homeGeocodedAt: timestamp("home_geocoded_at", { withTimezone: true }),
     status: text("status").notNull().default("invited"), // active | invited
     /**
      * The Clerk account that claimed this seat. Null until the invitee signs up

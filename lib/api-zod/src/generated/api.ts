@@ -845,8 +845,14 @@ export const SetBookingCrewResponse = zod.object({
 export const ListTeamMembersResponseItem = zod.object({
   "id": zod.int(),
   "name": zod.string(),
-  "email": zod.string(),
+  "email": zod.string().nullish(),
+  "phone": zod.string().nullish(),
   "role": zod.enum(['owner', 'dispatcher', 'cleaner']),
+  "isLead": zod.boolean(),
+  "active": zod.boolean(),
+  "homeAddress": zod.string().nullish(),
+  "homeLat": zod.number().nullish(),
+  "homeLng": zod.number().nullish(),
   "status": zod.enum(['active', 'invited']),
   "hasLogin": zod.boolean(),
   "inviteEmailSent": zod.boolean(),
@@ -863,15 +869,87 @@ export const ListTeamMembersResponse = zod.array(ListTeamMembersResponseItem)
  */
 export const InviteTeamMemberBody = zod.object({
   "name": zod.string(),
-  "email": zod.string(),
-  "role": zod.enum(['dispatcher', 'cleaner'])
+  "email": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "role": zod.enum(['dispatcher', 'cleaner']),
+  "isLead": zod.boolean().optional(),
+  "active": zod.boolean().optional(),
+  "homeAddress": zod.string().nullish()
 })
 
 export const InviteTeamMemberResponse = zod.object({
   "id": zod.int(),
   "name": zod.string(),
-  "email": zod.string(),
+  "email": zod.string().nullish(),
+  "phone": zod.string().nullish(),
   "role": zod.enum(['owner', 'dispatcher', 'cleaner']),
+  "isLead": zod.boolean(),
+  "active": zod.boolean(),
+  "homeAddress": zod.string().nullish(),
+  "homeLat": zod.number().nullish(),
+  "homeLng": zod.number().nullish(),
+  "status": zod.enum(['active', 'invited']),
+  "hasLogin": zod.boolean(),
+  "inviteEmailSent": zod.boolean(),
+  "blockedByOtherCompany": zod.boolean(),
+  "claimedAt": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * Takes the rows of a staff spreadsheet the owner exported, edited and uploaded again. Rows are matched to existing people by email, or by name when they have no email, so a round trip updates rather than duplicates. Bad rows are reported, never fatal.
+ * @summary Add or update staff in bulk from a spreadsheet
+ */
+export const ImportTeamMembersBody = zod.object({
+  "members": zod.array(zod.object({
+  "name": zod.string(),
+  "email": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "role": zod.enum(['dispatcher', 'cleaner']),
+  "isLead": zod.boolean().optional(),
+  "active": zod.boolean().optional(),
+  "homeAddress": zod.string().nullish()
+}))
+})
+
+export const ImportTeamMembersResponse = zod.object({
+  "added": zod.int(),
+  "updated": zod.int(),
+  "skipped": zod.int(),
+  "errors": zod.array(zod.string())
+})
+
+
+/**
+ * Saves whatever the owner changed on the staff card. A new home address is geocoded here so it can be pinned on the live map. Adding an email to someone who had none also sends them a sign-up invitation.
+ * @summary Edit a staff member's details
+ */
+export const UpdateTeamMemberParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const UpdateTeamMemberBody = zod.object({
+  "name": zod.string().optional(),
+  "email": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "role": zod.enum(['dispatcher', 'cleaner']).optional(),
+  "isLead": zod.boolean().optional(),
+  "active": zod.boolean().optional(),
+  "homeAddress": zod.string().nullish()
+})
+
+export const UpdateTeamMemberResponse = zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "email": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "role": zod.enum(['owner', 'dispatcher', 'cleaner']),
+  "isLead": zod.boolean(),
+  "active": zod.boolean(),
+  "homeAddress": zod.string().nullish(),
+  "homeLat": zod.number().nullish(),
+  "homeLng": zod.number().nullish(),
   "status": zod.enum(['active', 'invited']),
   "hasLogin": zod.boolean(),
   "inviteEmailSent": zod.boolean(),
@@ -1956,6 +2034,15 @@ export const GetMapDataResponse = zod.object({
   "lng": zod.number(),
   "accuracy": zod.number().nullish(),
   "updatedAt": zod.string()
+})),
+  "staffHomes": zod.array(zod.object({
+  "teamMemberId": zod.int(),
+  "name": zod.string(),
+  "roleLabel": zod.string(),
+  "address": zod.string().nullish(),
+  "lat": zod.number(),
+  "lng": zod.number(),
+  "active": zod.boolean()
 })),
   "jobs": zod.array(zod.object({
   "bookingId": zod.int(),

@@ -169,6 +169,13 @@
       "when": 1785985800000,
       "tag": "0023_geocoded_address_cache",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1785987000000,
+      "tag": "0024_staff_details",
+      "breakpoints": true
     }
   ]
 }

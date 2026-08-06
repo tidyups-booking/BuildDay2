@@ -57,6 +57,29 @@ version instead.
 written text, check the text itself, not just the column list. Loose phone
 regexes must be filtered by digit count or they eat ISO dates and job numbers.
 
+# A seat is not the same thing as a person
+
+The roster holds staff who never sign in, so `team_members.email` is nullable
+and only decides whether someone *can* log in. Anything matching a caller to a
+seat must treat a missing address as "never matches", never as `""`.
+
+**Why:** most cleaning crews include people who don't use the app, but the
+owner still needs their phone number and home address on the schedule and the
+map. Requiring an email would have meant a second, parallel notion of "person".
+**How to apply:** a seat with no email is `status: "active"` (nothing is
+outstanding) with `hasLogin: false` — never "waiting to join", which would be a
+lie. Postgres allows many NULLs in the `(company_id, lower(email))` unique
+index, so duplicates stay impossible without blocking emailless staff.
+
+**Lead cleaner is a label, not a role.** It lives in its own `is_lead` column
+and the dropdown flattens `(role, is_lead)` into three words on screen. Adding
+a `lead_cleaner` value to `role` would have put a new row in the authorization
+matrix for something the owner described as purely a title.
+
+**`active` is enforced, not decorative.** Off-roster staff are rejected by crew
+assignment server-side; hiding them in the picker alone would make the toggle a
+suggestion.
+
 # Seat claiming
 
 An invited person is matched to their seat on first sign-in by **verified**

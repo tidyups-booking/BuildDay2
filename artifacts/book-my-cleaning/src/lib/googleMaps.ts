@@ -26,6 +26,12 @@ export type GoogleMapsApi = {
   InfoWindow: any;
   LatLngBounds: any;
   AdvancedMarkerElement: any;
+  /**
+   * Null when the geocoding library couldn't be pulled in. Turning a dropped
+   * pin's coordinates into a street address is a nicety, so its absence must
+   * never stop the map from drawing.
+   */
+  Geocoder: any | null;
 };
 
 let loadPromise: Promise<GoogleMapsApi> | null = null;
@@ -95,16 +101,20 @@ export function loadGoogleMaps(apiKey: string): Promise<GoogleMapsApi> {
     }
     // core holds LatLngBounds; maps holds Map/InfoWindow; marker holds the
     // advanced markers. Requesting them together avoids three round trips.
-    const [core, maps, marker] = await Promise.all([
+    const [core, maps, marker, geocoding] = await Promise.all([
       g.importLibrary("core"),
       g.importLibrary("maps"),
       g.importLibrary("marker"),
+      // Only used to name a dropped pin. Optional on purpose: a key without
+      // Geocoding API must still get a working map.
+      g.importLibrary("geocoding").catch(() => null),
     ]);
     return {
       Map: maps.Map,
       InfoWindow: maps.InfoWindow,
       LatLngBounds: core.LatLngBounds,
       AdvancedMarkerElement: marker.AdvancedMarkerElement,
+      Geocoder: geocoding?.Geocoder ?? null,
     };
   })();
 
@@ -120,6 +130,32 @@ export function loadGoogleMaps(apiKey: string): Promise<GoogleMapsApi> {
 
 /** The map id required for AdvancedMarkerElement styling. */
 export const DEMO_MAP_ID = "DEMO_MAP_ID";
+
+/**
+ * Name a point the dispatcher clicked on the map.
+ *
+ * Returns null rather than throwing when the lookup is unavailable or comes
+ * back empty — the pin is still perfectly droppable, it just gets called by
+ * its coordinates instead of a street address.
+ */
+export async function reverseGeocode(
+  api: GoogleMapsApi,
+  lat: number,
+  lng: number,
+): Promise<string | null> {
+  if (!api.Geocoder) return null;
+  try {
+    const { results } = await new api.Geocoder().geocode({
+      location: { lat, lng },
+    });
+    const formatted = results?.[0]?.formatted_address;
+    return typeof formatted === "string" && formatted.trim()
+      ? formatted.trim()
+      : null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Address autocomplete, loaded separately from the map itself.

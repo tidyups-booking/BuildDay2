@@ -46,7 +46,11 @@ export async function findBlockedEmails(
         inArray(sql`lower(${teamMembersTable.email})`, wanted),
       ),
     );
-  for (const row of claimedRows) blocked.add(row.email.trim().toLowerCase());
+  for (const row of claimedRows) {
+    // A claimed seat always has an address, but the column is nullable for
+    // staff who never sign in — skip rather than coercing null to "".
+    if (row.email) blocked.add(row.email.trim().toLowerCase());
+  }
 
   const remaining = wanted.filter((e) => !blocked.has(e));
   if (remaining.length === 0) return blocked;

@@ -8,9 +8,11 @@
 import type { MapCleaner } from './mapCleaner';
 import type { MapJob } from './mapJob';
 import type { MapPin } from './mapPin';
+import type { StaffHome } from './staffHome';
 
 export interface MapData {
   cleaners: MapCleaner[];
+  staffHomes: StaffHome[];
   jobs: MapJob[];
   pins: MapPin[];
 }

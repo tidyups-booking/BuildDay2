@@ -105,9 +105,14 @@ const MATRIX: Record<string, Role[]> = {
   "DELETE /services/:id": ["owner"],
   // Profile: everyone signed in.
   "GET /me": ["owner", "dispatcher", "cleaner"],
-  // Team: dispatchers may look, only the owner may change it.
+  // Staff: dispatchers may look and keep the roster tidy (phone numbers, home
+  // addresses, who is on this week). Adding, removing, and changing anyone's
+  // role or email — the things that decide who can sign in and see what — stay
+  // with the owner.
   "GET /team": ["owner", "dispatcher"],
   "POST /team": ["owner"],
+  "PATCH /team/:id": ["owner", "dispatcher"],
+  "POST /team/import": ["owner"],
   "DELETE /team/:id": ["owner"],
   // Calls and transcripts: customer phone numbers and recordings — never crew.
   "GET /calls": ["owner", "dispatcher"],

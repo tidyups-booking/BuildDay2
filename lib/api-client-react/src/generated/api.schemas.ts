@@ -203,8 +203,47 @@ export const TeamMemberInputRole = {
 
 export interface TeamMemberInput {
   name: string;
-  email: string;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  phone?: string | null;
   role: TeamMemberInputRole;
+  isLead?: boolean;
+  active?: boolean;
+  /** @nullable */
+  homeAddress?: string | null;
+}
+
+export type TeamMemberUpdateRole = typeof TeamMemberUpdateRole[keyof typeof TeamMemberUpdateRole];
+
+
+export const TeamMemberUpdateRole = {
+  dispatcher: 'dispatcher',
+  cleaner: 'cleaner',
+} as const;
+
+export interface TeamMemberUpdate {
+  name?: string;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  phone?: string | null;
+  role?: TeamMemberUpdateRole;
+  isLead?: boolean;
+  active?: boolean;
+  /** @nullable */
+  homeAddress?: string | null;
+}
+
+export interface ImportTeamMembersInput {
+  members: TeamMemberInput[];
+}
+
+export interface ImportTeamMembersResult {
+  added: number;
+  updated: number;
+  skipped: number;
+  errors: string[];
 }
 
 export type TeamMemberRole = typeof TeamMemberRole[keyof typeof TeamMemberRole];
@@ -227,8 +266,19 @@ export const TeamMemberStatus = {
 export interface TeamMember {
   id: number;
   name: string;
-  email: string;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  phone?: string | null;
   role: TeamMemberRole;
+  isLead: boolean;
+  active: boolean;
+  /** @nullable */
+  homeAddress?: string | null;
+  /** @nullable */
+  homeLat?: number | null;
+  /** @nullable */
+  homeLng?: number | null;
   status: TeamMemberStatus;
   hasLogin: boolean;
   inviteEmailSent: boolean;
@@ -742,8 +792,20 @@ export interface MapPin {
   lng: number;
 }
 
+export interface StaffHome {
+  teamMemberId: number;
+  name: string;
+  roleLabel: string;
+  /** @nullable */
+  address?: string | null;
+  lat: number;
+  lng: number;
+  active: boolean;
+}
+
 export interface MapData {
   cleaners: MapCleaner[];
+  staffHomes: StaffHome[];
   jobs: MapJob[];
   pins: MapPin[];
 }

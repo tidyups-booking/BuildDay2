@@ -159,7 +159,12 @@ function AssignCrewDialog({
     setSelected(booking ? (booking.crew ?? []).map((c) => c.id) : []);
   }, [booking]);
 
-  const assignable = (team ?? []).filter((m) => m.role !== "dispatcher");
+  // Dispatchers don't clean, and someone taken off the roster shouldn't be
+  // offered — but keep anyone already on this job so an old assignment stays
+  // visible and can be removed rather than silently vanishing.
+  const assignable = (team ?? []).filter(
+    (m) => m.role !== "dispatcher" && (m.active || selected.includes(m.id)),
+  );
 
   const toggle = (id: number) =>
     setSelected((prev) =>

@@ -351,7 +351,9 @@ async function tryClaimSeat(userId: string): Promise<Caller | null> {
           company,
           teamMemberId: claimed.id,
           name: claimed.name,
-          email: claimed.email,
+          // A seat can exist without an address (staff who never sign in), but
+          // a caller who just claimed one by verified email always has it.
+          email: claimed.email ?? "",
         };
       }
     }
@@ -400,7 +402,7 @@ export async function resolveCaller(userId: string): Promise<Caller> {
         company,
         teamMemberId: seat.id,
         name: seat.name,
-        email: seat.email,
+        email: seat.email ?? "",
       };
     }
   }

@@ -4,6 +4,7 @@ class FakeMap {}
 class FakeInfoWindow {}
 class FakeLatLngBounds {}
 class FakeAdvancedMarkerElement {}
+class FakeGeocoder {}
 
 /**
  * Reproduce Google's `loading=async` bootstrap faithfully: `google.maps` exists
@@ -15,7 +16,7 @@ class FakeAdvancedMarkerElement {}
  * mode, and the page died with "Map is not a constructor". These tests fail if
  * anyone reintroduces that assumption.
  */
-function stubGoogleAsyncBootstrap() {
+function stubGoogleAsyncBootstrap({ geocodingFails = false } = {}) {
   const importLibrary = vi.fn(async (name: string) => {
     switch (name) {
       case "core":
@@ -24,6 +25,9 @@ function stubGoogleAsyncBootstrap() {
         return { Map: FakeMap, InfoWindow: FakeInfoWindow };
       case "marker":
         return { AdvancedMarkerElement: FakeAdvancedMarkerElement };
+      case "geocoding":
+        if (geocodingFails) throw new Error("Geocoding API not enabled");
+        return { Geocoder: FakeGeocoder };
       default:
         throw new Error(`unexpected library: ${name}`);
     }
@@ -51,11 +55,25 @@ describe("loadGoogleMaps", () => {
     expect(api.InfoWindow).toBe(FakeInfoWindow);
     expect(api.LatLngBounds).toBe(FakeLatLngBounds);
     expect(api.AdvancedMarkerElement).toBe(FakeAdvancedMarkerElement);
+    expect(api.Geocoder).toBe(FakeGeocoder);
     expect(importLibrary.mock.calls.map((c) => c[0]).sort()).toEqual([
       "core",
+      "geocoding",
       "maps",
       "marker",
     ]);
+  });
+
+  it("still gives a working map when geocoding is unavailable", async () => {
+    // A key without Geocoding API must not cost the dispatcher their map —
+    // only the ability to name a dropped pin by its street address.
+    stubGoogleAsyncBootstrap({ geocodingFails: true });
+    const { loadGoogleMaps } = await import("./googleMaps");
+
+    const api = await loadGoogleMaps("test-key");
+
+    expect(api.Map).toBe(FakeMap);
+    expect(api.Geocoder).toBeNull();
   });
 
   it("shares one load across concurrent and repeat callers", async () => {
@@ -70,8 +88,8 @@ describe("loadGoogleMaps", () => {
 
     expect(second).toBe(first);
     expect(third).toBe(first);
-    // Three calls total: core, maps and marker imported exactly once each.
-    expect(importLibrary).toHaveBeenCalledTimes(3);
+    // Four calls total: core, maps, marker and geocoding, once each.
+    expect(importLibrary).toHaveBeenCalledTimes(4);
   });
 
   it("rejects, and allows a retry, when the bootstrap has no importLibrary", async () => {

@@ -11,8 +11,19 @@ import type { TeamMemberStatus } from './teamMemberStatus';
 export interface TeamMember {
   id: number;
   name: string;
-  email: string;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  phone?: string | null;
   role: TeamMemberRole;
+  isLead: boolean;
+  active: boolean;
+  /** @nullable */
+  homeAddress?: string | null;
+  /** @nullable */
+  homeLat?: number | null;
+  /** @nullable */
+  homeLng?: number | null;
   status: TeamMemberStatus;
   hasLogin: boolean;
   inviteEmailSent: boolean;

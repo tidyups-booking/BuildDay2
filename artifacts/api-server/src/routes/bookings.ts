@@ -340,14 +340,18 @@ router.put(
               and(
                 eq(teamMembersTable.companyId, company.id),
                 inArray(teamMembersTable.id, requested),
+                // Off the roster means off the schedule. Enforced here rather
+                // than only hidden in the picker, so the toggle on the staff
+                // card is a real rule and not a suggestion.
+                eq(teamMembersTable.active, true),
               ),
             )
         : [];
 
     if (eligible.length !== requested.length) {
-      res
-        .status(400)
-        .json({ error: "One or more people are not on your team" });
+      res.status(400).json({
+        error: "One or more people are not on your team, or are off the roster",
+      });
       return;
     }
 

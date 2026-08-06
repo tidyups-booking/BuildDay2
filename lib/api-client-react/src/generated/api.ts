@@ -37,6 +37,8 @@ import type {
   GetMapDataParams,
   GetScheduleParams,
   HealthStatus,
+  ImportTeamMembersInput,
+  ImportTeamMembersResult,
   JobberCalendarSync,
   JobberConnectStart,
   JobberSkipInput,
@@ -60,7 +62,8 @@ import type {
   StaffLocationInput,
   SyncResult,
   TeamMember,
-  TeamMemberInput
+  TeamMemberInput,
+  TeamMemberUpdate
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -1672,6 +1675,151 @@ export const useInviteTeamMember = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getInviteTeamMemberMutationOptions(options));
+    }
+
+export const getImportTeamMembersUrl = () => {
+
+
+
+
+  return `/api/team/import`
+}
+
+/**
+ * Takes the rows of a staff spreadsheet the owner exported, edited and uploaded again. Rows are matched to existing people by email, or by name when they have no email, so a round trip updates rather than duplicates. Bad rows are reported, never fatal.
+ * @summary Add or update staff in bulk from a spreadsheet
+ */
+export const importTeamMembers = async (importTeamMembersInput: ImportTeamMembersInput, options?: Parameters<typeof customFetch>[1]): Promise<ImportTeamMembersResult> => {
+
+  return customFetch<ImportTeamMembersResult>(getImportTeamMembersUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(importTeamMembersInput)
+  }
+);}
+
+
+
+
+
+export const getImportTeamMembersMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof importTeamMembers>>, TError,{data: BodyType<ImportTeamMembersInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof importTeamMembers>>, TError,{data: BodyType<ImportTeamMembersInput>}, TContext> => {
+
+const mutationKey = ['importTeamMembers'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof importTeamMembers>>, {data: BodyType<ImportTeamMembersInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  importTeamMembers(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ImportTeamMembersMutationResult = NonNullable<Awaited<ReturnType<typeof importTeamMembers>>>
+    export type ImportTeamMembersMutationBody = BodyType<ImportTeamMembersInput>
+    export type ImportTeamMembersMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Add or update staff in bulk from a spreadsheet
+ */
+export const useImportTeamMembers = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof importTeamMembers>>, TError,{data: BodyType<ImportTeamMembersInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof importTeamMembers>>,
+        TError,
+        {data: BodyType<ImportTeamMembersInput>},
+        TContext
+      > => {
+      return useMutation(getImportTeamMembersMutationOptions(options));
+    }
+
+export const getUpdateTeamMemberUrl = (id: number,) => {
+
+
+
+
+  return `/api/team/${id}`
+}
+
+/**
+ * Saves whatever the owner changed on the staff card. A new home address is geocoded here so it can be pinned on the live map. Adding an email to someone who had none also sends them a sign-up invitation.
+ * @summary Edit a staff member's details
+ */
+export const updateTeamMember = async (id: number,
+    teamMemberUpdate: TeamMemberUpdate, options?: Parameters<typeof customFetch>[1]): Promise<TeamMember> => {
+
+  return customFetch<TeamMember>(getUpdateTeamMemberUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(teamMemberUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateTeamMemberMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateTeamMember>>, TError,{id: number;data: BodyType<TeamMemberUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateTeamMember>>, TError,{id: number;data: BodyType<TeamMemberUpdate>}, TContext> => {
+
+const mutationKey = ['updateTeamMember'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateTeamMember>>, {id: number;data: BodyType<TeamMemberUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateTeamMember(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateTeamMemberMutationResult = NonNullable<Awaited<ReturnType<typeof updateTeamMember>>>
+    export type UpdateTeamMemberMutationBody = BodyType<TeamMemberUpdate>
+    export type UpdateTeamMemberMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Edit a staff member's details
+ */
+export const useUpdateTeamMember = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateTeamMember>>, TError,{id: number;data: BodyType<TeamMemberUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateTeamMember>>,
+        TError,
+        {id: number;data: BodyType<TeamMemberUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateTeamMemberMutationOptions(options));
     }
 
 export const getRemoveTeamMemberUrl = (id: number,) => {
