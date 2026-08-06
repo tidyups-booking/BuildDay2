@@ -12,4 +12,5 @@ export interface SendQuoteInput {
      * @maxLength 1600
      */
   message: string;
+  confirmPriceMismatch?: boolean;
 }

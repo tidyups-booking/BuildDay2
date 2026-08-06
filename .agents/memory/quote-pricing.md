@@ -26,6 +26,22 @@ the booking, (b) feed the shared pricing package rather than being recomputed
 locally, and (c) be included in the send-time snapshot. Never display a derived
 total for a booking that already has a sent snapshot.
 
+# The text must quote the price that gets frozen
+
+The quote SMS is freely editable before sending, but the snapshot taken at send
+time is the *calculated* price, not whatever number is in the text. So the
+message body and the snapshot must agree: sending is refused (both in the dialog
+and again on the server) when the body no longer contains the calculated
+figure, unless the dispatcher explicitly confirms the mismatch.
+
+**Why:** a hand-edited discount promised the customer one figure while the
+dashboard recorded another, and nobody found out until the crew arrived.
+
+**How to apply:** the "which figure counts" rule — deposit when there is one,
+otherwise the total — lives in the shared pricing package alongside the matcher,
+so client warning and server refusal can never disagree. Any change to how the
+draft leads with money must move that anchor rule too.
+
 # Money rounding
 
 Neither obvious rounding approach is correct here:

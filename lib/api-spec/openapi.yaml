@@ -1693,6 +1693,11 @@ components:
       required: [message]
       properties:
         message: { type: string, minLength: 1, maxLength: 1600 }
+        # The edited message no longer contains the calculated price, and the
+        # dispatcher has explicitly confirmed they mean to send it anyway.
+        # Without this, such a send is refused so the booking's frozen quote
+        # can't silently disagree with what the customer was texted.
+        confirmPriceMismatch: { type: boolean }
     JobberSkipInput:
       type: object
       required: [skipped]

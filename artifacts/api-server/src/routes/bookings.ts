@@ -44,6 +44,11 @@ import {
   computeQuoteTotals,
   formatAppointment,
 } from "../lib/quotes";
+import {
+  messageContainsQuotePrice,
+  formatMoney,
+  quotedPriceAnchor,
+} from "@workspace/pricing";
 import { ensureQuoteToken, quoteUrl } from "./publicQuote";
 import type { Company } from "@workspace/db";
 import {
@@ -835,6 +840,25 @@ router.post(
     const content = parsed.data.message.includes(link)
       ? parsed.data.message
       : `${parsed.data.message.trimEnd()}\n\nView your estimate here:\n${link}`;
+
+    // The frozen quote below records the calculated price. If a hand-edit has
+    // removed or changed that number in the text, the customer would be
+    // promised one figure while the booking records another — refuse unless
+    // the dispatcher has explicitly confirmed the mismatch in the dialog.
+    const totals = computeQuoteTotals(company, booking);
+    if (
+      !messageContainsQuotePrice(content, totals) &&
+      !parsed.data.confirmPriceMismatch
+    ) {
+      const anchor = quotedPriceAnchor(totals);
+      res.status(409).json({
+        error:
+          `The message doesn't mention the calculated price of ${formatMoney(anchor ?? totals.total)}. ` +
+          "Change the price in the booking's calculator, or confirm you want to send it anyway.",
+      });
+      return;
+    }
+
     const apiKey = companyQuoKey(company);
     if (!apiKey) {
       res
@@ -876,7 +900,7 @@ router.post(
           // recomputed from current settings, which is right for a draft but
           // wrong for a commitment: if the owner edits their tax rate next month
           // this booking must still show what the customer was told.
-          quoteSentTotals: computeQuoteTotals(company, booking),
+          quoteSentTotals: totals,
         })
         .where(
           and(

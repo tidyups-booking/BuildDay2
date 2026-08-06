@@ -73,6 +73,10 @@ import {
   type QuoteDraft,
 } from "@/components/QuoteCalculator";
 import { companyQuoteRates } from "@/lib/rates";
+import {
+  messageContainsQuotePrice,
+  quotedPriceAnchor,
+} from "@workspace/pricing";
 
 type BookingStatus = "pending" | "confirmed" | "completed" | "canceled";
 
@@ -649,15 +653,37 @@ function QuoteDialog({
   const sendQuote = useSendQuote();
   const [message, setMessage] = useState("");
   const [touched, setTouched] = useState(false);
+  // Armed after the first Send click on a message whose price no longer
+  // matches the calculator — the second click is the explicit confirmation.
+  const [mismatchArmed, setMismatchArmed] = useState(false);
 
   // Seed the box from the server draft, but never clobber the dispatcher's edits.
   useEffect(() => {
     if (preview?.message && !touched) setMessage(preview.message);
   }, [preview?.message, touched]);
 
+  // The price the calculator says this job costs — the number that will be
+  // frozen against the booking when the text goes out.
+  const anchor = preview?.totals ? quotedPriceAnchor(preview.totals) : null;
+  const priceMismatch =
+    anchor != null && preview?.totals
+      ? !messageContainsQuotePrice(message, preview.totals)
+      : false;
+
   const handleSend = () => {
+    if (priceMismatch && !mismatchArmed) {
+      // First click: warn instead of sending.
+      setMismatchArmed(true);
+      return;
+    }
     sendQuote.mutate(
-      { id: booking.id, data: { message } },
+      {
+        id: booking.id,
+        data: {
+          message,
+          ...(priceMismatch ? { confirmPriceMismatch: true } : {}),
+        },
+      },
       {
         onSuccess: () => {
           queryClient.invalidateQueries({
@@ -775,6 +801,8 @@ function QuoteDialog({
                 value={message}
                 onChange={(e) => {
                   setTouched(true);
+                  // Any edit gets a fresh warning if the price is still wrong.
+                  setMismatchArmed(false);
                   setMessage(e.target.value);
                 }}
                 className="font-mono text-sm"
@@ -783,6 +811,29 @@ function QuoteDialog({
                 {message.length} characters · edit freely before sending
               </p>
             </div>
+            {priceMismatch && anchor != null && (
+              <div
+                className="text-sm text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-lg p-3"
+                data-testid="text-price-mismatch"
+              >
+                <p>
+                  This message no longer mentions the calculated price of{" "}
+                  <strong className="tabular-nums">
+                    {formatMoney(anchor)}
+                  </strong>{" "}
+                  — the booking will still record that amount, not whatever
+                  number is in the text. To actually change the price, close
+                  this and use <strong>Edit &amp; reschedule</strong> to adjust
+                  it in the calculator.
+                </p>
+                {mismatchArmed && (
+                  <p className="mt-2 font-medium">
+                    Press <strong>Send anyway</strong> if you really mean to
+                    text it as written.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         )}
 
@@ -798,7 +849,11 @@ function QuoteDialog({
             className="gap-2"
           >
             <MessageSquareText className="w-4 h-4" />
-            {sendQuote.isPending ? "Sending..." : "Send text"}
+            {sendQuote.isPending
+              ? "Sending..."
+              : mismatchArmed && priceMismatch
+                ? "Send anyway"
+                : "Send text"}
           </Button>
         </DialogFooter>
       </DialogContent>

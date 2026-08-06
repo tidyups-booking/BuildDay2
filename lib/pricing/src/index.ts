@@ -176,3 +176,67 @@ export function formatMoney(amount: number): string {
 export function formatRate(rate: number): string {
   return `${Number(rate.toFixed(2))}%`;
 }
+
+/**
+ * The dollar figure a quote text promises the customer.
+ *
+ * The generated draft leads with the deposit when there is one, and the total
+ * otherwise — so that is the number a hand-edit can put the booking at odds
+ * with. Null when nothing has been priced yet, in which case the dispatcher is
+ * expected to type an amount by hand and there is nothing to contradict.
+ */
+export function quotedPriceAnchor(
+  totals: Pick<QuoteTotals, "total" | "deposit">,
+): number | null {
+  if (totals.deposit > 0) return totals.deposit;
+  if (totals.total > 0) return totals.total;
+  return null;
+}
+
+/**
+ * Does the message still quote the calculated price?
+ *
+ * Shared by the dialog (to warn before sending) and the server (to refuse an
+ * unconfirmed mismatch) so the two can never disagree about what counts as
+ * "the price is in the text". Lenient about formatting — "$150.00", "$150" for
+ * whole dollars, and "$1,500.00" all count — but the amount itself must match
+ * to the cent.
+ */
+export function messageContainsQuotePrice(
+  message: string,
+  totals: Pick<QuoteTotals, "total" | "deposit">,
+): boolean {
+  const anchor = quotedPriceAnchor(totals);
+  if (anchor == null) return true;
+
+  const cents = Math.round(Math.abs(anchor) * 100);
+  const dollars = Math.floor(cents / 100);
+  const centPart = String(cents % 100).padStart(2, "0");
+  const withCommas = dollars.toLocaleString("en-US");
+
+  const candidates = new Set<string>([
+    `$${dollars}.${centPart}`,
+    `$${withCommas}.${centPart}`,
+  ]);
+  if (cents % 100 === 0) {
+    candidates.add(`$${dollars}`);
+    candidates.add(`$${withCommas}`);
+  }
+
+  for (const candidate of candidates) {
+    let idx = message.indexOf(candidate);
+    while (idx !== -1) {
+      // "$150" must not be satisfied by "$150.75" or "$1500".
+      const next = message[idx + candidate.length];
+      if (
+        next === undefined ||
+        !/[\d.]/.test(next) ||
+        (next === "." && !/\d/.test(message[idx + candidate.length + 1] ?? ""))
+      ) {
+        return true;
+      }
+      idx = message.indexOf(candidate, idx + 1);
+    }
+  }
+  return false;
+}

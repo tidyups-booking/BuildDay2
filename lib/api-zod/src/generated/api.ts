@@ -1604,7 +1604,8 @@ export const sendQuoteBodyMessageMax = 1600;
 
 
 export const SendQuoteBody = zod.object({
-  "message": zod.string().min(1).max(sendQuoteBodyMessageMax)
+  "message": zod.string().min(1).max(sendQuoteBodyMessageMax),
+  "confirmPriceMismatch": zod.boolean().optional()
 })
 
 
