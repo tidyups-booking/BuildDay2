@@ -651,11 +651,91 @@ function QuoteDialog({
     query: { queryKey: getGetQuotePreviewQueryKey(booking.id) },
   });
   const sendQuote = useSendQuote();
+  const updateBooking = useUpdateBooking();
+  const { data: company } = useGetCompany();
+  const rates = companyQuoteRates(company);
   const [message, setMessage] = useState("");
   const [touched, setTouched] = useState(false);
   // Armed after the first Send click on a message whose price no longer
   // matches the calculator — the second click is the explicit confirmation.
   const [mismatchArmed, setMismatchArmed] = useState(false);
+
+  // Inline price editing, so knocking $20 off a job doesn't mean closing the
+  // dialog and finding the booking again. The draft starts from what's stored
+  // on the booking; nothing is saved until "Save price" is pressed.
+  const [showPricing, setShowPricing] = useState(false);
+  const storedDraft: QuoteDraft = {
+    hours: booking.quoteHours ?? null,
+    crewLabel: booking.quoteCrewLabel ?? null,
+    hourlyRate: booking.quoteHourlyRate ?? null,
+    fuelSurcharge: booking.quoteFuelSurcharge ?? null,
+    discountAmount: booking.quoteDiscountAmount ?? null,
+    referralSource: booking.quoteReferralSource ?? null,
+    deposit: booking.quoteDeposit ?? null,
+  };
+  const [draft, setDraft] = useState<QuoteDraft>(storedDraft);
+  const [savedDraft, setSavedDraft] = useState<QuoteDraft>(storedDraft);
+  const dirty = (Object.keys(draft) as (keyof QuoteDraft)[]).some(
+    (k) => draft[k] !== savedDraft[k],
+  );
+
+  const handleSavePrice = () => {
+    if (draft.hourlyRate != null && draft.hourlyRate < 0) {
+      toast({
+        title: "Check the rate",
+        description: "An hourly rate can't be negative.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const priced =
+      draft.hours != null && draft.hours > 0 && draft.hourlyRate != null;
+    updateBooking.mutate(
+      {
+        id: booking.id,
+        data: {
+          quoteHours: draft.hours,
+          quoteCrewLabel: draft.crewLabel,
+          quoteHourlyRate: draft.hourlyRate,
+          quoteFuelSurcharge: draft.fuelSurcharge,
+          quoteDiscountAmount: draft.discountAmount,
+          quoteReferralSource: draft.referralSource,
+          quoteDeposit: draft.deposit,
+          // Same rule as the booking form: once the calculator prices the
+          // job, a flat receptionist price no longer applies.
+          quotedAmount: priced ? null : (booking.quotedAmount ?? null),
+        },
+      },
+      {
+        onSuccess: () => {
+          setSavedDraft(draft);
+          queryClient.invalidateQueries({
+            queryKey: getListBookingsQueryKey(),
+          });
+          queryClient.invalidateQueries({
+            queryKey: getGetQuotePreviewQueryKey(booking.id),
+          });
+          // The old draft text quoted the old price, so let the regenerated
+          // one replace it — keeping stale hand-edits would re-create the
+          // exact mismatch the dispatcher just fixed.
+          setTouched(false);
+          setMismatchArmed(false);
+          toast({
+            title: "Price updated",
+            description:
+              "The booking now records the new price, and the message below has been redrafted to match.",
+          });
+        },
+        onError: (error: any) => {
+          toast({
+            title: "Couldn't update the price",
+            description: error?.message || "Please try again.",
+            variant: "destructive",
+          });
+        },
+      },
+    );
+  };
 
   // Seed the box from the server draft, but never clobber the dispatcher's edits.
   useEffect(() => {
@@ -726,9 +806,8 @@ function QuoteDialog({
           <div className="space-y-4">
             {(booking.quoteTotals?.subtotal ?? 0) === 0 && (
               <div className="text-sm text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-lg p-3">
-                No price set yet. Close this and use{" "}
-                <strong>Edit &amp; reschedule</strong> to price the job, or type
-                the amount straight into the message below.
+                No price set yet. Use <strong>Adjust price</strong> below to
+                price the job, or type the amount straight into the message.
               </div>
             )}
             {preview?.totals && preview.totals.subtotal > 0 && (
@@ -791,6 +870,43 @@ function QuoteDialog({
                 {preview?.blockedReason}
               </div>
             )}
+            <div className="space-y-3">
+              <button
+                type="button"
+                onClick={() => setShowPricing((v) => !v)}
+                className="flex items-center gap-2 text-sm font-medium text-brand-pink hover:underline"
+                data-testid="button-adjust-price"
+              >
+                <DollarSign className="w-4 h-4" />
+                {showPricing ? "Hide price adjustments" : "Adjust price"}
+              </button>
+              {showPricing && (
+                <>
+                  <QuoteCalculator
+                    value={draft}
+                    onChange={setDraft}
+                    rates={rates}
+                    serviceName={booking.service}
+                    flatAmount={booking.quotedAmount ?? null}
+                  />
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs text-muted-foreground">
+                      Saving updates the booking&apos;s price and redrafts the
+                      message to match.
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleSavePrice}
+                      disabled={!dirty || updateBooking.isPending}
+                      data-testid="button-save-price"
+                    >
+                      {updateBooking.isPending ? "Saving..." : "Save price"}
+                    </Button>
+                  </div>
+                </>
+              )}
+            </div>
             <div>
               <Label htmlFor="quote-message" className="mb-2 block">
                 Message
@@ -822,9 +938,9 @@ function QuoteDialog({
                     {formatMoney(anchor)}
                   </strong>{" "}
                   — the booking will still record that amount, not whatever
-                  number is in the text. To actually change the price, close
-                  this and use <strong>Edit &amp; reschedule</strong> to adjust
-                  it in the calculator.
+                  number is in the text. To actually change the price, use{" "}
+                  <strong>Adjust price</strong> above and save it, and the
+                  message will be redrafted to match.
                 </p>
                 {mismatchArmed && (
                   <p className="mt-2 font-medium">
