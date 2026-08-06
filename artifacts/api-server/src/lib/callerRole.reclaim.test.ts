@@ -8,9 +8,13 @@
  * person is dropped into onboarding on every sign-in — where the only thing
  * on offer is creating a second, empty company beside the one they belong to.
  *
- * These tests pin the release and, just as importantly, the three cases that
- * must NOT release a seat: a live holder, an unverified email, and Clerk
- * being unreachable.
+ * These tests pin the release and, just as importantly, every case that must
+ * NOT release one: a live holder, an unverified email, Clerk being
+ * unreachable, and a record outside its recovery window. That last one is the
+ * fence around the whole feature — a verified email proves who you are today,
+ * not that you are the person who held the record, so recovery is scoped to
+ * the stranded records and expires rather than standing open for anyone who
+ * later acquires the address.
  */
 import {
   beforeAll,
@@ -30,12 +34,22 @@ type ClerkAccount = { emails: Array<{ address: string; verified: boolean }> };
 
 const clerkAccounts = new Map<string, ClerkAccount>();
 let clerkUnreachable = false;
+/**
+ * Ids whose lookup errors while the rest of Clerk answers normally — a rate
+ * limit or a timeout on one request. This is the "indeterminate" case: we
+ * cannot tell whether the holder is gone, which is different from knowing they
+ * are still there.
+ */
+const clerkErroringIds = new Set<string>();
 
 vi.mock("@clerk/express", () => ({
   clerkClient: {
     users: {
       getUser: async (id: string) => {
         if (clerkUnreachable) throw new Error("clerk down");
+        if (clerkErroringIds.has(id)) {
+          throw Object.assign(new Error("Too Many Requests"), { status: 429 });
+        }
         const account = clerkAccounts.get(id);
         if (!account) {
           // Shape matches Clerk's own not-found error.
@@ -74,6 +88,9 @@ const LIVE_USER = `user_live_${runId}`;
 const RETURNING_USER = `user_returning_${runId}`;
 const RETURNING_OWNER = `user_returningowner_${runId}`;
 
+/** Inside the recovery window — the state the stranded records are left in. */
+const OPEN_WINDOW = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+
 let companyId: number;
 let seatId: number;
 
@@ -83,6 +100,7 @@ beforeAll(async () => {
     .values({
       ownerUserId: GHOST_OWNER,
       ownerEmail: OWNER_EMAIL,
+      ownerRecoveryUntil: OPEN_WINDOW,
       name: `Reclaim Co ${runId}`,
       timezone: "America/Edmonton",
     })
@@ -98,6 +116,7 @@ beforeAll(async () => {
       role: "dispatcher",
       status: "active",
       clerkUserId: GHOST_USER,
+      recoveryUntil: OPEN_WINDOW,
     })
     .returning();
   seatId = seat!.id;
@@ -115,17 +134,26 @@ afterAll(async () => {
 
 beforeEach(async () => {
   clerkUnreachable = false;
+  clerkErroringIds.clear();
   clerkAccounts.clear();
   forgetDeniedCaller();
   // Back to the broken state: the seat and the company are both held by
-  // accounts Clerk no longer knows about.
+  // accounts Clerk no longer knows about, both inside their recovery window.
   await db
     .update(teamMembersTable)
-    .set({ clerkUserId: GHOST_USER })
+    .set({
+      clerkUserId: GHOST_USER,
+      email: SEAT_EMAIL,
+      recoveryUntil: OPEN_WINDOW,
+    })
     .where(eq(teamMembersTable.id, seatId));
   await db
     .update(companiesTable)
-    .set({ ownerUserId: GHOST_OWNER, ownerEmail: OWNER_EMAIL })
+    .set({
+      ownerUserId: GHOST_OWNER,
+      ownerEmail: OWNER_EMAIL,
+      ownerRecoveryUntil: OPEN_WINDOW,
+    })
     .where(eq(companiesTable.id, companyId));
 });
 
@@ -221,6 +249,76 @@ describe("a seat held by a deleted Clerk account", () => {
       .from(teamMembersTable)
       .where(inArray(teamMembersTable.id, [seatId]));
     expect(rows[0]?.clerkUserId).toBe(GHOST_USER);
+  });
+
+  it("stays put once the recovery window has closed", async () => {
+    // The takeover case. Someone deletes their account and the address is
+    // later re-registered by a different person, who verifies it honestly.
+    // Every other check passes — the holder really is gone, the email really
+    // is verified — and only the closed window stops them walking in.
+    await db
+      .update(teamMembersTable)
+      .set({ recoveryUntil: new Date(Date.now() - 60_000) })
+      .where(eq(teamMembersTable.id, seatId));
+    clerkAccounts.set(RETURNING_USER, {
+      emails: [{ address: SEAT_EMAIL, verified: true }],
+    });
+
+    const caller = await resolveCaller(RETURNING_USER);
+
+    expect(caller.company).toBeNull();
+    const [row] = await db
+      .select({ clerkUserId: teamMembersTable.clerkUserId })
+      .from(teamMembersTable)
+      .where(eq(teamMembersTable.id, seatId));
+    expect(row?.clerkUserId).toBe(GHOST_USER);
+  });
+
+  it("stays put for a seat that never had a recovery window", async () => {
+    // Seats created after the repair — the normal case from here on.
+    await db
+      .update(teamMembersTable)
+      .set({ recoveryUntil: null })
+      .where(eq(teamMembersTable.id, seatId));
+    clerkAccounts.set(RETURNING_USER, {
+      emails: [{ address: SEAT_EMAIL, verified: true }],
+    });
+
+    const caller = await resolveCaller(RETURNING_USER);
+
+    expect(caller.company).toBeNull();
+  });
+
+  it("matches a stored address that has stray whitespace", async () => {
+    await db
+      .update(teamMembersTable)
+      .set({ email: `  ${SEAT_EMAIL.toUpperCase()} ` })
+      .where(eq(teamMembersTable.id, seatId));
+    clerkAccounts.set(RETURNING_USER, {
+      emails: [{ address: SEAT_EMAIL, verified: true }],
+    });
+
+    const caller = await resolveCaller(RETURNING_USER);
+
+    expect(caller.teamMemberId).toBe(seatId);
+  });
+
+  it("retries immediately after a Clerk check it could not complete", async () => {
+    clerkAccounts.set(RETURNING_USER, {
+      emails: [{ address: SEAT_EMAIL, verified: true }],
+    });
+    // The caller's own lookup succeeds; only the check on the seat's holder
+    // fails. Nothing is known about the holder, so nothing may be concluded.
+    clerkErroringIds.add(GHOST_USER);
+
+    expect((await resolveCaller(RETURNING_USER)).company).toBeNull();
+
+    // Clerk recovers. Without the indeterminate carve-out the previous answer
+    // would be cached and this person would stay locked out for the window.
+    clerkErroringIds.clear();
+    const caller = await resolveCaller(RETURNING_USER);
+
+    expect(caller.teamMemberId).toBe(seatId);
   });
 });
 

@@ -30,6 +30,17 @@ export const companiesTable = pgTable("companies", {
   // this column is what lets them back in. Null for companies created before
   // the column existed.
   ownerEmail: text("owner_email"),
+  // How long owner_email may be used to re-attach this company, and nothing
+  // more. A verified email is a weak proof of identity over time: addresses
+  // get shared, handed to a successor, or released and re-registered by
+  // someone else entirely. Left permanently open, this column would be a
+  // standing route to take over a company by acquiring an old address.
+  //
+  // So it is not a standing feature. It is set only for the companies stranded
+  // by the Clerk instance change, and only until the window closes. Companies
+  // created normally never get one, and a genuinely deleted owner account is a
+  // support job, not a self-service takeover.
+  ownerRecoveryUntil: timestamp("owner_recovery_until", { withTimezone: true }),
   name: text("name").notNull(),
   greeting: text("greeting").notNull().default(""),
   collectFields: text("collect_fields").array().notNull().default([]),

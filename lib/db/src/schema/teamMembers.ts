@@ -38,6 +38,18 @@ export const teamMembersTable = pgTable(
      */
     clerkInvitationId: text("clerk_invitation_id"),
     claimedAt: timestamp("claimed_at", { withTimezone: true }),
+    /**
+     * How long this seat may be re-claimed by a verified matching email after
+     * the account holding it turns out to be deleted — and nothing more.
+     *
+     * A verified email proves who you are today, not that you are the person
+     * who held this seat. Addresses get shared, inherited, or released and
+     * re-registered. Left permanently open, this would be a standing way to
+     * walk into somebody's company by acquiring an old address, so it is not a
+     * standing feature: only the seats stranded by the Clerk instance change
+     * carry a window, and only until it closes.
+     */
+    recoveryUntil: timestamp("recovery_until", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

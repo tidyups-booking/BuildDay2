@@ -148,6 +148,13 @@
       "when": 1785981900000,
       "tag": "0020_repair_orphaned_owner_email",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1785982500000,
+      "tag": "0021_scope_account_recovery",
+      "breakpoints": true
     }
   ]
 }

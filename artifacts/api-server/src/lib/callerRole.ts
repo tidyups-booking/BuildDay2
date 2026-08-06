@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNotNull, isNull, ne, sql } from "drizzle-orm";
+import { and, eq, gt, inArray, isNotNull, isNull, ne, sql } from "drizzle-orm";
 import { clerkClient } from "@clerk/express";
 import {
   db,
@@ -78,20 +78,31 @@ async function verifiedEmailsFor(userId: string): Promise<string[]> {
 /**
  * Is this Clerk account definitively gone?
  *
- * Only a 404 counts. Any other outcome — an outage, a timeout, a rate limit —
- * is reported as "still there", because this answer is used to release
- * somebody's seat and a false positive would hand it to the wrong person.
+ * Only a 404 counts as "gone". An outage, a timeout or a rate limit is
+ * "unknown" rather than either answer — this decides whether to release
+ * somebody's seat, and a false positive hands it to the wrong person. "unknown"
+ * is kept distinct from "alive" so the caller can tell a settled no from a
+ * question it could not ask, and avoid caching the latter as a refusal.
  */
-async function clerkUserIsGone(userId: string): Promise<boolean> {
+type AccountState = "gone" | "alive" | "unknown";
+
+async function clerkUserState(userId: string): Promise<AccountState> {
   try {
     await clerkClient.users.getUser(userId);
-    return false;
+    return "alive";
   } catch (err) {
-    if ((err as { status?: number })?.status === 404) return true;
-    logger.error({ err, userId }, "[callerRole] stale seat check failed");
-    return false;
+    if ((err as { status?: number })?.status === 404) return "gone";
+    logger.error({ err, userId }, "[callerRole] stale account check failed");
+    return "unknown";
   }
 }
+
+/**
+ * A recovery attempt and whether anything about it went unanswered. An
+ * indeterminate attempt must not be cached as "this person has nothing here" —
+ * they may well have, and we simply could not reach Clerk to confirm it.
+ */
+type Recovery<T> = { value: T | null; indeterminate: boolean };
 
 /**
  * A seat can end up held by a Clerk account that no longer exists: the account
@@ -101,13 +112,16 @@ async function clerkUserIsGone(userId: string): Promise<boolean> {
  * every single sign-in — where the only thing on offer is creating a second,
  * empty company beside the one they already belong to.
  *
- * Releasing the seat needs two independent facts: the caller's email is
- * VERIFIED and matches the seat, and the account holding it is confirmed gone.
+ * Releasing the seat needs three independent facts: the seat is inside its
+ * recovery window, the caller's email is VERIFIED and matches it, and the
+ * account holding it is confirmed gone.
  */
 async function reclaimAbandonedSeat(
   userId: string,
   emails: string[],
-): Promise<number | null> {
+): Promise<Recovery<number>> {
+  let indeterminate = false;
+
   // Bounded: each candidate costs a Clerk round trip, and one person holding
   // more than a handful of same-email seats is not a real scenario.
   const held = await db
@@ -120,7 +134,10 @@ async function reclaimAbandonedSeat(
       and(
         isNotNull(teamMembersTable.clerkUserId),
         ne(teamMembersTable.clerkUserId, userId),
-        inArray(sql`lower(${teamMembersTable.email})`, emails),
+        // Stored addresses predate the trimming done on the Clerk side, so
+        // normalize both ends or a stray space silently blocks recovery.
+        inArray(sql`lower(trim(${teamMembersTable.email}))`, emails),
+        gt(teamMembersTable.recoveryUntil, new Date()),
       ),
     )
     .orderBy(teamMembersTable.id)
@@ -128,7 +145,9 @@ async function reclaimAbandonedSeat(
 
   for (const seat of held) {
     const staleUserId = seat.clerkUserId!;
-    if (!(await clerkUserIsGone(staleUserId))) continue;
+    const state = await clerkUserState(staleUserId);
+    if (state === "unknown") indeterminate = true;
+    if (state !== "gone") continue;
 
     // Pinning the old id in the WHERE keeps this safe against a concurrent
     // claim: whoever gets there first wins and the other pass simply misses.
@@ -148,11 +167,11 @@ async function reclaimAbandonedSeat(
         { userId, seatId: seat.id, staleUserId },
         "[callerRole] seat released from a deleted account and re-claimed",
       );
-      return taken.id;
+      return { value: taken.id, indeterminate };
     }
   }
 
-  return null;
+  return { value: null, indeterminate };
 }
 
 /**
@@ -163,14 +182,18 @@ async function reclaimAbandonedSeat(
  * told they have no workspace, and is invited to build a second empty one
  * beside it. Forever, on every attempt.
  *
- * `owner_email` is the handle that survives the login. Re-attaching still
- * demands both halves: the caller's email is VERIFIED and matches, and the
- * stored account is confirmed gone.
+ * `owner_email` is the handle that survives the login, but only inside the
+ * recovery window — see the column comment for why an open-ended version of
+ * this would be a way to take over a company by acquiring an old address.
+ * Re-attaching demands all three: the window is open, the caller's email is
+ * VERIFIED and matches, and the stored account is confirmed gone.
  */
 async function reclaimAbandonedCompany(
   userId: string,
   emails: string[],
-): Promise<Company | null> {
+): Promise<Recovery<Company>> {
+  let indeterminate = false;
+
   const orphans = await db
     .select({
       id: companiesTable.id,
@@ -181,14 +204,17 @@ async function reclaimAbandonedCompany(
       and(
         isNotNull(companiesTable.ownerEmail),
         ne(companiesTable.ownerUserId, userId),
-        inArray(sql`lower(${companiesTable.ownerEmail})`, emails),
+        inArray(sql`lower(trim(${companiesTable.ownerEmail}))`, emails),
+        gt(companiesTable.ownerRecoveryUntil, new Date()),
       ),
     )
     .orderBy(companiesTable.id)
     .limit(5);
 
   for (const orphan of orphans) {
-    if (!(await clerkUserIsGone(orphan.ownerUserId))) continue;
+    const state = await clerkUserState(orphan.ownerUserId);
+    if (state === "unknown") indeterminate = true;
+    if (state !== "gone") continue;
 
     const [taken] = await db
       .update(companiesTable)
@@ -206,11 +232,11 @@ async function reclaimAbandonedCompany(
         { userId, companyId: orphan.id, staleUserId: orphan.ownerUserId },
         "[callerRole] company re-attached to its owner after a dead login",
       );
-      return taken;
+      return { value: taken, indeterminate };
     }
   }
 
-  return null;
+  return { value: null, indeterminate };
 }
 
 /**
@@ -235,16 +261,22 @@ async function tryClaimSeat(userId: string): Promise<Caller | null> {
     return null;
   }
 
+  // Set when a recovery check could not be completed — Clerk timed out, rate
+  // limited, or errored. The caller may genuinely have a company or a seat
+  // waiting, so the "nothing here" answer below must not be cached.
+  let indeterminate = false;
+
   if (emails.length > 0) {
     // Ownership is checked before invites, matching the order in
     // `resolveCaller`: someone who owns a company is its owner even if that
     // same address was also invited onto another team.
     const reattached = await reclaimAbandonedCompany(userId, emails);
-    if (reattached) {
+    indeterminate ||= reattached.indeterminate;
+    if (reattached.value) {
       bootstrapNegativeCache.delete(userId);
       return {
         role: "owner",
-        company: reattached,
+        company: reattached.value,
         teamMemberId: null,
         name: "",
         email: "",
@@ -259,7 +291,7 @@ async function tryClaimSeat(userId: string): Promise<Caller | null> {
       .where(
         and(
           isNull(teamMembersTable.clerkUserId),
-          inArray(sql`lower(${teamMembersTable.email})`, emails),
+          inArray(sql`lower(trim(${teamMembersTable.email}))`, emails),
         ),
       )
       .orderBy(teamMembersTable.id)
@@ -288,7 +320,11 @@ async function tryClaimSeat(userId: string): Promise<Caller | null> {
         )[0]?.id ?? null)
       : // No free seat under this address. Before giving up, check whether one
         // is only nominally taken — held by an account that no longer exists.
-        await reclaimAbandonedSeat(userId, emails);
+        await (async () => {
+          const recovered = await reclaimAbandonedSeat(userId, emails);
+          indeterminate ||= recovered.indeterminate;
+          return recovered.value;
+        })();
 
     const [claimed] = claimedId
       ? await db
@@ -321,7 +357,12 @@ async function tryClaimSeat(userId: string): Promise<Caller | null> {
     }
   }
 
-  bootstrapNegativeCache.set(userId, Date.now() + BOOTSTRAP_RECHECK_MS);
+  // "Nothing here" is only worth remembering when we actually got to look. If
+  // a recovery check went unanswered, re-check on the next request instead of
+  // holding someone out of their own company for the full window.
+  if (!indeterminate) {
+    bootstrapNegativeCache.set(userId, Date.now() + BOOTSTRAP_RECHECK_MS);
+  }
   return null;
 }
 
