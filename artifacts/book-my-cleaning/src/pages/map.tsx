@@ -16,6 +16,7 @@ import {
   MapData,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
@@ -160,11 +161,12 @@ function MapView() {
   const isRangeView = view !== "day";
 
   // Pulling from Jobber writes bookings, so it stays with the people who are
-  // allowed to change the schedule.
+  // allowed to change the schedule. It is deliberately NOT hidden when Jobber
+  // is disconnected — a control that only appears once you've already done the
+  // setup is a control nobody knows exists, so it stays put and says what it
+  // needs instead.
   const { data: me } = useGetCurrentUser();
-  const canSyncJobber =
-    Boolean(company?.jobberConnected) &&
-    (me?.role === "owner" || me?.role === "dispatcher");
+  const canManageJobber = me?.role === "owner" || me?.role === "dispatcher";
 
   return (
     <>
@@ -185,7 +187,13 @@ function MapView() {
           <Button variant="outline" size="sm" onClick={() => jumpToDate(today)}>
             Today
           </Button>
-          {canSyncJobber && <JobberSyncButton mapParams={mapParams} />}
+          {canManageJobber && (
+            <JobberSyncButton
+              mapParams={mapParams}
+              connected={Boolean(company?.jobberConnected)}
+              needsReauth={Boolean(company?.jobberNeedsReauth)}
+            />
+          )}
           <Button
             variant="outline"
             size="icon"
@@ -716,15 +724,43 @@ function useRefreshMap(mapParams: { date: string; end: string }) {
  * who just booked something in Jobber and wants to see it now. The result is
  * spelled out in plain counts rather than a silent success, because "nothing
  * happened" and "nothing needed to happen" look identical otherwise.
+ *
+ * When Jobber isn't connected the button stays on screen and becomes the way
+ * in — hiding it until setup is done leaves an owner staring at a map with no
+ * hint that their Jobber calendar could be on it.
  */
 function JobberSyncButton({
   mapParams,
+  connected,
+  needsReauth,
 }: {
   mapParams: { date: string; end: string };
+  connected: boolean;
+  needsReauth: boolean;
 }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const sync = useSyncJobberCalendar();
+  const [, setLocation] = useLocation();
+
+  if (!connected || needsReauth) {
+    return (
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => setLocation("/settings")}
+        data-testid="button-connect-jobber"
+        title={
+          needsReauth
+            ? "Jobber needs signing in again before it can sync."
+            : "Connect Jobber to pull your scheduled jobs onto this map."
+        }
+      >
+        <RefreshCw className="w-4 h-4 mr-2" />
+        {needsReauth ? "Reconnect Jobber" : "Connect Jobber"}
+      </Button>
+    );
+  }
 
   const run = () => {
     sync.mutate(undefined, {
