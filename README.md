@@ -54,3 +54,21 @@ pnpm exec prettier --check .
 - Booking times are stored and rendered in the company's timezone, never browser-local.
 
 See `replit.md` for the full architecture and current status.
+
+## Daily build start point
+
+On the Windows machine that stores local backups, run:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\daily-build-backup.ps1
+```
+
+Each successful run finds the highest repository named `DayN_Build` in the
+`tidyups-booking` GitHub organization, creates the next repository in sequence,
+and pushes the current clean commit to its `main` branch. Before creating the
+GitHub repository, it writes and verifies a source snapshot, complete Git bundle,
+ZIP archive, and SHA-256 checksum under `D:\AI-Receptionist-Backups`.
+
+The script stops without creating a GitHub repository when `D:\` is unavailable,
+the working tree is dirty, or backup verification fails. Use `-Private` if the
+daily repositories should be private.
